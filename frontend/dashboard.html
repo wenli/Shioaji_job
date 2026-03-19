@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futures Data Downloader</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --glass-bg: rgba(22, 27, 34, 0.4);
+            --border-color: rgba(240, 246, 252, 0.1);
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --warning-color: #d29922;
+            --danger-color: #f85149;
+            --text-color: #f0f6fc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Glassmorphism Container */
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, #58a6ff, #1f6feb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--danger-color);
+            box-shadow: 0 0 8px var(--danger-color);
+        }
+
+        .status-dot.online {
+            background-color: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+        }
+
+        /* Stats Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-type {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        .card-val {
+            font-size: 0.85rem;
+            color: #8b949e;
+            word-break: break-all;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #418ddb;
+            box-shadow: 0 4px 15px rgba(88, 166, 255, 0.5);
+            transform: scale(1.02);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* Log Panel */
+        .console {
+            background: #090b10;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            height: 180px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #d1d5db;
+        }
+
+        .console-line {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .log-info { color: #8b949e; }
+        .log-success { color: var(--success-color); }
+        .log-warning { color: var(--warning-color); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div>
+                <h1>Data Downloader</h1>
+                <p style="color: #8b949e; font-size: 0.9rem; margin-top: 4px;">Target: <span id="target-code" style="color: #fff;">...</span></p>
+            </div>
+            <div class="status-badge" id="app-status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid" id="stats-grid">
+            <div class="card"><div class="card-type">1K</div><div class="card-val" id="val-1k">Loading...</div></div>
+            <div class="card"><div class="card-type">5K</div><div class="card-val" id="val-5k">Loading...</div></div>
+            <div class="card"><div class="card-type">15K</div><div class="card-val" id="val-15k">Loading...</div></div>
+            <div class="card"><div class="card-type">30K</div><div class="card-val" id="val-30k">Loading...</div></div>
+            <div class="card"><div class="card-type">60K</div><div class="card-val" id="val-60k">Loading...</div></div>
+            <div class="card"><div class="card-type">1D</div><div class="card-val" id="val-1d">Loading...</div></div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="controls">
+            <button class="btn-primary" id="btn-sync">
+                <span>⚡ One-Key Sync Now</span>
+            </button>
+        </div>
+
+        <!-- Live Logs -->
+        <div class="console" id="console-output">
+            <div class="console-line log-info">🚀 Dashboard initialized. Fetching status...</div>
+        </div>
+    </div>
+
+    <script>
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
+        const targetCode = document.getElementById('target-code');
+        const consoleOutput = document.getElementById('console-output');
+        const btnSync = document.getElementById('btn-sync');
+
+        function appendLog(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = `console-line log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            line.textContent = `[${time}] ${message}`;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                
+                // Update Badge
+                if (data.status === 'Online') {
+                    statusText.textContent = 'Shioaji Connected';
+                    statusDot.className = 'status-dot online';
+                } else {
+                    statusText.textContent = data.status;
+                    statusDot.className = 'status-dot';
+                }
+
+                targetCode.textContent = data.code;
+
+                // Update Cards
+                const stats = data.sync_stats;
+                for (const [key, val] of Object.entries(stats)) {
+                    const el = document.getElementById(`val-${key}`);
+                    if (el) {
+                        el.textContent = val;
+                        if (val !== "No Data") {
+                             el.style.color = "#fff";
+                        }
+                    }
+                }
+
+            } catch (err) {
+                appendLog(`Status Fetch Failed: ${err.message}`, 'warning');
+            }
+        }
+
+        // Trigger Sync
+        btnSync.addEventListener('click', async () => {
+            appendLog('Sync triggered...', 'info');
+            btnSync.disabled = true;
+            btnSync.style.opacity = '0.7';
+
+            try {
+                const res = await fetch('/api/sync', { method: 'POST' });
+                const data = await res.json();
+                appendLog(data.message, 'success');
+            } catch (err) {
+                appendLog(`Sync Failed: ${err.message}`, 'warning');
+            } finally {
+                setTimeout(() => {
+                    btnSync.disabled = false;
+                    btnSync.style.opacity = '1';
+                }, 3000);
+            }
+        });
+
+        // Polling loop
+        setInterval(fetchStatus, 5000);
+        fetchStatus(); // Initial call
+    </script>
+</body>
+</html>
