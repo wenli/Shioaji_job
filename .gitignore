@@ -1,0 +1,23 @@
+# Secrets and Environment
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+
+# Python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and databases
+*.log
+
+# Caches and IDs
+.pytest_cache/
+.ipynb_checkpoints/
+.agent/
+.gemini/
+.vscode/
+.idea/

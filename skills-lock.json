@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "shioaji": {
+      "source": "Sinotrade/Shioaji",
+      "sourceType": "github",
+      "computedHash": "7bacbabcbb7edd4789473884956e270dc64157c392e7a7db08148126d9dba7ef"
+    }
+  }
+}
