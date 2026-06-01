@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMC 聰明錢量化交易訊號深度覆盤面盤</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #040208;
+            --glass-bg: rgba(22, 27, 34, 0.45);
+            --border-color: rgba(240, 246, 252, 0.08);
+            --accent-color: #58a6ff;
+            --text-color: #f0f6fc;
+            
+            /* Neon Colors */
+            --neon-cyan: #22d3ee;
+            --neon-purple: #c084fc;
+            --neon-gold: #fbbf24;
+            --neon-pink: #f43f5e;
+            
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #040208 0%, #0d0c1d 50%, #040208 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-title h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(192, 132, 252, 0.2);
+        }
+
+        .btn-close {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            color: #8b949e;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-close:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        /* Detail Panel Grid */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .detail-card.entry {
+            border-top: 4px solid var(--neon-cyan);
+            box-shadow: inset 0 5px 15px rgba(34, 211, 238, 0.02);
+        }
+
+        .detail-card.exit {
+            border-top: 4px solid var(--neon-purple);
+            box-shadow: inset 0 5px 15px rgba(192, 132, 252, 0.02);
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding-bottom: 8px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .row:last-child {
+            margin-bottom: 0;
+        }
+
+        .lbl {
+            color: #8b949e;
+        }
+
+        .val {
+            font-weight: 500;
+            color: #f0f6fc;
+        }
+
+        /* Charts Layout (左右並排) */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 992px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            background: rgba(4, 2, 8, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-badge {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.78rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .badge-1k {
+            background: rgba(34, 211, 238, 0.12);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(34, 211, 238, 0.25);
+        }
+
+        .badge-5k {
+            background: rgba(192, 132, 252, 0.12);
+            color: var(--neon-purple);
+            border: 1px solid rgba(192, 132, 252, 0.25);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 420px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #08060f;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(4, 2, 8, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            transition: opacity 0.3s ease;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-cyan);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* TradingView Style Global Toolbar */
+        .tv-toolbar {
+            background: rgba(22, 27, 34, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 10px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            animation: fadeIn 0.6s ease-in-out;
+        }
+        
+        .toolbar-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #8b949e;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-toggle {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #8b949e;
+            padding: 7px 15px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .btn-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn-toggle.active {
+            color: #fff;
+            transform: none;
+        }
+
+        .btn-toggle.active#btn-ob {
+            background: rgba(34, 211, 238, 0.12);
+            border-color: rgba(34, 211, 238, 0.35);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.18);
+            text-shadow: 0 0 4px rgba(34, 211, 238, 0.4);
+        }
+
+        .btn-toggle.active#btn-fvg {
+            background: rgba(251, 191, 36, 0.12);
+            border-color: rgba(251, 191, 36, 0.35);
+            color: var(--neon-gold);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.18);
+            text-shadow: 0 0 4px rgba(251, 191, 36, 0.4);
+        }
+
+        .btn-toggle.active#btn-choch {
+            background: rgba(192, 132, 252, 0.12);
+            border-color: rgba(192, 132, 252, 0.35);
+            color: var(--neon-purple);
+            box-shadow: 0 0 15px rgba(192, 132, 252, 0.18);
+            text-shadow: 0 0 4px rgba(192, 132, 252, 0.4);
+        }
+
+        .btn-toggle.active#btn-rr {
+            background: rgba(244, 63, 94, 0.12);
+            border-color: rgba(244, 63, 94, 0.35);
+            color: var(--neon-pink);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.18);
+            text-shadow: 0 0 4px rgba(244, 63, 94, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-title">
+                <h1 id="page-title">SMC 交易深度覆盤控制面盤</h1>
+                <p style="color: #8b949e; font-size: 0.88rem; margin-top: 4px;" id="page-subtitle">加載交易中...</p>
+            </div>
+            <button class="btn-close" onclick="window.close()">✖ 關閉此頁</button>
+        </header>
+
+        <!-- TradingView Style Global Indicator Control Toolbar -->
+        <div class="tv-toolbar">
+            <div class="toolbar-title">📈 tradingview 圖表控制</div>
+            <button class="btn-toggle active" id="btn-ob" onclick="toggleIndicator('OB')">🟩 5K OB 區間</button>
+            <button class="btn-toggle active" id="btn-fvg" onclick="toggleIndicator('FVG')">🟨 1K FVG 共振</button>
+            <button class="btn-toggle active" id="btn-choch" onclick="toggleIndicator('CHoCH')">🟦 1K CHoCH 突破</button>
+            <button class="btn-toggle active" id="btn-rr" onclick="toggleIndicator('RR')">🟥 賺賠比 (R-R) 盈虧區</button>
+        </div>
+
+        <!-- Dynamic Indicators Cards -->
+        <div class="detail-grid">
+            <!-- Left Column: Entry -->
+            <div class="detail-card entry">
+                <h4 class="card-title">📥 進場策略指標狀態</h4>
+                <div class="row">
+                    <span class="lbl">大週期 (5K) Sweep 流流性獵取</span>
+                    <span class="val" id="ind-htf-sweep" style="color: var(--neon-cyan); font-weight: bold;">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">5K OB (破壞塊) 支撐阻力價格區間</span>
+                    <span class="val" id="ind-ob-zone">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">小週期 (1K) CHoCH 突破確認</span>
+                    <span class="val" id="ind-choch" style="color: var(--neon-cyan);">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">1K FVG 共振進場價格帶</span>
+                    <span class="val" id="ind-fvg-zone">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">黃金交易時段 (Killzone)</span>
+                    <span class="val" id="ind-killzone">--</span>
+                </div>
+            </div>
+
+            <!-- Right Column: Exit -->
+            <div class="detail-card exit">
+                <h4 class="card-title">📤 出場策略指標狀態</h4>
+                <div class="row">
+                    <span class="lbl">平倉出場原因</span>
+                    <span class="val" id="ind-exit-reason" style="font-weight: 700; color: #fff;">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">持倉淨點數差值</span>
+                    <span class="val" id="ind-pnl-points" style="font-weight: bold;">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">平倉摩擦成本 (手續費與稅金)</span>
+                    <span class="val" id="ind-costs">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">本筆交易實際淨盈虧</span>
+                    <span class="val" id="ind-net-pnl" style="font-weight: bold; font-size: 1.05rem;">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">交易口數與風控</span>
+                    <span class="val" id="ind-lots">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- HTML5 Canvas K-Bar Charts (左右並排) -->
+        <div class="charts-container">
+            <!-- 1K Chart -->
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3 style="font-size: 0.95rem; font-weight: bold; color: #fff;">📈 1K LTF 微觀蠟燭走勢與結構</h3>
+                    <span class="chart-badge badge-1k">1K 週期 (LTF)</span>
+                </div>
+                <div class="canvas-wrapper">
+                    <div class="loading-overlay" id="loading-1k">LOADING 1K KBARS...</div>
+                    <canvas id="canvas1K"></canvas>
+                </div>
+            </div>
+
+            <!-- 5K Chart -->
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3 style="font-size: 0.95rem; font-weight: bold; color: #fff;">📈 5K HTF 趨勢蠟燭走勢與結構</h3>
+                    <span class="chart-badge badge-5k">5K 週期 (HTF)</span>
+                </div>
+                <div class="canvas-wrapper">
+                    <div class="loading-overlay" id="loading-5k">LOADING 5K KBARS...</div>
+                    <canvas id="canvas5K"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let tradeData = null;
+
+        // On Load initialization
+        window.onload = function() {
+            try {
+                // 從 localStorage 讀取交易明細
+                const rawTrade = localStorage.getItem('active_trade_detail');
+                if (!rawTrade) {
+                    document.getElementById('page-subtitle').textContent = '找不到交易資料，請從主控板重新點擊。';
+                    return;
+                }
+                
+                tradeData = JSON.parse(rawTrade);
+                renderDetailScorecards();
+                
+                // 異步載入 K 線並手工繪製 Candle
+                fetchAndDrawCharts();
+                
+            } catch (err) {
+                console.error(err);
+                document.getElementById('page-subtitle').textContent = `載入失敗: ${err.message}`;
+            }
+        };
+
+        // Render Cards Data
+        function renderDetailScorecards() {
+            const isLong = tradeData.direction === 'Long';
+            const isWin = tradeData.net_pnl > 0;
+            const stratLabel = tradeData.strategy === 'unicorn_model' ? '🦄 Unicorn 獨角獸' : '⚡ Silver Bullet 銀色子彈';
+            
+            // Subtitle
+            document.getElementById('page-title').textContent = `${stratLabel} - ${isLong ? '做多' : '做空'}交易訊號深度覆盤`;
+            document.getElementById('page-subtitle').textContent = `進場時間: ${tradeData.entry_time} | 出場時間: ${tradeData.exit_time} | 口數: ${tradeData.lots} 口`;
+
+            // Entry indicators
+            const entry = tradeData.entry_indicators || {};
+            document.getElementById('ind-htf-sweep').textContent = entry.htf_sweep || '無';
+            document.getElementById('ind-ob-zone').textContent = entry.ob_zone || '無';
+            document.getElementById('ind-choch').textContent = entry.ltf_choch || '無';
+            document.getElementById('ind-fvg-zone').textContent = entry.fvg_zone || '無';
+            document.getElementById('ind-killzone').textContent = entry.killzone || '否';
+
+            // Exit indicators
+            const exit = tradeData.exit_indicators || {};
+            document.getElementById('ind-exit-reason').textContent = exit.reason || tradeData.reason || '強制收盤平倉';
+            
+            // PNL Points
+            const pnlPoints = exit.pnl_points !== undefined ? exit.pnl_points : (tradeData.exit_price - tradeData.entry_price) * (isLong ? 1 : -1);
+            const ptsEl = document.getElementById('ind-pnl-points');
+            ptsEl.textContent = `${pnlPoints >= 0 ? '+' : ''}${pnlPoints.toFixed(1)} 點`;
+            ptsEl.style.color = pnlPoints >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+
+            // Lots & Risk
+            document.getElementById('ind-lots').textContent = `${tradeData.lots} 口 (保證金與風控曝險合規)`;
+
+            // Costs & Net PNL
+            const isTX = tradeData.lots > 0 && Math.abs(pnlPoints * 200 * tradeData.lots - tradeData.net_pnl) < Math.abs(pnlPoints * 50 * tradeData.lots - tradeData.net_pnl);
+            const pointValue = isTX ? 200.0 : 50.0;
+            const grossPnl = pnlPoints * pointValue * tradeData.lots;
+            const cost = grossPnl - tradeData.net_pnl;
+            document.getElementById('ind-costs').textContent = `NT$ ${Math.round(cost).toLocaleString()} 元`;
+
+            const pnlEl = document.getElementById('ind-net-pnl');
+            pnlEl.textContent = `NT$ ${Math.round(tradeData.net_pnl).toLocaleString()} 元`;
+            pnlEl.style.color = isWin ? 'var(--success-color)' : 'var(--danger-color)';
+        }
+
+        // Global state for indicator visibility toggling and crosshairs
+        let chartState = {
+            showOB: true,
+            showFVG: true,
+            showCHoCH: true,
+            showRR: true,
+            data1K: [],
+            data5K: []
+        };
+
+        // 5K 週期高精度對齊 Helper
+        function find5KIndexFor1KTime(kbars5k, time1k) {
+            if (!time1k) return -1;
+            const t1kMs = new Date(time1k.replace(/-/g, '/')).getTime();
+            
+            let bestIdx = -1;
+            let minDiff = Infinity;
+            
+            for (let i = 0; i < kbars5k.length; i++) {
+                const t5kMs = new Date(kbars5k[i].ts.replace(/-/g, '/')).getTime();
+                const diff = t1kMs - t5kMs;
+                
+                // 5K K棒涵蓋 5 分鐘 (300,000 毫秒)
+                if (diff >= 0 && diff < 300000) {
+                    return i;
+                }
+                
+                const absDiff = Math.abs(t1kMs - t5kMs);
+                if (absDiff < minDiff) {
+                    minDiff = absDiff;
+                    bestIdx = i;
+                }
+            }
+            return bestIdx;
+        }
+
+        // Indicator Toggle Action
+        window.toggleIndicator = function(type) {
+            const prop = 'show' + type;
+            chartState[prop] = !chartState[prop];
+            
+            const btn = document.getElementById('btn-' + type.toLowerCase());
+            if (chartState[prop]) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            redrawCharts();
+        };
+
+        function redrawCharts() {
+            if (chartState.data1K.length > 0) {
+                drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K');
+            }
+            if (chartState.data5K.length > 0) {
+                drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K');
+            }
+        }
+
+        // Fetch local charts from API
+        async function fetchAndDrawCharts() {
+            try {
+                const url = `/api/backtest/trade_chart?entry_time=${encodeURIComponent(tradeData.entry_time)}&exit_time=${encodeURIComponent(tradeData.exit_time)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.success) {
+                    chartState.data1K = data.kbars_1k;
+                    chartState.data5K = data.kbars_5k;
+                    
+                    // 1. 原生手工 Canvas 繪製 1K KBar (蠟燭圖)
+                    drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K');
+                    document.getElementById('loading-1k').style.opacity = '0';
+                    setTimeout(() => document.getElementById('loading-1k').style.display = 'none', 300);
+
+                    // 2. 原生手工 Canvas 繪製 5K KBar (蠟燭圖)
+                    drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K');
+                    document.getElementById('loading-5k').style.opacity = '0';
+                    setTimeout(() => document.getElementById('loading-5k').style.display = 'none', 300);
+                    
+                    // 3. 綁定滑鼠十字游標與互動資訊框監聽器
+                    setupInteractivity();
+                } else {
+                    document.getElementById('loading-1k').textContent = 'K線載入失敗。';
+                    document.getElementById('loading-5k').textContent = 'K線載入失敗。';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading-1k').textContent = `載入異常: ${err.message}`;
+            }
+        }
+
+        // ==================== Epic 原生 HTML5 Canvas K線繪製器 (加強互動性) ====================
+        function drawSMCKbarsCanvas(canvasId, kbars, trade, type, hoverIdx = -1, mouseX = -1, mouseY = -1) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // 解決高解析度螢幕模糊 (Retina screen crispness)
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = 420 * dpr; // 鎖定 dpr 高度
+            ctx.scale(dpr, dpr);
+            
+            const w = rect.width;
+            const h = 420;
+
+            if (kbars.length === 0) {
+                ctx.fillStyle = '#8b949e';
+                ctx.font = '14px Roboto';
+                ctx.fillText('該週期無K線資料', w / 2 - 50, h / 2);
+                return;
+            }
+
+            // 1. 取得價格與時間邊界
+            const opens = kbars.map(k => k.open);
+            const closes = kbars.map(k => k.close);
+            const highs = kbars.map(k => k.high);
+            const lows = kbars.map(k => k.low);
+
+            const maxPrice = Math.max(...highs);
+            const minPrice = Math.min(...lows);
+            const priceRange = maxPrice - minPrice;
+            
+            // 預留上下 15% 的空白以容納 FVG 或 OBZone
+            const padPrice = priceRange * 0.15 || 10;
+            const yMin = minPrice - padPrice;
+            const yMax = maxPrice + padPrice;
+
+            // X 軸 K 棒定位計算
+            const numBars = kbars.length;
+            const barWidth = w / numBars;
+            const candleWidth = barWidth * 0.68;
+
+            // 價格對應 Y 像素轉換
+            function priceToY(price) {
+                return h - 40 - ((price - yMin) / (yMax - yMin)) * (h - 80);
+            }
+
+            // 索引對應 X 像素轉換
+            function barToX(idx) {
+                return idx * barWidth + barWidth / 2;
+            }
+
+            // 2. 尋找進出場 K 棒的索引 (高精度 1K / 5K 對齊)
+            let entryIdx = -1;
+            let exitIdx = -1;
+            
+            if (type === '1K') {
+                kbars.forEach((k, idx) => {
+                    if (k.ts === trade.entry_time || (k.ts.substring(0, 16) === trade.entry_time.substring(0, 16) && entryIdx === -1)) {
+                        entryIdx = idx;
+                    }
+                    if (k.ts === trade.exit_time || (k.ts.substring(0, 16) === trade.exit_time.substring(0, 16) && exitIdx === -1)) {
+                        exitIdx = idx;
+                    }
+                });
+            } else {
+                // 5K 使用高精度時間戳區間對齊
+                entryIdx = find5KIndexFor1KTime(kbars, trade.entry_time);
+                exitIdx = find5KIndexFor1KTime(kbars, trade.exit_time);
+            }
+
+            // 3. 繪製橫向網格線與價格標記 (Y-axis Grid)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#8b949e';
+            ctx.font = '10px Orbitron';
+            ctx.textAlign = 'right';
+
+            const numGrids = 5;
+            for (let g = 0; g <= numGrids; g++) {
+                const gridPrice = yMin + (g / numGrids) * (yMax - yMin);
+                const gy = priceToY(gridPrice);
+                ctx.beginPath();
+                ctx.moveTo(10, gy);
+                ctx.lineTo(w - 60, gy);
+                ctx.stroke();
+                ctx.fillText(Math.round(gridPrice).toString(), w - 15, gy + 3);
+            }
+
+            // 4. 繪製 SMC 結構：5K OB 支撐阻力區間
+            const entryInd = trade.entry_indicators || {};
+            const isLong = trade.direction === 'Long';
+            
+            if (chartState.showOB && type === '5K' && (entryInd.ob_top !== undefined && entryInd.ob_top !== null || (entryInd.ob_zone && entryInd.ob_zone !== '無'))) {
+                let obBot = entryInd.ob_bottom;
+                let obTop = entryInd.ob_top;
+                
+                if (obBot === undefined || obBot === null) {
+                    const parts = entryInd.ob_zone.split(' - ');
+                    if (parts.length >= 2) {
+                        obBot = parseFloat(parts[0]);
+                        obTop = parseFloat(parts[1]);
+                    }
+                }
+                
+                if (obBot !== undefined && obBot !== null && !isNaN(obBot) && !isNaN(obTop) && entryIdx !== -1) {
+                    const obY1 = priceToY(obTop);
+                    const obY2 = priceToY(obBot);
+                    const obH = obY2 - obY1;
+                    
+                    ctx.fillStyle = isLong ? 'rgba(34, 211, 238, 0.06)' : 'rgba(244, 63, 94, 0.06)';
+                    ctx.fillRect(barToX(entryIdx), obY1, w - barToX(entryIdx) - 60, obH);
+                    
+                    ctx.strokeStyle = isLong ? 'rgba(34, 211, 238, 0.3)' : 'rgba(244, 63, 94, 0.3)';
+                    ctx.setLineDash([4, 4]);
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(barToX(entryIdx), obY1);
+                    ctx.lineTo(w - 60, obY1);
+                    ctx.moveTo(barToX(entryIdx), obY2);
+                    ctx.lineTo(w - 60, obY2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    ctx.fillStyle = isLong ? 'var(--neon-cyan)' : 'var(--neon-pink)';
+                    ctx.font = 'bold 9px Roboto';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`5K OB Block (${isLong ? '支撐防守區' : '供給阻力區'})`, barToX(entryIdx) + 8, obY1 + 14);
+                }
+            }
+
+            // 5. 繪製 SMC 結構：1K FVG 共振進場價格帶 或 5K 近場 FVG (SMC 結構同步)
+            if (chartState.showFVG) {
+                if (type === '1K' && (entryInd.fvg_top !== undefined && entryInd.fvg_top !== null || (entryInd.fvg_zone && entryInd.fvg_zone !== '無' && entryInd.fvg_zone !== '無 1K FVG 共振'))) {
+                    let fvgBot = entryInd.fvg_bottom;
+                    let fvgTop = entryInd.fvg_top;
+                    
+                    if (fvgBot === undefined || fvgBot === null) {
+                        const parts = entryInd.fvg_zone.split(' - ');
+                        if (parts.length >= 2) {
+                            fvgBot = parseFloat(parts[0]);
+                            fvgTop = parseFloat(parts[1]);
+                        }
+                    }
+                    
+                    if (fvgBot !== undefined && fvgBot !== null && !isNaN(fvgBot) && !isNaN(fvgTop) && entryIdx !== -1) {
+                        const fvgY1 = priceToY(fvgTop);
+                        const fvgY2 = priceToY(fvgBot);
+                        const fvgH = fvgY2 - fvgY1;
+                        
+                        const fvgW = Math.min(barWidth * 8, w - barToX(entryIdx) - 60);
+                        ctx.fillStyle = 'rgba(251, 191, 36, 0.12)';
+                        ctx.fillRect(barToX(entryIdx), fvgY1, fvgW, fvgH);
+                        
+                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+                        ctx.setLineDash([3, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo(barToX(entryIdx), fvgY1);
+                        ctx.lineTo(barToX(entryIdx) + fvgW, fvgY1);
+                        ctx.moveTo(barToX(entryIdx), fvgY2);
+                        ctx.lineTo(barToX(entryIdx) + fvgW, fvgY2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        
+                        ctx.fillStyle = 'var(--neon-gold)';
+                        ctx.font = 'bold 9px Roboto';
+                        ctx.textAlign = 'left';
+                        ctx.fillText('1K FVG 共振缺口', barToX(entryIdx) + 6, fvgY1 + 11);
+                    }
+                }
+                else if (type === '5K' && entryIdx !== -1) {
+                    // 5K 近場 FVG 自動檢測 (進場點前後 3 根 5K K線)
+                    let foundFvg = null;
+                    const searchStart = Math.max(2, entryIdx - 3);
+                    const searchEnd = Math.min(kbars.length - 1, entryIdx + 3);
+                    
+                    for (let j = searchStart; j <= searchEnd; j++) {
+                        // Bullish FVG
+                        if (kbars[j].low > kbars[j-2].high && kbars[j-1].close > kbars[j-1].open) {
+                            foundFvg = {
+                                type: 'bullish',
+                                idx: j - 1,
+                                top: kbars[j].low,
+                                bottom: kbars[j-2].high
+                            };
+                            break;
+                        }
+                        // Bearish FVG
+                        else if (kbars[j].high < kbars[j-2].low && kbars[j-1].close < kbars[j-1].open) {
+                            foundFvg = {
+                                type: 'bearish',
+                                idx: j - 1,
+                                top: kbars[j-2].low,
+                                bottom: kbars[j].high
+                            };
+                            break;
+                        }
+                    }
+                    
+                    if (foundFvg) {
+                        const fvgY1 = priceToY(foundFvg.top);
+                        const fvgY2 = priceToY(foundFvg.bottom);
+                        const fvgH = fvgY2 - fvgY1;
+                        
+                        const fvgStartX = barToX(foundFvg.idx);
+                        const fvgW = Math.min(barWidth * 6, w - fvgStartX - 60);
+                        
+                        ctx.fillStyle = 'rgba(251, 191, 36, 0.12)';
+                        ctx.fillRect(fvgStartX, fvgY1, fvgW, fvgH);
+                        
+                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+                        ctx.setLineDash([3, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo(fvgStartX, fvgY1);
+                        ctx.lineTo(fvgStartX + fvgW, fvgY1);
+                        ctx.moveTo(fvgStartX, fvgY2);
+                        ctx.lineTo(fvgStartX + fvgW, fvgY2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        
+                        ctx.fillStyle = 'var(--neon-gold)';
+                        ctx.font = 'bold 9px Roboto';
+                        ctx.textAlign = 'left';
+                        ctx.fillText('5K FVG 缺口', fvgStartX + 6, fvgY1 + 11);
+                    }
+                }
+            }
+
+            // 5.5 繪製 R-R (賺賠比) 盈虧發光覆蓋區間
+            if (chartState.showRR && entryIdx !== -1) {
+                const rrX = barToX(entryIdx);
+                const rrW = w - rrX - 60;
+                
+                const entryY = priceToY(trade.entry_price);
+                const slY = priceToY(trade.stop_loss);
+                const tpY = priceToY(trade.take_profit);
+                
+                ctx.fillStyle = 'rgba(248, 81, 73, 0.04)';
+                if (isLong) {
+                    ctx.fillRect(rrX, entryY, rrW, slY - entryY);
+                } else {
+                    ctx.fillRect(rrX, slY, rrW, entryY - slY);
+                }
+                
+                ctx.fillStyle = 'rgba(63, 185, 80, 0.04)';
+                if (isLong) {
+                    ctx.fillRect(rrX, tpY, rrW, entryY - tpY);
+                } else {
+                    ctx.fillRect(rrX, entryY, rrW, tpY - entryY);
+                }
+                
+                ctx.setLineDash([2, 4]);
+                
+                ctx.strokeStyle = 'rgba(63, 185, 80, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(rrX, tpY);
+                ctx.lineTo(w - 60, tpY);
+                ctx.stroke();
+                
+                ctx.strokeStyle = 'rgba(248, 81, 73, 0.35)';
+                ctx.beginPath();
+                ctx.moveTo(rrX, slY);
+                ctx.lineTo(w - 60, slY);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = 'rgba(63, 185, 80, 0.8)';
+                ctx.font = 'bold 9px Orbitron';
+                ctx.textAlign = 'right';
+                ctx.fillText(`🎯 TP: ${Math.round(trade.take_profit)}`, w - 65, tpY - 4);
+                
+                ctx.fillStyle = 'rgba(248, 81, 73, 0.8)';
+                ctx.font = 'bold 9px Orbitron';
+                ctx.fillText(`🛑 SL: ${Math.round(trade.stop_loss)}`, w - 65, slY + 11);
+            }
+
+            // 6. 繪製 K 棒影線與蠟燭實體
+            kbars.forEach((k, idx) => {
+                const x = barToX(idx);
+                const yOpen = priceToY(k.open);
+                const yClose = priceToY(k.close);
+                const yHigh = priceToY(k.high);
+                const yLow = priceToY(k.low);
+                
+                const isBull = k.close >= k.open;
+                
+                ctx.strokeStyle = isBull ? 'rgba(63, 185, 80, 0.65)' : 'rgba(248, 81, 73, 0.65)';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(x, yHigh);
+                ctx.lineTo(x, yLow);
+                ctx.stroke();
+                
+                const bodyH = Math.max(Math.abs(yClose - yOpen), 1.5);
+                const bodyY = Math.min(yOpen, yClose);
+                
+                if (isBull) {
+                    ctx.fillStyle = 'rgba(63, 185, 80, 0.9)';
+                    ctx.fillRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
+                    ctx.strokeStyle = 'rgba(63, 185, 80, 0.4)';
+                    ctx.strokeRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
+                } else {
+                    ctx.fillStyle = 'rgba(248, 81, 73, 0.9)';
+                    ctx.fillRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
+                    ctx.strokeStyle = 'rgba(248, 81, 73, 0.4)';
+                    ctx.strokeRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
+                }
+                
+                // 7. 5K Sweep 流動性獵取背景
+                if (type === '5K' && idx === entryIdx) {
+                    ctx.fillStyle = 'rgba(192, 132, 252, 0.08)';
+                    ctx.fillRect(x - barWidth / 2, 20, barWidth, h - 60);
+                    
+                    ctx.strokeStyle = 'rgba(192, 132, 252, 0.4)';
+                    ctx.setLineDash([2, 2]);
+                    ctx.beginPath();
+                    ctx.moveTo(x - barWidth / 2, 20);
+                    ctx.lineTo(x - barWidth / 2, h - 40);
+                    ctx.moveTo(x + barWidth / 2, 20);
+                    ctx.lineTo(x + barWidth / 2, h - 40);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    ctx.fillStyle = 'var(--neon-purple)';
+                    ctx.font = 'bold 9px Orbitron';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('HTF SWEEP', x, 30);
+                }
+
+                // 8. 1K CHoCH 結構突破線
+                if (chartState.showCHoCH && type === '1K' && idx === entryIdx && entryInd.ltf_choch && entryInd.ltf_choch !== '無') {
+                    const chochPriceVal = entryInd.choch_price || (isLong ? k.high : k.low);
+                    const chochY = priceToY(chochPriceVal);
+                    ctx.strokeStyle = 'var(--neon-cyan)';
+                    ctx.lineWidth = 1.2;
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(x - barWidth * 3, chochY);
+                    ctx.lineTo(w - 60, chochY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    ctx.fillStyle = 'var(--neon-cyan)';
+                    ctx.font = 'bold 9px Roboto';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`1K CHoCH 突破 (${Math.round(chochPriceVal)})`, x + 10, chochY - 5);
+                }
+            });
+
+            // 9. 持倉區間發光框架
+            if (entryIdx !== -1 && exitIdx !== -1) {
+                const entryX = barToX(entryIdx);
+                const exitX = barToX(exitIdx);
+                
+                ctx.fillStyle = 'rgba(88, 166, 255, 0.02)';
+                ctx.fillRect(entryX, 20, exitX - entryX, h - 60);
+                
+                ctx.strokeStyle = 'rgba(88, 166, 255, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(entryX, 20);
+                ctx.lineTo(entryX, h - 40);
+                ctx.moveTo(exitX, 20);
+                ctx.lineTo(exitX, h - 40);
+                ctx.stroke();
+            }
+
+            // 10. 進出場點標籤
+            if (entryIdx !== -1) {
+                const ex = barToX(entryIdx);
+                const ey = priceToY(trade.entry_price);
+                
+                ctx.fillStyle = isLong ? 'var(--success-color)' : 'var(--danger-color)';
+                ctx.beginPath();
+                if (isLong) {
+                    ctx.moveTo(ex, ey - 9);
+                    ctx.lineTo(ex - 8, ey + 5);
+                    ctx.lineTo(ex + 8, ey + 5);
+                } else {
+                    ctx.moveTo(ex, ey + 9);
+                    ctx.lineTo(ex - 8, ey - 5);
+                    ctx.lineTo(ex + 8, ey - 5);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px Roboto';
+                ctx.textAlign = 'center';
+                ctx.fillText(`📥 入場: ${trade.entry_price}`, ex, isLong ? ey - 15 : ey + 20);
+            }
+
+            if (exitIdx !== -1) {
+                const ex = barToX(exitIdx);
+                const ey = priceToY(trade.exit_price);
+                
+                // 畫圓形
+                ctx.fillStyle = '#f3f4f6';
+                ctx.beginPath();
+                ctx.arc(ex, ey, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                
+                // 畫標籤
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px Roboto';
+                ctx.textAlign = 'center';
+                ctx.fillText(`📤 出場: ${trade.exit_price}`, ex, ey - 12);
+            }
+
+            // 11. TradingView style: 頂部資訊列 (隨滑鼠懸停 Hover 改變)與十字游標
+            const activeBar = (hoverIdx !== -1 && hoverIdx < kbars.length) ? kbars[hoverIdx] : kbars[kbars.length - 1];
+            
+            // 繪製頂部 OHLC 資訊列
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.font = '11px Roboto';
+            ctx.textAlign = 'left';
+            const ohlcText = `時間: ${activeBar.ts}  O: ${activeBar.open.toFixed(1)}  H: ${activeBar.high.toFixed(1)}  L: ${activeBar.low.toFixed(1)}  C: ${activeBar.close.toFixed(1)}`;
+            ctx.fillText(ohlcText, 15, 18);
+
+            // 繪製滑鼠懸停時的 SMC 特別事件標記
+            if (hoverIdx === entryIdx) {
+                ctx.fillStyle = 'var(--neon-cyan)';
+                ctx.font = 'bold 11px Orbitron';
+                ctx.fillText(`★ SMC ENTRY SIGNAL ACTIVE`, w - 240, 18);
+            } else if (hoverIdx === exitIdx) {
+                ctx.fillStyle = 'var(--neon-purple)';
+                ctx.font = 'bold 11px Orbitron';
+                ctx.fillText(`★ EXIT TRIGGERED`, w - 170, 18);
+            }
+
+            // 12. 繪製十字游標與 Y 軸懸浮價格卡片
+            if (hoverIdx !== -1 && mouseX !== -1 && mouseY !== -1) {
+                const x = barToX(hoverIdx);
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                
+                // 垂直虛線
+                ctx.beginPath();
+                ctx.moveTo(x, 25);
+                ctx.lineTo(x, h - 40);
+                ctx.stroke();
+                
+                // 水平虛線
+                ctx.beginPath();
+                ctx.moveTo(10, mouseY);
+                ctx.lineTo(w - 60, mouseY);
+                ctx.stroke();
+                ctx.setLineDash([]); // 恢復實線
+                
+                // 繪製 X 軸時間懸浮背景卡片
+                const dateStr = activeBar.ts.substring(11, 19);
+                ctx.fillStyle = '#161b22';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.fillRect(x - 30, h - 38, 60, 15);
+                ctx.strokeRect(x - 30, h - 38, 60, 15);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(dateStr, x, h - 27);
+                
+                // 繪製 Y 軸價格懸浮背景卡片
+                const hoverPrice = yMin + ((h - 40 - mouseY) / (h - 80)) * (yMax - yMin);
+                ctx.fillStyle = '#161b22';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fillRect(w - 58, mouseY - 9, 54, 18);
+                ctx.strokeRect(w - 58, mouseY - 9, 54, 18);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(Math.round(hoverPrice).toString(), w - 31, mouseY + 4);
+            }
+        }
+
+        // ==================== 十字游標與懸浮滑鼠互動綁定 ====================
+        function setupInteractivity() {
+            const c1K = document.getElementById('canvas1K');
+            const c5K = document.getElementById('canvas5K');
+            
+            c1K.addEventListener('mousemove', (e) => {
+                const rect = c1K.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const numBars = chartState.data1K.length;
+                if (numBars > 0) {
+                    const barWidth = rect.width / numBars;
+                    const hoverIdx = Math.floor(mouseX / barWidth);
+                    if (hoverIdx >= 0 && hoverIdx < numBars) {
+                        drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K', hoverIdx, mouseX, mouseY);
+                    }
+                }
+            });
+            
+            c1K.addEventListener('mouseleave', () => {
+                drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K');
+            });
+            
+            c5K.addEventListener('mousemove', (e) => {
+                const rect = c5K.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const numBars = chartState.data5K.length;
+                if (numBars > 0) {
+                    const barWidth = rect.width / numBars;
+                    const hoverIdx = Math.floor(mouseX / barWidth);
+                    if (hoverIdx >= 0 && hoverIdx < numBars) {
+                        drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K', hoverIdx, mouseX, mouseY);
+                    }
+                }
+            });
+            
+            c5K.addEventListener('mouseleave', () => {
+                drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K');
+            });
+        }
+    </script>
+</body>
+</html>
