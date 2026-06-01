@@ -175,6 +175,93 @@ def aggregate_kbars(df_1k: pd.DataFrame, interval: str) -> pd.DataFrame:
     
     return resampled
 
+def resample_60k(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregates 1k K-bars into 60k K-bars with custom Day/Night session split.
+
+    Args:
+        df (pd.DataFrame): 1k data, index can be DatetimeIndex or it must contain 'ts' or 'ts_datetime' column.
+                           Columns must contain: open, high, low, close, volume, and optionally code.
+
+    Returns:
+        pd.DataFrame: Aggregated 60k K-bars sorted with standard TIMESTAMP string 'ts'.
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    # 1. Ensure df has DatetimeIndex
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df = df.copy()
+        if 'ts_datetime' in df.columns:
+            df.index = pd.to_datetime(df['ts_datetime'])
+        elif 'ts' in df.columns:
+            df.index = pd.to_datetime(df['ts'])
+        else:
+            raise ValueError("DataFrame index must be a DatetimeIndex or contain a timestamp column.")
+
+    # Preserve code before doing modifications
+    code = df['code'].iloc[0] if 'code' in df.columns and not df.empty else "TXFR1"
+
+    # 2. Filter out K-bars where open is 0 or NaN
+    df = df.dropna(subset=['open', 'high', 'low', 'close'])
+    df = df[df['open'] != 0]
+
+    if df.empty:
+        return pd.DataFrame()
+
+    # 3. Split into Day and Night sessions
+    import datetime
+    times = df.index.time
+    # Day Session: 08:45 ~ 14:00 (inclusive of both)
+    day_mask = (times >= datetime.time(8, 45)) & (times <= datetime.time(14, 0))
+    # Night Session: 15:00 ~ 23:59 and 00:00 ~ 08:44 (which is >= 15:00 or < 08:45)
+    night_mask = (times >= datetime.time(15, 0)) | (times < datetime.time(8, 45))
+
+    df_day = df[day_mask]
+    df_night = df[night_mask]
+
+    # Aggregation rules
+    agg_rules = {
+        'open': 'first',
+        'high': 'max',
+        'low': 'min',
+        'close': 'last',
+        'volume': 'sum'
+    }
+
+    # 4. Resample Day Session
+    if not df_day.empty:
+        df_day_res = df_day.resample("60min", closed="right", label="right", offset="45min").agg(agg_rules)
+        df_day_res.dropna(subset=['open'], inplace=True)
+    else:
+        df_day_res = pd.DataFrame()
+
+    # 5. Resample Night Session
+    if not df_night.empty:
+        df_night_res = df_night.resample("60min", closed="right", label="right").agg(agg_rules)
+        df_night_res.dropna(subset=['open'], inplace=True)
+    else:
+        df_night_res = pd.DataFrame()
+
+    # 6. Combine, Sort, and Format Output
+    if df_day_res.empty and df_night_res.empty:
+        return pd.DataFrame()
+
+    res = pd.concat([df_day_res, df_night_res]).sort_index()
+
+    # Restore code
+    res['code'] = code
+
+    # Reset Index to convert index to 'ts' column in '%Y-%m-%d %H:%M:%S' format
+    res.reset_index(inplace=True)
+    res.rename(columns={'ts_datetime': 'ts', 'index': 'ts'}, inplace=True)
+    res['ts'] = res['ts'].dt.strftime('%Y-%m-%d %H:%M:%S')
+
+    # Keep only the target columns
+    cols = ['code', 'ts', 'open', 'high', 'low', 'close', 'volume']
+    res = res[cols]
+
+    return res
+
 def download_kbars(api, contract, start_date: str, end_date: str) -> dict:
     """Downloads 1k K-bars, aggregates to higher timeframes, and saves all to DB.
 
@@ -232,7 +319,10 @@ def download_kbars(api, contract, start_date: str, end_date: str) -> dict:
 
         for name, rule in intervals.items():
             logger.info(f"Aggregating to {name}...")
-            df_agg = aggregate_kbars(df_1k, rule)
+            if name == "60k":
+                df_agg = resample_60k(df_1k)
+            else:
+                df_agg = aggregate_kbars(df_1k, rule)
             inserted = save_to_db(df_agg, f"futures{name}")
             stats[name] = inserted
 
