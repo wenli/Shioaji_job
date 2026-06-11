@@ -358,6 +358,7 @@ class SMCBacktestSimulator:
                     equity_curve.append({'time': str(t_cur), 'equity': round(capital, 1)})
                 continue
                 
+
             # 時段進場過濾 (僅限進場限制，計算保持連續)
             if position == 0:
                 if session_filter == 'day' and curr_sess != 'day':
@@ -456,72 +457,99 @@ class SMCBacktestSimulator:
                                     'fvg_bottom': fvg_bot_val
                                 }
                                 
-            # --- 策略 2: 台指銀色子彈 (已放寬 Sweep 條件) ---
+            # --- 策略 2: 台指銀色子彈 (結合大週期 HTF 趨勢共振過濾) ---
             elif strategy_name == 'silver_bullet':
                 in_killzone = (t_cur.hour == 9) or (t_cur.hour == 21 and t_cur.minute >= 30) or (t_cur.hour == 22 and t_cur.minute <= 30)
                 
                 if in_killzone:
-                    # 放寬 Sweep：過去 5 根 K 棒中只要有過 Sweep 即可
+                    # 1. 5K HTF 趨勢與支撐阻力共振判斷 (方案 B)
+                    htf_bullish_align = (not np.isnan(htf_ob_b_bottom[i]) and c_cur >= htf_ob_b_bottom[i]) or any(htf_sweep_low[max(0, i-30):i+1])
+                    htf_bearish_align = (not np.isnan(htf_ob_s_top[i]) and c_cur <= htf_ob_s_top[i]) or any(htf_sweep_high[max(0, i-30):i+1])
+
+                    # 2. 1K LTF 小週期 Sweep 判斷
                     sweep_l_recent = any(ltf_sweep_l[max(0, i-4):i+1])
                     sweep_h_recent = any(ltf_sweep_h[max(0, i-4):i+1])
                     
-                    if sweep_l_recent and ltf_fvg_b[i]:
+                    if htf_bullish_align and sweep_l_recent and ltf_fvg_b[i]:
                         fvg_top = ltf_fvg_b_top[i]
                         fvg_bot = ltf_fvg_b_bottom[i]
                         entry_pr = (fvg_top + fvg_bot) / 2
                         
                         risk_points = max(15.0, entry_pr - l_cur + 3)
-                        risk_cash = capital * self.risk_pct
-                        lots_to_trade = int(risk_cash / (risk_points * self.point_value))
                         
-                        if lots_to_trade >= 1:
-                            position = 1
-                            entry_price = entry_pr
-                            entry_time = t_cur
-                            stop_loss = entry_price - risk_points
-                            take_profit = entry_price + risk_points * 2.5
-                            lots = lots_to_trade
-                            self.current_entry_indicators = {
-                                'htf_sweep': '1K 過去5分鐘內有 Sweep Low 獵取',
-                                'ob_zone': '無 (銀彈策略無 OB 對齊)',
-                                'ob_top': None,
-                                'ob_bottom': None,
-                                'ltf_choch': '無 (銀彈策略無需 CHoCH)',
-                                'choch_price': None,
-                                'killzone': f'是 ({"日盤" if t_cur.hour == 9 else "夜盤"} Silver Bullet 黃金時段)',
-                                'fvg_zone': f'{round(fvg_bot, 1)} - {round(fvg_top, 1)} (1K FVG 共振區間)',
-                                'fvg_top': float(fvg_top),
-                                'fvg_bottom': float(fvg_bot)
-                            }
+                        # 5K 空頭 OB 下界作為止盈目標
+                        tp_price = htf_ob_s_bottom[i]
+                        if np.isnan(tp_price) or tp_price is None:
+                            tp_price = entry_pr + risk_points * 2.5
                             
-                    elif sweep_h_recent and ltf_fvg_s[i]:
+                        # R-R 期望值過濾 (防守)
+                        rr = (tp_price - entry_pr) / risk_points
+                        if rr >= 1.0:
+                            risk_cash = capital * self.risk_pct
+                            lots_to_trade = int(risk_cash / (risk_points * self.point_value))
+                            
+                            if lots_to_trade >= 1:
+                                position = 1
+                                entry_price = entry_pr
+                                entry_time = t_cur
+                                stop_loss = entry_price - risk_points
+                                take_profit = tp_price
+                                lots = lots_to_trade
+                                
+                                # 判斷是 Sweep 還是 OB 驅動
+                                htf_drive_label = '5K Sweep Low 驅動' if any(htf_sweep_low[max(0, i-30):i+1]) else '5K OB 支撐對齊'
+                                self.current_entry_indicators = {
+                                    'htf_sweep': f'HTF 大週期共振: {htf_drive_label}',
+                                    'ob_zone': f'{round(htf_ob_b_bottom[i], 1)} - {round(htf_ob_b_top[i], 1)} (5K OB)' if not np.isnan(htf_ob_b_bottom[i]) else '無 5K OB (Sweep 驅動)',
+                                    'ob_top': float(htf_ob_b_top[i]) if not np.isnan(htf_ob_b_top[i]) else None,
+                                    'ob_bottom': float(htf_ob_b_bottom[i]) if not np.isnan(htf_ob_b_bottom[i]) else None,
+                                    'ltf_choch': '無 (銀彈策略無需 CHoCH)',
+                                    'choch_price': None,
+                                    'killzone': f'是 ({"日盤" if t_cur.hour == 9 else "夜盤"} Silver Bullet 時段)',
+                                    'fvg_zone': f'{round(fvg_bot, 1)} - {round(fvg_top, 1)} (1K FVG 共振區間) | 預估 R-R: {round(rr, 2)}',
+                                    'fvg_top': float(fvg_top),
+                                    'fvg_bottom': float(fvg_bot)
+                                }
+                            
+                    elif htf_bearish_align and sweep_h_recent and ltf_fvg_s[i]:
                         fvg_top = ltf_fvg_s_top[i]
                         fvg_bot = ltf_fvg_s_bottom[i]
                         entry_pr = (fvg_top + fvg_bot) / 2
                         
                         risk_points = max(15.0, h_cur - entry_pr + 3)
-                        risk_cash = capital * self.risk_pct
-                        lots_to_trade = int(risk_cash / (risk_points * self.point_value))
                         
-                        if lots_to_trade >= 1:
-                            position = -1
-                            entry_price = entry_pr
-                            entry_time = t_cur
-                            stop_loss = entry_price + risk_points
-                            take_profit = entry_price - risk_points * 2.5
-                            lots = lots_to_trade
-                            self.current_entry_indicators = {
-                                'htf_sweep': '1K 過去5分鐘內有 Sweep High 獵取',
-                                'ob_zone': '無 (銀彈策略無 OB 對齊)',
-                                'ob_top': None,
-                                'ob_bottom': None,
-                                'ltf_choch': '無 (銀彈策略無需 CHoCH)',
-                                'choch_price': None,
-                                'killzone': f'是 ({"日盤" if t_cur.hour == 9 else "夜盤"} Silver Bullet 黃金時段)',
-                                'fvg_zone': f'{round(fvg_bot, 1)} - {round(fvg_top, 1)} (1K FVG 共振區間)',
-                                'fvg_top': float(fvg_top),
-                                'fvg_bottom': float(fvg_bot)
-                            }
+                        # 5K 多頭 OB 上界作為止盈目標
+                        tp_price = htf_ob_b_top[i]
+                        if np.isnan(tp_price) or tp_price is None:
+                            tp_price = entry_pr - risk_points * 2.5
+                            
+                        # R-R 期望值過濾 (防守)
+                        rr = (entry_pr - tp_price) / risk_points
+                        if rr >= 1.0:
+                            risk_cash = capital * self.risk_pct
+                            lots_to_trade = int(risk_cash / (risk_points * self.point_value))
+                            
+                            if lots_to_trade >= 1:
+                                position = -1
+                                entry_price = entry_pr
+                                entry_time = t_cur
+                                stop_loss = entry_price + risk_points
+                                take_profit = tp_price
+                                lots = lots_to_trade
+                                
+                                htf_drive_label = '5K Sweep High 驅動' if any(htf_sweep_high[max(0, i-30):i+1]) else '5K OB 阻力對齊'
+                                self.current_entry_indicators = {
+                                    'htf_sweep': f'HTF 大週期共振: {htf_drive_label}',
+                                    'ob_zone': f'{round(htf_ob_s_bottom[i], 1)} - {round(htf_ob_s_top[i], 1)} (5K OB)' if not np.isnan(htf_ob_s_bottom[i]) else '無 5K OB (Sweep 驅動)',
+                                    'ob_top': float(htf_ob_s_top[i]) if not np.isnan(htf_ob_s_top[i]) else None,
+                                    'ob_bottom': float(htf_ob_s_bottom[i]) if not np.isnan(htf_ob_s_bottom[i]) else None,
+                                    'ltf_choch': '無 (銀彈策略無需 CHoCH)',
+                                    'choch_price': None,
+                                    'killzone': f'是 ({"日盤" if t_cur.hour == 9 else "夜盤"} Silver Bullet 時段)',
+                                    'fvg_zone': f'{round(fvg_bot, 1)} - {round(fvg_top, 1)} (1K FVG 共振區間) | 預估 R-R: {round(rr, 2)}',
+                                    'fvg_top': float(fvg_top),
+                                    'fvg_bottom': float(fvg_bot)
+                                }
  
             # --- 策略 3: 台指海龜湯 ---
             elif strategy_name == 'turtle_soup':

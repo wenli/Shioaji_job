@@ -162,7 +162,7 @@ def run_backtest(req: BacktestRequest):
         
         # 5. 執行策略
         for strat in req.strategies:
-            if strat not in ['unicorn_model', 'silver_bullet']:
+            if strat not in ['unicorn_model', 'silver_bullet', 'turtle_soup', 'rote']:
                 continue
             metrics, trades, curve = simulator.run_strategy(
                 strat, 
