@@ -1325,9 +1325,12 @@
 
             for (const [strat, data] of Object.entries(results)) {
                 const m = data.metrics;
-                const isUnicorn = strat === 'unicorn_model';
-                const badgeClass = isUnicorn ? 'unicorn-badge' : 'silver-badge';
-                const themeClass = isUnicorn ? 'unicorn' : 'silver';
+                let badgeClass = 'silver-badge';
+                let themeClass = 'silver';
+                if (strat === 'unicorn_model') {
+                    badgeClass = 'unicorn-badge';
+                    themeClass = 'unicorn';
+                }
                 
                 const card = document.createElement('div');
                 card.className = `result-card ${themeClass}`;

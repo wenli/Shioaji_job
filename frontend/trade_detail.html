@@ -6,6 +6,8 @@
     <title>SMC 聰明錢量化交易訊號深度覆盤面盤</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- TradingView Lightweight Charts Local Static -->
+    <script src="/static/lightweight-charts.standalone.production.js"></script>
     <style>
         :root {
             --bg-color: #040208;
@@ -406,7 +408,7 @@
             </div>
         </div>
 
-        <!-- HTML5 Canvas K-Bar Charts (左右並排) -->
+        <!-- Lightweight K-Bar Charts (左右並排) -->
         <div class="charts-container">
             <!-- 1K Chart -->
             <div class="chart-box">
@@ -416,7 +418,7 @@
                 </div>
                 <div class="canvas-wrapper">
                     <div class="loading-overlay" id="loading-1k">LOADING 1K KBARS...</div>
-                    <canvas id="canvas1K"></canvas>
+                    <div id="chart1K" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
 
@@ -428,7 +430,7 @@
                 </div>
                 <div class="canvas-wrapper">
                     <div class="loading-overlay" id="loading-5k">LOADING 5K KBARS...</div>
-                    <canvas id="canvas5K"></canvas>
+                    <div id="chart5K" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
         </div>
@@ -464,7 +466,12 @@
         function renderDetailScorecards() {
             const isLong = tradeData.direction === 'Long';
             const isWin = tradeData.net_pnl > 0;
-            const stratLabel = tradeData.strategy === 'unicorn_model' ? '🦄 Unicorn 獨角獸' : '⚡ Silver Bullet 銀色子彈';
+            let stratLabel = '策略';
+            if (tradeData.strategy === 'unicorn_model') {
+                stratLabel = '🦄 Unicorn 獨角獸';
+            } else if (tradeData.strategy === 'silver_bullet') {
+                stratLabel = '⚡ Silver Bullet 銀色子彈';
+            }
             
             // Subtitle
             document.getElementById('page-title').textContent = `${stratLabel} - ${isLong ? '做多' : '做空'}交易訊號深度覆盤`;
@@ -487,7 +494,6 @@
             const ptsEl = document.getElementById('ind-pnl-points');
             ptsEl.textContent = `${pnlPoints >= 0 ? '+' : ''}${pnlPoints.toFixed(1)} 點`;
             ptsEl.style.color = pnlPoints >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
-
             // Lots & Risk
             document.getElementById('ind-lots').textContent = `${tradeData.lots} 口 (保證金與風控曝險合規)`;
 
@@ -503,7 +509,45 @@
             pnlEl.style.color = isWin ? 'var(--success-color)' : 'var(--danger-color)';
         }
 
-        // Global state for indicator visibility toggling and crosshairs
+        // [標準轉換] 將台北 Naive 時間字串，轉換為該時刻在台北 (UTC+8) 的標準 Unix 時間戳（秒）
+        function getCorrectedUnixTimestamp(timeStr) {
+            if (!timeStr) return 0;
+            const dt = new Date(timeStr.replace(' ', 'T') + '+08:00');
+            return Math.floor(dt.getTime() / 1000);
+        }
+
+        // [時區格式化] 使用瀏覽器原生時區引擎，強行將 Unix 標準時間戳（秒）轉為台北標準時間顯示
+        function formatUnixToTaipeiString(unixSecs, formatType = 'time') {
+            const dt = new Date(unixSecs * 1000);
+            const formatter = new Intl.DateTimeFormat('zh-TW', {
+                timeZone: 'Asia/Taipei',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            const parts = formatter.formatToParts(dt);
+            const partMap = {};
+            parts.forEach(p => partMap[p.type] = p.value);
+            
+            if (formatType === 'date') {
+                return `${partMap.year}-${partMap.month}-${partMap.day}`;
+            } else if (formatType === 'time') {
+                return `${partMap.hour}:${partMap.minute}`;
+            } else {
+                return `${partMap.year}-${partMap.month}-${partMap.day} ${partMap.hour}:${partMap.minute}`;
+            }
+        }
+
+        // Global state for indicator visibility toggling
+        const charts = {};
+        const seriesList = {};
+        const activePriceLines = { '1K': [], '5K': [] };
+
         let chartState = {
             showOB: true,
             showFVG: true,
@@ -514,11 +558,11 @@
         };
 
         // 5K 週期高精度對齊 Helper
-        function find5KIndexFor1KTime(kbars5k, time1k) {
-            if (!time1k) return -1;
+        function find5KTimeFor1KTime(kbars5k, time1k) {
+            if (!time1k) return null;
             const t1kMs = new Date(time1k.replace(/-/g, '/')).getTime();
             
-            let bestIdx = -1;
+            let bestKbar = null;
             let minDiff = Infinity;
             
             for (let i = 0; i < kbars5k.length; i++) {
@@ -527,16 +571,16 @@
                 
                 // 5K K棒涵蓋 5 分鐘 (300,000 毫秒)
                 if (diff >= 0 && diff < 300000) {
-                    return i;
+                    return kbars5k[i];
                 }
                 
                 const absDiff = Math.abs(t1kMs - t5kMs);
                 if (absDiff < minDiff) {
                     minDiff = absDiff;
-                    bestIdx = i;
+                    bestKbar = kbars5k[i];
                 }
             }
-            return bestIdx;
+            return bestKbar;
         }
 
         // Indicator Toggle Action
@@ -550,15 +594,578 @@
             } else {
                 btn.classList.remove('active');
             }
-            redrawCharts();
+            renderPriceLinesAndMarkers();
         };
 
-        function redrawCharts() {
-            if (chartState.data1K.length > 0) {
-                drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K');
+        // Initialize TradingView style charts
+        function initCharts() {
+            const chartOptions = {
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#8b949e',
+                    fontSize: 10,
+                    fontFamily: 'JetBrains Mono, Roboto, Inter, sans-serif'
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.02)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.02)' }
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: {
+                        color: 'rgba(34, 211, 238, 0.25)',
+                        width: 1,
+                        style: 3
+                    },
+                    horzLine: {
+                        color: 'rgba(34, 211, 238, 0.25)',
+                        width: 1,
+                        style: 3
+                    }
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    visible: true,
+                    autoScale: true
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    tickMarkFormatter: (time, tickMarkType, locale) => {
+                        const taipeiStr = formatUnixToTaipeiString(time, 'datetime');
+                        const parts = taipeiStr.split(' ');
+                        const datePart = parts[0];
+                        const timePart = parts[1];
+                        
+                        if (tickMarkType === 0) {
+                            return datePart.split('-')[0]; // 年
+                        } else if (tickMarkType === 1 || tickMarkType === 2) {
+                            const subParts = datePart.split('-');
+                            return `${subParts[1]}-${subParts[2]}`; // MM-DD
+                        } else {
+                            return timePart; // HH:MM
+                        }
+                    }
+                },
+                localization: {
+                    timeFormatter: (timestamp) => {
+                        return formatUnixToTaipeiString(timestamp, 'datetime');
+                    }
+                }
+            };
+
+            // 1K
+            const container1K = document.getElementById('chart1K');
+            const chart1K = LightweightCharts.createChart(container1K, chartOptions);
+            const series1K = chart1K.addCandlestickSeries({
+                upColor: '#3fb950',
+                downColor: '#f85149',
+                borderUpColor: '#3fb950',
+                borderDownColor: '#f85149',
+                wickUpColor: '#3fb950',
+                wickDownColor: '#f85149'
+            });
+            charts['1K'] = chart1K;
+            seriesList['1K'] = series1K;
+
+            // 1K 半透明輔助區間
+            const fvgSeries1K = chart1K.addCandlestickSeries({
+                upColor: 'rgba(251, 191, 36, 0.15)', // 半透明黃色
+                downColor: 'rgba(251, 191, 36, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            const tpZoneSeries1K = chart1K.addCandlestickSeries({
+                upColor: 'rgba(63, 185, 80, 0.15)', // 半透明綠色
+                downColor: 'rgba(63, 185, 80, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            const slZoneSeries1K = chart1K.addCandlestickSeries({
+                upColor: 'rgba(248, 81, 73, 0.15)', // 半透明紅色
+                downColor: 'rgba(248, 81, 73, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            seriesList['fvg1K'] = fvgSeries1K;
+            seriesList['tp1K'] = tpZoneSeries1K;
+            seriesList['sl1K'] = slZoneSeries1K;
+
+            // 5K
+            const container5K = document.getElementById('chart5K');
+            const chart5K = LightweightCharts.createChart(container5K, chartOptions);
+            const series5K = chart5K.addCandlestickSeries({
+                upColor: '#3fb950',
+                downColor: '#f85149',
+                borderUpColor: '#3fb950',
+                borderDownColor: '#f85149',
+                wickUpColor: '#3fb950',
+                wickDownColor: '#f85149'
+            });
+            charts['5K'] = chart5K;
+            seriesList['5K'] = series5K;
+
+            // 5K 半透明輔助區間
+            const obSeries5K = chart5K.addCandlestickSeries({
+                upColor: 'rgba(34, 211, 238, 0.15)', // 做多 OB 青色
+                downColor: 'rgba(34, 211, 238, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            const tpZoneSeries5K = chart5K.addCandlestickSeries({
+                upColor: 'rgba(63, 185, 80, 0.15)', // 半透明綠色
+                downColor: 'rgba(63, 185, 80, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            const slZoneSeries5K = chart5K.addCandlestickSeries({
+                upColor: 'rgba(248, 81, 73, 0.15)', // 半透明紅色
+                downColor: 'rgba(248, 81, 73, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            seriesList['ob5K'] = obSeries5K;
+            seriesList['tp5K'] = tpZoneSeries5K;
+            seriesList['sl5K'] = slZoneSeries5K;
+
+            // 十字游標同步邏輯
+            let isSyncing = false;
+            
+            function syncCrosshair(sourceChart, targetChart, targetSeries, targetData) {
+                sourceChart.subscribeCrosshairMove((param) => {
+                    if (isSyncing) return;
+                    isSyncing = true;
+                    try {
+                        if (!param || !param.time) {
+                            targetChart.clearCrosshairPosition();
+                            return;
+                        }
+                        
+                        const sourceTime = param.time;
+                        let targetTime = sourceTime;
+                        
+                        if (targetChart === chart5K) {
+                            targetTime = Math.floor(sourceTime / 300) * 300;
+                        }
+                        
+                        let bestTime = null;
+                        let minDiff = Infinity;
+                        
+                        for (let i = 0; i < targetData.length; i++) {
+                            const t = getCorrectedUnixTimestamp(targetData[i].ts);
+                            const diff = Math.abs(t - targetTime);
+                            if (diff < minDiff) {
+                                minDiff = diff;
+                                bestTime = t;
+                            }
+                        }
+                        
+                        const maxDiff = targetChart === chart5K ? 300 : 60;
+                        if (bestTime && minDiff <= maxDiff) {
+                            const bar = targetData.find(k => getCorrectedUnixTimestamp(k.ts) === bestTime);
+                            const price = bar ? bar.close : 0;
+                            targetChart.setCrosshairPosition(price, bestTime, targetSeries);
+                        } else {
+                            targetChart.clearCrosshairPosition();
+                        }
+                    } catch (err) {
+                        console.error("Sync crosshair error:", err);
+                    } finally {
+                        isSyncing = false;
+                    }
+                });
             }
-            if (chartState.data5K.length > 0) {
-                drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K');
+
+            syncCrosshair(chart1K, chart5K, series5K, chartState.data5K);
+            syncCrosshair(chart5K, chart1K, series1K, chartState.data1K);
+
+            // Resize Observer for dynamic responsive sizing
+            const ro = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    const target = entry.target;
+                    const chart = target.id === 'chart1K' ? charts['1K'] : charts['5K'];
+                    if (chart && entry.contentRect) {
+                        chart.resize(entry.contentRect.width, entry.contentRect.height);
+                    }
+                }
+            });
+            ro.observe(container1K);
+            ro.observe(container5K);
+        }
+
+        // Clean and render dynamic SMC price lines & markers
+        function renderPriceLinesAndMarkers() {
+            const isLong = tradeData.direction === 'Long';
+            const entryInd = tradeData.entry_indicators || {};
+
+            // 1. 清空舊的 PriceLines
+            ['1K', '5K'].forEach(timeframe => {
+                const series = seriesList[timeframe];
+                if (series) {
+                    activePriceLines[timeframe].forEach(pl => series.removePriceLine(pl));
+                    activePriceLines[timeframe] = [];
+                }
+            });
+
+            // 2. 準備進出場時間戳
+            const entryUnix = getCorrectedUnixTimestamp(tradeData.entry_time);
+            const exitUnix = getCorrectedUnixTimestamp(tradeData.exit_time);
+
+            // ==================== 1K 圖表特殊指標 ====================
+            if (seriesList['1K'] && chartState.data1K.length > 0) {
+                const series = seriesList['1K'];
+                const markers = [];
+
+                // 2.1 📥 1K 進場標記
+                const has1KEntry = chartState.data1K.some(k => getCorrectedUnixTimestamp(k.ts) === entryUnix);
+                if (has1KEntry) {
+                    markers.push({
+                        time: entryUnix,
+                        position: isLong ? 'belowBar' : 'aboveBar',
+                        color: isLong ? '#3fb950' : '#f85149',
+                        shape: isLong ? 'arrowUp' : 'arrowDown',
+                        text: `📥 入場: ${tradeData.entry_price}`
+                    });
+                }
+
+                // 2.2 📤 1K 出場標記
+                const has1KExit = chartState.data1K.some(k => getCorrectedUnixTimestamp(k.ts) === exitUnix);
+                if (has1KExit) {
+                    markers.push({
+                        time: exitUnix,
+                        position: 'aboveBar',
+                        color: '#f0f6fc',
+                        shape: 'circle',
+                        text: `📤 出場: ${tradeData.exit_price}`
+                    });
+                }
+                series.setMarkers(markers);
+
+                // 2.3 🟨 1K FVG 共振缺口
+                if (chartState.showFVG && (entryInd.fvg_top !== undefined || entryInd.fvg_zone)) {
+                    let fvgBot = entryInd.fvg_bottom;
+                    let fvgTop = entryInd.fvg_top;
+                    if (fvgBot === undefined && entryInd.fvg_zone && entryInd.fvg_zone !== '無') {
+                        const parts = entryInd.fvg_zone.split(' - ');
+                        if (parts.length >= 2) {
+                            fvgBot = parseFloat(parts[0]);
+                            fvgTop = parseFloat(parts[1]);
+                        }
+                    }
+                    if (fvgBot && fvgTop && !isNaN(fvgBot) && !isNaN(fvgTop)) {
+                        const botLine = series.createPriceLine({
+                            price: fvgBot,
+                            color: '#fbbf24',
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: '1K FVG 下界'
+                        });
+                        const topLine = series.createPriceLine({
+                            price: fvgTop,
+                            color: '#fbbf24',
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: '1K FVG 上界'
+                        });
+                        activePriceLines['1K'].push(botLine, topLine);
+
+                        // 填充 1K FVG 半透明區塊
+                        const fvgData = chartState.data1K.map(k => ({
+                            time: getCorrectedUnixTimestamp(k.ts),
+                            open: fvgBot,
+                            close: fvgTop,
+                            high: fvgTop,
+                            low: fvgBot
+                        }));
+                        seriesList['fvg1K'].setData(fvgData);
+                    } else {
+                        seriesList['fvg1K'].setData([]);
+                    }
+                } else {
+                    if (seriesList['fvg1K']) {
+                        seriesList['fvg1K'].setData([]);
+                    }
+                }
+
+                // 2.4 🟦 1K CHoCH 突破確認線
+                if (chartState.showCHoCH && entryInd.ltf_choch && entryInd.ltf_choch !== '無') {
+                    const chochPriceVal = entryInd.choch_price || (isLong ? Math.max(...chartState.data1K.map(k => k.high)) : Math.min(...chartState.data1K.map(k => k.low)));
+                    if (chochPriceVal) {
+                        const chochLine = series.createPriceLine({
+                            price: chochPriceVal,
+                            color: '#22d3ee',
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dotted,
+                            axisLabelVisible: true,
+                            title: `1K CHoCH 突破 (${Math.round(chochPriceVal)})`
+                        });
+                        activePriceLines['1K'].push(chochLine);
+                    }
+                }
+
+                // 2.5 🟥 賺賠比 (R-R) 盈虧線 (1K)
+                if (chartState.showRR) {
+                    const tpLine = series.createPriceLine({
+                        price: tradeData.take_profit,
+                        color: '#3fb950',
+                        lineWidth: 1.5,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `🎯 TP 止盈: ${Math.round(tradeData.take_profit)}`
+                    });
+                    const slLine = series.createPriceLine({
+                        price: tradeData.stop_loss,
+                        color: '#f85149',
+                        lineWidth: 1.5,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `🛑 SL 止損: ${Math.round(tradeData.stop_loss)}`
+                    });
+                    const entryPriceLine = series.createPriceLine({
+                        price: tradeData.entry_price,
+                        color: '#22d3ee',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Solid,
+                        axisLabelVisible: true,
+                        title: `📥 入場均價: ${tradeData.entry_price}`
+                    });
+                    activePriceLines['1K'].push(tpLine, slLine, entryPriceLine);
+
+                    // 填充 1K R-R 持倉半透明區塊
+                    const filtered1K = chartState.data1K.filter(k => {
+                        const t = getCorrectedUnixTimestamp(k.ts);
+                        return t >= entryUnix && t <= exitUnix;
+                    });
+                    
+                    const tpZoneData1K = filtered1K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: tradeData.entry_price,
+                        close: tradeData.take_profit,
+                        high: Math.max(tradeData.entry_price, tradeData.take_profit),
+                        low: Math.min(tradeData.entry_price, tradeData.take_profit)
+                    }));
+                    seriesList['tp1K'].setData(tpZoneData1K);
+
+                    const slZoneData1K = filtered1K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: tradeData.entry_price,
+                        close: tradeData.stop_loss,
+                        high: Math.max(tradeData.entry_price, tradeData.stop_loss),
+                        low: Math.min(tradeData.entry_price, tradeData.stop_loss)
+                    }));
+                    seriesList['sl1K'].setData(slZoneData1K);
+                } else {
+                    seriesList['tp1K'].setData([]);
+                    seriesList['sl1K'].setData([]);
+                }
+            }
+
+            // ==================== 5K 圖表特殊指標 ====================
+            if (seriesList['5K'] && chartState.data5K.length > 0) {
+                const series = seriesList['5K'];
+                const markers = [];
+
+                // 5K 對齊進出場時間
+                const entry5KBar = find5KTimeFor1KTime(chartState.data5K, tradeData.entry_time);
+                const exit5KBar = find5KTimeFor1KTime(chartState.data5K, tradeData.exit_time);
+
+                // 3.1 📥 5K 進場標記
+                if (entry5KBar) {
+                    const entry5KUnix = getCorrectedUnixTimestamp(entry5KBar.ts);
+                    markers.push({
+                        time: entry5KUnix,
+                        position: isLong ? 'belowBar' : 'aboveBar',
+                        color: '#c084fc', // 紫色標示大週期
+                        shape: isLong ? 'arrowUp' : 'arrowDown',
+                        text: `📥 5K HTF Sweep`
+                    });
+                }
+
+                // 3.2 📤 5K 出場標記
+                if (exit5KBar) {
+                    const exit5KUnix = getCorrectedUnixTimestamp(exit5KBar.ts);
+                    markers.push({
+                        time: exit5KUnix,
+                        position: 'aboveBar',
+                        color: '#f0f6fc',
+                        shape: 'circle',
+                        text: `📤 5K 出場`
+                    });
+                }
+                series.setMarkers(markers);
+
+                // 3.3 🟩 5K OB 區間
+                if (chartState.showOB && (entryInd.ob_top !== undefined || entryInd.ob_zone)) {
+                    let obBot = entryInd.ob_bottom;
+                    let obTop = entryInd.ob_top;
+                    if (obBot === undefined && entryInd.ob_zone && entryInd.ob_zone !== '無') {
+                        const parts = entryInd.ob_zone.split(' - ');
+                        if (parts.length >= 2) {
+                            obBot = parseFloat(parts[0]);
+                            obTop = parseFloat(parts[1]);
+                        }
+                    }
+                    if (obBot && obTop && !isNaN(obBot) && !isNaN(obTop)) {
+                        const obColor = isLong ? '#22d3ee' : '#f43f5e';
+                        const botLine = series.createPriceLine({
+                            price: obBot,
+                            color: obColor,
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: '5K OB 下界'
+                        });
+                        const topLine = series.createPriceLine({
+                            price: obTop,
+                            color: obColor,
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: '5K OB 上界'
+                        });
+                        activePriceLines['5K'].push(botLine, topLine);
+
+                        // 填充 5K OB 半透明區塊
+                        const obFillColor = isLong ? 'rgba(34, 211, 238, 0.15)' : 'rgba(244, 63, 94, 0.15)';
+                        seriesList['ob5K'].applyOptions({
+                            upColor: obFillColor,
+                            downColor: obFillColor
+                        });
+                        const obData = chartState.data5K.map(k => ({
+                            time: getCorrectedUnixTimestamp(k.ts),
+                            open: obBot,
+                            close: obTop,
+                            high: obTop,
+                            low: obBot
+                        }));
+                        seriesList['ob5K'].setData(obData);
+                    } else {
+                        seriesList['ob5K'].setData([]);
+                    }
+                } else {
+                    if (seriesList['ob5K']) {
+                        seriesList['ob5K'].setData([]);
+                    }
+                }
+
+                // 3.4 🟨 5K 近場 FVG 自動檢測繪製
+                if (chartState.showFVG && entry5KBar) {
+                    const entryIdx = chartState.data5K.findIndex(k => k.ts === entry5KBar.ts);
+                    if (entryIdx !== -1) {
+                        let foundFvg = null;
+                        const searchStart = Math.max(2, entryIdx - 3);
+                        const searchEnd = Math.min(chartState.data5K.length - 1, entryIdx + 3);
+                        
+                        for (let j = searchStart; j <= searchEnd; j++) {
+                            const kPrev2 = chartState.data5K[j-2];
+                            const kPrev1 = chartState.data5K[j-1];
+                            const kCurr = chartState.data5K[j];
+                            if (kCurr.low > kPrev2.high && kPrev1.close > kPrev1.open) {
+                                foundFvg = { top: kCurr.low, bottom: kPrev2.high };
+                                break;
+                            } else if (kCurr.high < kPrev2.low && kPrev1.close < kPrev1.open) {
+                                foundFvg = { top: kPrev2.low, bottom: kCurr.high };
+                                break;
+                            }
+                        }
+
+                        if (foundFvg) {
+                            const botLine = series.createPriceLine({
+                                price: foundFvg.bottom,
+                                color: '#fbbf24',
+                                lineWidth: 1,
+                                lineStyle: LightweightCharts.LineStyle.Dotted,
+                                axisLabelVisible: true,
+                                title: '5K FVG 下界'
+                            });
+                            const topLine = series.createPriceLine({
+                                price: foundFvg.top,
+                                color: '#fbbf24',
+                                lineWidth: 1,
+                                lineStyle: LightweightCharts.LineStyle.Dotted,
+                                axisLabelVisible: true,
+                                title: '5K FVG 上界'
+                            });
+                            activePriceLines['5K'].push(botLine, topLine);
+                        }
+                    }
+                }
+
+                // 3.5 🟥 賺賠比 (R-R) 盈虧線 (5K)
+                if (chartState.showRR) {
+                    const tpLine = series.createPriceLine({
+                        price: tradeData.take_profit,
+                        color: '#3fb950',
+                        lineWidth: 1.5,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `🎯 TP 止盈: ${Math.round(tradeData.take_profit)}`
+                    });
+                    const slLine = series.createPriceLine({
+                        price: tradeData.stop_loss,
+                        color: '#f85149',
+                        lineWidth: 1.5,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `🛑 SL 止損: ${Math.round(tradeData.stop_loss)}`
+                    });
+                    const entryPriceLine = series.createPriceLine({
+                        price: tradeData.entry_price,
+                        color: '#22d3ee',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Solid,
+                        axisLabelVisible: true,
+                        title: `📥 入場: ${tradeData.entry_price}`
+                    });
+                    activePriceLines['5K'].push(tpLine, slLine, entryPriceLine);
+
+                    // 填充 5K R-R 持倉半透明區塊
+                    const entry5KBarObj = find5KTimeFor1KTime(chartState.data5K, tradeData.entry_time);
+                    const exit5KBarObj = find5KTimeFor1KTime(chartState.data5K, tradeData.exit_time);
+                    const entryUnix5K = entry5KBarObj ? getCorrectedUnixTimestamp(entry5KBarObj.ts) : entryUnix;
+                    const exitUnix5K = exit5KBarObj ? getCorrectedUnixTimestamp(exit5KBarObj.ts) : exitUnix;
+
+                    const filtered5K = chartState.data5K.filter(k => {
+                        const t = getCorrectedUnixTimestamp(k.ts);
+                        return t >= entryUnix5K && t <= exitUnix5K;
+                    });
+
+                    const tpZoneData5K = filtered5K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: tradeData.entry_price,
+                        close: tradeData.take_profit,
+                        high: Math.max(tradeData.entry_price, tradeData.take_profit),
+                        low: Math.min(tradeData.entry_price, tradeData.take_profit)
+                    }));
+                    seriesList['tp5K'].setData(tpZoneData5K);
+
+                    const slZoneData5K = filtered5K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: tradeData.entry_price,
+                        close: tradeData.stop_loss,
+                        high: Math.max(tradeData.entry_price, tradeData.stop_loss),
+                        low: Math.min(tradeData.entry_price, tradeData.stop_loss)
+                    }));
+                    seriesList['sl5K'].setData(slZoneData5K);
+                } else {
+                    seriesList['tp5K'].setData([]);
+                    seriesList['sl5K'].setData([]);
+                }
             }
         }
 
@@ -570,21 +1177,45 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    chartState.data1K = data.kbars_1k;
-                    chartState.data5K = data.kbars_5k;
+                    chartState.data1K = data.kbars_1k || [];
+                    chartState.data5K = data.kbars_5k || [];
                     
-                    // 1. 原生手工 Canvas 繪製 1K KBar (蠟燭圖)
-                    drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K');
-                    document.getElementById('loading-1k').style.opacity = '0';
-                    setTimeout(() => document.getElementById('loading-1k').style.display = 'none', 300);
+                    // 1. 初始化圖表實例
+                    initCharts();
+                    
+                    // 2. 轉換並載入 1K 與 5K K線
+                    const formatted1K = chartState.data1K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: k.open,
+                        high: k.high,
+                        low: k.low,
+                        close: k.close
+                    }));
+                    const formatted5K = chartState.data5K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: k.open,
+                        high: k.high,
+                        low: k.low,
+                        close: k.close
+                    }));
+                    
+                    seriesList['1K'].setData(formatted1K);
+                    seriesList['5K'].setData(formatted5K);
+                    
+                    // 3. 繪製輔助線與 Markers
+                    renderPriceLinesAndMarkers();
+                    
+                    // 4. 動態適應圖表的可視區間 (自動 fit 視窗)
+                    charts['1K'].timeScale().fitContent();
+                    charts['5K'].timeScale().fitContent();
 
-                    // 2. 原生手工 Canvas 繪製 5K KBar (蠟燭圖)
-                    drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K');
+                    // 5. 隱藏載入提示
+                    document.getElementById('loading-1k').style.opacity = '0';
                     document.getElementById('loading-5k').style.opacity = '0';
-                    setTimeout(() => document.getElementById('loading-5k').style.display = 'none', 300);
-                    
-                    // 3. 綁定滑鼠十字游標與互動資訊框監聽器
-                    setupInteractivity();
+                    setTimeout(() => {
+                        document.getElementById('loading-1k').style.display = 'none';
+                        document.getElementById('loading-5k').style.display = 'none';
+                    }, 300);
                 } else {
                     document.getElementById('loading-1k').textContent = 'K線載入失敗。';
                     document.getElementById('loading-5k').textContent = 'K線載入失敗。';
@@ -593,538 +1224,6 @@
                 console.error(err);
                 document.getElementById('loading-1k').textContent = `載入異常: ${err.message}`;
             }
-        }
-
-        // ==================== Epic 原生 HTML5 Canvas K線繪製器 (加強互動性) ====================
-        function drawSMCKbarsCanvas(canvasId, kbars, trade, type, hoverIdx = -1, mouseX = -1, mouseY = -1) {
-            const canvas = document.getElementById(canvasId);
-            const ctx = canvas.getContext('2d');
-            
-            // 解決高解析度螢幕模糊 (Retina screen crispness)
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = 420 * dpr; // 鎖定 dpr 高度
-            ctx.scale(dpr, dpr);
-            
-            const w = rect.width;
-            const h = 420;
-
-            if (kbars.length === 0) {
-                ctx.fillStyle = '#8b949e';
-                ctx.font = '14px Roboto';
-                ctx.fillText('該週期無K線資料', w / 2 - 50, h / 2);
-                return;
-            }
-
-            // 1. 取得價格與時間邊界
-            const opens = kbars.map(k => k.open);
-            const closes = kbars.map(k => k.close);
-            const highs = kbars.map(k => k.high);
-            const lows = kbars.map(k => k.low);
-
-            const maxPrice = Math.max(...highs);
-            const minPrice = Math.min(...lows);
-            const priceRange = maxPrice - minPrice;
-            
-            // 預留上下 15% 的空白以容納 FVG 或 OBZone
-            const padPrice = priceRange * 0.15 || 10;
-            const yMin = minPrice - padPrice;
-            const yMax = maxPrice + padPrice;
-
-            // X 軸 K 棒定位計算
-            const numBars = kbars.length;
-            const barWidth = w / numBars;
-            const candleWidth = barWidth * 0.68;
-
-            // 價格對應 Y 像素轉換
-            function priceToY(price) {
-                return h - 40 - ((price - yMin) / (yMax - yMin)) * (h - 80);
-            }
-
-            // 索引對應 X 像素轉換
-            function barToX(idx) {
-                return idx * barWidth + barWidth / 2;
-            }
-
-            // 2. 尋找進出場 K 棒的索引 (高精度 1K / 5K 對齊)
-            let entryIdx = -1;
-            let exitIdx = -1;
-            
-            if (type === '1K') {
-                kbars.forEach((k, idx) => {
-                    if (k.ts === trade.entry_time || (k.ts.substring(0, 16) === trade.entry_time.substring(0, 16) && entryIdx === -1)) {
-                        entryIdx = idx;
-                    }
-                    if (k.ts === trade.exit_time || (k.ts.substring(0, 16) === trade.exit_time.substring(0, 16) && exitIdx === -1)) {
-                        exitIdx = idx;
-                    }
-                });
-            } else {
-                // 5K 使用高精度時間戳區間對齊
-                entryIdx = find5KIndexFor1KTime(kbars, trade.entry_time);
-                exitIdx = find5KIndexFor1KTime(kbars, trade.exit_time);
-            }
-
-            // 3. 繪製橫向網格線與價格標記 (Y-axis Grid)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-            ctx.lineWidth = 1;
-            ctx.fillStyle = '#8b949e';
-            ctx.font = '10px Orbitron';
-            ctx.textAlign = 'right';
-
-            const numGrids = 5;
-            for (let g = 0; g <= numGrids; g++) {
-                const gridPrice = yMin + (g / numGrids) * (yMax - yMin);
-                const gy = priceToY(gridPrice);
-                ctx.beginPath();
-                ctx.moveTo(10, gy);
-                ctx.lineTo(w - 60, gy);
-                ctx.stroke();
-                ctx.fillText(Math.round(gridPrice).toString(), w - 15, gy + 3);
-            }
-
-            // 4. 繪製 SMC 結構：5K OB 支撐阻力區間
-            const entryInd = trade.entry_indicators || {};
-            const isLong = trade.direction === 'Long';
-            
-            if (chartState.showOB && type === '5K' && (entryInd.ob_top !== undefined && entryInd.ob_top !== null || (entryInd.ob_zone && entryInd.ob_zone !== '無'))) {
-                let obBot = entryInd.ob_bottom;
-                let obTop = entryInd.ob_top;
-                
-                if (obBot === undefined || obBot === null) {
-                    const parts = entryInd.ob_zone.split(' - ');
-                    if (parts.length >= 2) {
-                        obBot = parseFloat(parts[0]);
-                        obTop = parseFloat(parts[1]);
-                    }
-                }
-                
-                if (obBot !== undefined && obBot !== null && !isNaN(obBot) && !isNaN(obTop) && entryIdx !== -1) {
-                    const obY1 = priceToY(obTop);
-                    const obY2 = priceToY(obBot);
-                    const obH = obY2 - obY1;
-                    
-                    ctx.fillStyle = isLong ? 'rgba(34, 211, 238, 0.06)' : 'rgba(244, 63, 94, 0.06)';
-                    ctx.fillRect(barToX(entryIdx), obY1, w - barToX(entryIdx) - 60, obH);
-                    
-                    ctx.strokeStyle = isLong ? 'rgba(34, 211, 238, 0.3)' : 'rgba(244, 63, 94, 0.3)';
-                    ctx.setLineDash([4, 4]);
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(barToX(entryIdx), obY1);
-                    ctx.lineTo(w - 60, obY1);
-                    ctx.moveTo(barToX(entryIdx), obY2);
-                    ctx.lineTo(w - 60, obY2);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    
-                    ctx.fillStyle = isLong ? 'var(--neon-cyan)' : 'var(--neon-pink)';
-                    ctx.font = 'bold 9px Roboto';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`5K OB Block (${isLong ? '支撐防守區' : '供給阻力區'})`, barToX(entryIdx) + 8, obY1 + 14);
-                }
-            }
-
-            // 5. 繪製 SMC 結構：1K FVG 共振進場價格帶 或 5K 近場 FVG (SMC 結構同步)
-            if (chartState.showFVG) {
-                if (type === '1K' && (entryInd.fvg_top !== undefined && entryInd.fvg_top !== null || (entryInd.fvg_zone && entryInd.fvg_zone !== '無' && entryInd.fvg_zone !== '無 1K FVG 共振'))) {
-                    let fvgBot = entryInd.fvg_bottom;
-                    let fvgTop = entryInd.fvg_top;
-                    
-                    if (fvgBot === undefined || fvgBot === null) {
-                        const parts = entryInd.fvg_zone.split(' - ');
-                        if (parts.length >= 2) {
-                            fvgBot = parseFloat(parts[0]);
-                            fvgTop = parseFloat(parts[1]);
-                        }
-                    }
-                    
-                    if (fvgBot !== undefined && fvgBot !== null && !isNaN(fvgBot) && !isNaN(fvgTop) && entryIdx !== -1) {
-                        const fvgY1 = priceToY(fvgTop);
-                        const fvgY2 = priceToY(fvgBot);
-                        const fvgH = fvgY2 - fvgY1;
-                        
-                        const fvgW = Math.min(barWidth * 8, w - barToX(entryIdx) - 60);
-                        ctx.fillStyle = 'rgba(251, 191, 36, 0.12)';
-                        ctx.fillRect(barToX(entryIdx), fvgY1, fvgW, fvgH);
-                        
-                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-                        ctx.setLineDash([3, 3]);
-                        ctx.beginPath();
-                        ctx.moveTo(barToX(entryIdx), fvgY1);
-                        ctx.lineTo(barToX(entryIdx) + fvgW, fvgY1);
-                        ctx.moveTo(barToX(entryIdx), fvgY2);
-                        ctx.lineTo(barToX(entryIdx) + fvgW, fvgY2);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                        
-                        ctx.fillStyle = 'var(--neon-gold)';
-                        ctx.font = 'bold 9px Roboto';
-                        ctx.textAlign = 'left';
-                        ctx.fillText('1K FVG 共振缺口', barToX(entryIdx) + 6, fvgY1 + 11);
-                    }
-                }
-                else if (type === '5K' && entryIdx !== -1) {
-                    // 5K 近場 FVG 自動檢測 (進場點前後 3 根 5K K線)
-                    let foundFvg = null;
-                    const searchStart = Math.max(2, entryIdx - 3);
-                    const searchEnd = Math.min(kbars.length - 1, entryIdx + 3);
-                    
-                    for (let j = searchStart; j <= searchEnd; j++) {
-                        // Bullish FVG
-                        if (kbars[j].low > kbars[j-2].high && kbars[j-1].close > kbars[j-1].open) {
-                            foundFvg = {
-                                type: 'bullish',
-                                idx: j - 1,
-                                top: kbars[j].low,
-                                bottom: kbars[j-2].high
-                            };
-                            break;
-                        }
-                        // Bearish FVG
-                        else if (kbars[j].high < kbars[j-2].low && kbars[j-1].close < kbars[j-1].open) {
-                            foundFvg = {
-                                type: 'bearish',
-                                idx: j - 1,
-                                top: kbars[j-2].low,
-                                bottom: kbars[j].high
-                            };
-                            break;
-                        }
-                    }
-                    
-                    if (foundFvg) {
-                        const fvgY1 = priceToY(foundFvg.top);
-                        const fvgY2 = priceToY(foundFvg.bottom);
-                        const fvgH = fvgY2 - fvgY1;
-                        
-                        const fvgStartX = barToX(foundFvg.idx);
-                        const fvgW = Math.min(barWidth * 6, w - fvgStartX - 60);
-                        
-                        ctx.fillStyle = 'rgba(251, 191, 36, 0.12)';
-                        ctx.fillRect(fvgStartX, fvgY1, fvgW, fvgH);
-                        
-                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-                        ctx.setLineDash([3, 3]);
-                        ctx.beginPath();
-                        ctx.moveTo(fvgStartX, fvgY1);
-                        ctx.lineTo(fvgStartX + fvgW, fvgY1);
-                        ctx.moveTo(fvgStartX, fvgY2);
-                        ctx.lineTo(fvgStartX + fvgW, fvgY2);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                        
-                        ctx.fillStyle = 'var(--neon-gold)';
-                        ctx.font = 'bold 9px Roboto';
-                        ctx.textAlign = 'left';
-                        ctx.fillText('5K FVG 缺口', fvgStartX + 6, fvgY1 + 11);
-                    }
-                }
-            }
-
-            // 5.5 繪製 R-R (賺賠比) 盈虧發光覆蓋區間
-            if (chartState.showRR && entryIdx !== -1) {
-                const rrX = barToX(entryIdx);
-                const rrW = w - rrX - 60;
-                
-                const entryY = priceToY(trade.entry_price);
-                const slY = priceToY(trade.stop_loss);
-                const tpY = priceToY(trade.take_profit);
-                
-                ctx.fillStyle = 'rgba(248, 81, 73, 0.04)';
-                if (isLong) {
-                    ctx.fillRect(rrX, entryY, rrW, slY - entryY);
-                } else {
-                    ctx.fillRect(rrX, slY, rrW, entryY - slY);
-                }
-                
-                ctx.fillStyle = 'rgba(63, 185, 80, 0.04)';
-                if (isLong) {
-                    ctx.fillRect(rrX, tpY, rrW, entryY - tpY);
-                } else {
-                    ctx.fillRect(rrX, entryY, rrW, tpY - entryY);
-                }
-                
-                ctx.setLineDash([2, 4]);
-                
-                ctx.strokeStyle = 'rgba(63, 185, 80, 0.35)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(rrX, tpY);
-                ctx.lineTo(w - 60, tpY);
-                ctx.stroke();
-                
-                ctx.strokeStyle = 'rgba(248, 81, 73, 0.35)';
-                ctx.beginPath();
-                ctx.moveTo(rrX, slY);
-                ctx.lineTo(w - 60, slY);
-                ctx.stroke();
-                
-                ctx.setLineDash([]);
-                
-                ctx.fillStyle = 'rgba(63, 185, 80, 0.8)';
-                ctx.font = 'bold 9px Orbitron';
-                ctx.textAlign = 'right';
-                ctx.fillText(`🎯 TP: ${Math.round(trade.take_profit)}`, w - 65, tpY - 4);
-                
-                ctx.fillStyle = 'rgba(248, 81, 73, 0.8)';
-                ctx.font = 'bold 9px Orbitron';
-                ctx.fillText(`🛑 SL: ${Math.round(trade.stop_loss)}`, w - 65, slY + 11);
-            }
-
-            // 6. 繪製 K 棒影線與蠟燭實體
-            kbars.forEach((k, idx) => {
-                const x = barToX(idx);
-                const yOpen = priceToY(k.open);
-                const yClose = priceToY(k.close);
-                const yHigh = priceToY(k.high);
-                const yLow = priceToY(k.low);
-                
-                const isBull = k.close >= k.open;
-                
-                ctx.strokeStyle = isBull ? 'rgba(63, 185, 80, 0.65)' : 'rgba(248, 81, 73, 0.65)';
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.moveTo(x, yHigh);
-                ctx.lineTo(x, yLow);
-                ctx.stroke();
-                
-                const bodyH = Math.max(Math.abs(yClose - yOpen), 1.5);
-                const bodyY = Math.min(yOpen, yClose);
-                
-                if (isBull) {
-                    ctx.fillStyle = 'rgba(63, 185, 80, 0.9)';
-                    ctx.fillRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
-                    ctx.strokeStyle = 'rgba(63, 185, 80, 0.4)';
-                    ctx.strokeRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
-                } else {
-                    ctx.fillStyle = 'rgba(248, 81, 73, 0.9)';
-                    ctx.fillRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
-                    ctx.strokeStyle = 'rgba(248, 81, 73, 0.4)';
-                    ctx.strokeRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
-                }
-                
-                // 7. 5K Sweep 流動性獵取背景
-                if (type === '5K' && idx === entryIdx) {
-                    ctx.fillStyle = 'rgba(192, 132, 252, 0.08)';
-                    ctx.fillRect(x - barWidth / 2, 20, barWidth, h - 60);
-                    
-                    ctx.strokeStyle = 'rgba(192, 132, 252, 0.4)';
-                    ctx.setLineDash([2, 2]);
-                    ctx.beginPath();
-                    ctx.moveTo(x - barWidth / 2, 20);
-                    ctx.lineTo(x - barWidth / 2, h - 40);
-                    ctx.moveTo(x + barWidth / 2, 20);
-                    ctx.lineTo(x + barWidth / 2, h - 40);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    
-                    ctx.fillStyle = 'var(--neon-purple)';
-                    ctx.font = 'bold 9px Orbitron';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('HTF SWEEP', x, 30);
-                }
-
-                // 8. 1K CHoCH 結構突破線
-                if (chartState.showCHoCH && type === '1K' && idx === entryIdx && entryInd.ltf_choch && entryInd.ltf_choch !== '無') {
-                    const chochPriceVal = entryInd.choch_price || (isLong ? k.high : k.low);
-                    const chochY = priceToY(chochPriceVal);
-                    ctx.strokeStyle = 'var(--neon-cyan)';
-                    ctx.lineWidth = 1.2;
-                    ctx.setLineDash([3, 3]);
-                    ctx.beginPath();
-                    ctx.moveTo(x - barWidth * 3, chochY);
-                    ctx.lineTo(w - 60, chochY);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    
-                    ctx.fillStyle = 'var(--neon-cyan)';
-                    ctx.font = 'bold 9px Roboto';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`1K CHoCH 突破 (${Math.round(chochPriceVal)})`, x + 10, chochY - 5);
-                }
-            });
-
-            // 9. 持倉區間發光框架
-            if (entryIdx !== -1 && exitIdx !== -1) {
-                const entryX = barToX(entryIdx);
-                const exitX = barToX(exitIdx);
-                
-                ctx.fillStyle = 'rgba(88, 166, 255, 0.02)';
-                ctx.fillRect(entryX, 20, exitX - entryX, h - 60);
-                
-                ctx.strokeStyle = 'rgba(88, 166, 255, 0.15)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(entryX, 20);
-                ctx.lineTo(entryX, h - 40);
-                ctx.moveTo(exitX, 20);
-                ctx.lineTo(exitX, h - 40);
-                ctx.stroke();
-            }
-
-            // 10. 進出場點標籤
-            if (entryIdx !== -1) {
-                const ex = barToX(entryIdx);
-                const ey = priceToY(trade.entry_price);
-                
-                ctx.fillStyle = isLong ? 'var(--success-color)' : 'var(--danger-color)';
-                ctx.beginPath();
-                if (isLong) {
-                    ctx.moveTo(ex, ey - 9);
-                    ctx.lineTo(ex - 8, ey + 5);
-                    ctx.lineTo(ex + 8, ey + 5);
-                } else {
-                    ctx.moveTo(ex, ey + 9);
-                    ctx.lineTo(ex - 8, ey - 5);
-                    ctx.lineTo(ex + 8, ey - 5);
-                }
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px Roboto';
-                ctx.textAlign = 'center';
-                ctx.fillText(`📥 入場: ${trade.entry_price}`, ex, isLong ? ey - 15 : ey + 20);
-            }
-
-            if (exitIdx !== -1) {
-                const ex = barToX(exitIdx);
-                const ey = priceToY(trade.exit_price);
-                
-                // 畫圓形
-                ctx.fillStyle = '#f3f4f6';
-                ctx.beginPath();
-                ctx.arc(ex, ey, 6, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-                
-                // 畫標籤
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px Roboto';
-                ctx.textAlign = 'center';
-                ctx.fillText(`📤 出場: ${trade.exit_price}`, ex, ey - 12);
-            }
-
-            // 11. TradingView style: 頂部資訊列 (隨滑鼠懸停 Hover 改變)與十字游標
-            const activeBar = (hoverIdx !== -1 && hoverIdx < kbars.length) ? kbars[hoverIdx] : kbars[kbars.length - 1];
-            
-            // 繪製頂部 OHLC 資訊列
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-            ctx.font = '11px Roboto';
-            ctx.textAlign = 'left';
-            const ohlcText = `時間: ${activeBar.ts}  O: ${activeBar.open.toFixed(1)}  H: ${activeBar.high.toFixed(1)}  L: ${activeBar.low.toFixed(1)}  C: ${activeBar.close.toFixed(1)}`;
-            ctx.fillText(ohlcText, 15, 18);
-
-            // 繪製滑鼠懸停時的 SMC 特別事件標記
-            if (hoverIdx === entryIdx) {
-                ctx.fillStyle = 'var(--neon-cyan)';
-                ctx.font = 'bold 11px Orbitron';
-                ctx.fillText(`★ SMC ENTRY SIGNAL ACTIVE`, w - 240, 18);
-            } else if (hoverIdx === exitIdx) {
-                ctx.fillStyle = 'var(--neon-purple)';
-                ctx.font = 'bold 11px Orbitron';
-                ctx.fillText(`★ EXIT TRIGGERED`, w - 170, 18);
-            }
-
-            // 12. 繪製十字游標與 Y 軸懸浮價格卡片
-            if (hoverIdx !== -1 && mouseX !== -1 && mouseY !== -1) {
-                const x = barToX(hoverIdx);
-                
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([3, 3]);
-                
-                // 垂直虛線
-                ctx.beginPath();
-                ctx.moveTo(x, 25);
-                ctx.lineTo(x, h - 40);
-                ctx.stroke();
-                
-                // 水平虛線
-                ctx.beginPath();
-                ctx.moveTo(10, mouseY);
-                ctx.lineTo(w - 60, mouseY);
-                ctx.stroke();
-                ctx.setLineDash([]); // 恢復實線
-                
-                // 繪製 X 軸時間懸浮背景卡片
-                const dateStr = activeBar.ts.substring(11, 19);
-                ctx.fillStyle = '#161b22';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.lineWidth = 1;
-                ctx.fillRect(x - 30, h - 38, 60, 15);
-                ctx.strokeRect(x - 30, h - 38, 60, 15);
-                
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 9px Orbitron';
-                ctx.textAlign = 'center';
-                ctx.fillText(dateStr, x, h - 27);
-                
-                // 繪製 Y 軸價格懸浮背景卡片
-                const hoverPrice = yMin + ((h - 40 - mouseY) / (h - 80)) * (yMax - yMin);
-                ctx.fillStyle = '#161b22';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.fillRect(w - 58, mouseY - 9, 54, 18);
-                ctx.strokeRect(w - 58, mouseY - 9, 54, 18);
-                
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 9px Orbitron';
-                ctx.textAlign = 'center';
-                ctx.fillText(Math.round(hoverPrice).toString(), w - 31, mouseY + 4);
-            }
-        }
-
-        // ==================== 十字游標與懸浮滑鼠互動綁定 ====================
-        function setupInteractivity() {
-            const c1K = document.getElementById('canvas1K');
-            const c5K = document.getElementById('canvas5K');
-            
-            c1K.addEventListener('mousemove', (e) => {
-                const rect = c1K.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                const numBars = chartState.data1K.length;
-                if (numBars > 0) {
-                    const barWidth = rect.width / numBars;
-                    const hoverIdx = Math.floor(mouseX / barWidth);
-                    if (hoverIdx >= 0 && hoverIdx < numBars) {
-                        drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K', hoverIdx, mouseX, mouseY);
-                    }
-                }
-            });
-            
-            c1K.addEventListener('mouseleave', () => {
-                drawSMCKbarsCanvas('canvas1K', chartState.data1K, tradeData, '1K');
-            });
-            
-            c5K.addEventListener('mousemove', (e) => {
-                const rect = c5K.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                const numBars = chartState.data5K.length;
-                if (numBars > 0) {
-                    const barWidth = rect.width / numBars;
-                    const hoverIdx = Math.floor(mouseX / barWidth);
-                    if (hoverIdx >= 0 && hoverIdx < numBars) {
-                        drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K', hoverIdx, mouseX, mouseY);
-                    }
-                }
-            });
-            
-            c5K.addEventListener('mouseleave', () => {
-                drawSMCKbarsCanvas('canvas5K', chartState.data5K, tradeData, '5K');
-            });
         }
     </script>
 </body>
