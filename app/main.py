@@ -447,9 +447,24 @@ async def get_live_terminal():
         return html_file.read_text(encoding="utf-8")
     return "<h1>Live Terminal (live_terminal.html) not found.</h1>"
 
+@app.get("/orb_terminal", response_class=HTMLResponse)
+async def get_orb_terminal():
+    """Serves the ORB Real-time Trading Terminal HTML."""
+    html_file = frontend_path / "orb_terminal.html"
+    if html_file.exists():
+        return html_file.read_text(encoding="utf-8")
+    return "<h1>ORB Terminal (orb_terminal.html) not found.</h1>"
+
 # ==============================================================================
 # WebSocket Real-Time Pushing & Replay Simulator Engine
 # ==============================================================================
+def get_session(dt):
+    t = dt.time()
+    if (t >= datetime.strptime("08:45", "%H:%M").time()) and (t <= datetime.strptime("13:45", "%H:%M").time()):
+        return 'day'
+    else:
+        return 'night'
+
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 import json
@@ -492,6 +507,12 @@ class RealTimeQuoteStreamer:
         self.subscribed_contract = None
         self.is_active = False
         self.loop = None
+        self.orb_params = {
+            "orb_probe_minutes": 15,
+            "orb_breakout_ticks": 5,
+            "momentum_threshold": 0.0003,
+            "vol_spike_ratio": 1.2
+        }
 
     def start_stream(self, api) -> bool:
         if self.is_active:
@@ -525,6 +546,7 @@ class RealTimeQuoteStreamer:
             self.df_1k_real = df_hist.iloc[::-1].copy().reset_index(drop=True)
             self.df_1k_real['datetime'] = pd.to_datetime(self.df_1k_real['ts'])
             self.df_1k_real = self.df_1k_real.drop(columns=['ts'])
+            self.df_1k_real['session'] = self.df_1k_real['datetime'].apply(get_session)
             logger.info(f"RealTimeQuoteStreamer: Preloaded {len(self.df_1k_real)} bars. Last timestamp: {self.df_1k_real['datetime'].iloc[-1]}")
         except Exception as e:
             logger.exception("RealTimeQuoteStreamer: Preload history failed")
@@ -614,7 +636,8 @@ class RealTimeQuoteStreamer:
                             'low': tick_close,
                             'close': tick_close,
                             'volume': tick_vol,
-                            'datetime': tick_minute
+                            'datetime': tick_minute,
+                            'session': get_session(tick_minute)
                         }])
                         self.df_1k_real = pd.concat([self.df_1k_real, new_row]).reset_index(drop=True)
                         logger.info(f"🟢 [Real Live Stream] 跨越至新分鐘 K線: {tick_minute} | 價格: {tick_close}")
@@ -695,6 +718,9 @@ class RealTimeQuoteStreamer:
                         "pdl": float(latest_5k['pdl']) if not pd.isna(latest_5k.get('pdl')) else None
                     }
                     
+                    # 計算實時 ORB 狀態
+                    orb_status = tb.calculate_realtime_orb_status(df_1k_clean, **self.orb_params)
+                    
                     payload = {
                         "type": "live_tick",
                         "candles": {
@@ -734,7 +760,8 @@ class RealTimeQuoteStreamer:
                                 "volume": int(latest_60k['volume']),
                                 "smc": smc_60k
                             }
-                        }
+                        },
+                        "orb": orb_status
                     }
                     
                     # 廣播實時 Tick 與指標包給前端 TV 圖表
@@ -769,7 +796,7 @@ class RealTimeQuoteStreamer:
 
 real_time_streamer = RealTimeQuoteStreamer()
 
-async def get_history_init_payload(df_1k_base: pd.DataFrame) -> dict:
+async def get_history_init_payload(df_1k_base: pd.DataFrame, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2) -> dict:
     """
     將預加載的最近 150 根 1K K線進行多時區聚合與全量 SMC 指標計算，
     清洗 NaN 數值為 None (null)，包裝成 history_init 封包返回給前端。
@@ -780,6 +807,9 @@ async def get_history_init_payload(df_1k_base: pd.DataFrame) -> dict:
 
         # 1. 準備聚合的 1K 數據
         df_1k_res = df_1k_base.copy()
+        if 'session' not in df_1k_res.columns:
+            df_1k_res['session'] = df_1k_res['datetime'].apply(get_session)
+            
         df_1k_res.index = pd.to_datetime(df_1k_res['datetime'])
         df_1k_res.index.name = 'ts_datetime'
         df_1k_res['code'] = 'TXFR1'
@@ -898,6 +928,13 @@ async def get_history_init_payload(df_1k_base: pd.DataFrame) -> dict:
                 }
             })
 
+        # 5. 計算歷史 ORB 區間線
+        orb_history = tb.get_historical_orb_ranges(
+            df_1k_res, 
+            orb_probe_minutes=orb_probe_minutes, 
+            orb_breakout_ticks=orb_breakout_ticks
+        )
+
         return {
             "type": "history_init",
             "data": {
@@ -905,7 +942,8 @@ async def get_history_init_payload(df_1k_base: pd.DataFrame) -> dict:
                 "5k": hist_5k,
                 "15k": hist_15k,
                 "60k": hist_60k
-            }
+            },
+            "orb_history": orb_history
         }
     except Exception as e:
         logger.exception("Error generating history init payload")
@@ -940,6 +978,7 @@ async def replay_simulator_worker(date_str: str, speed_seconds: float):
         logger.info(f"Loaded {len(df_1k_all)} 1K bars for replay on {date_str}")
         
         df_1k_all['datetime'] = pd.to_datetime(df_1k_all['ts'])
+        df_1k_all['session'] = df_1k_all['datetime'].apply(get_session)
         start_idx = min(30, len(df_1k_all))
         
         for k in range(start_idx, len(df_1k_all) + 1):
@@ -1011,6 +1050,9 @@ async def replay_simulator_worker(date_str: str, speed_seconds: float):
                 "pdl": float(latest_5k['pdl']) if not pd.isna(latest_5k.get('pdl')) else None
             }
             
+            # 計算重播時的實時 ORB 狀態
+            orb_status = tb.calculate_realtime_orb_status(df_1k_curr, **real_time_streamer.orb_params)
+            
             payload = {
                 "type": "replay_tick",
                 "index": k,
@@ -1052,7 +1094,8 @@ async def replay_simulator_worker(date_str: str, speed_seconds: float):
                         "volume": int(latest_60k['volume']),
                         "smc": smc_60k
                     }
-                }
+                },
+                "orb": orb_status
             }
             
             await manager.broadcast(payload)
@@ -1096,6 +1139,7 @@ async def simulated_live_ticks_worker():
         df_1k_recent = df_1k_recent.iloc[::-1].copy()
         df_1k_recent['datetime'] = pd.to_datetime(df_1k_recent['ts'])
         df_1k_recent = df_1k_recent.drop(columns=['ts'])
+        df_1k_recent['session'] = df_1k_recent['datetime'].apply(get_session)
         
         import random
         
@@ -1112,7 +1156,8 @@ async def simulated_live_ticks_worker():
                     'low': last_close,
                     'close': last_close,
                     'volume': 0,
-                    'datetime': new_dt
+                    'datetime': new_dt,
+                    'session': get_session(new_dt)
                 }])
                 df_1k_recent = pd.concat([df_1k_recent, new_row]).reset_index(drop=True)
                 # 保持緩衝區大小 (維持約 2 天長度)
@@ -1190,6 +1235,9 @@ async def simulated_live_ticks_worker():
                 "pdl": float(latest_5k['pdl']) if not pd.isna(latest_5k.get('pdl')) else None
             }
             
+            # 計算模擬實時時的 ORB 狀態
+            orb_status = tb.calculate_realtime_orb_status(df_1k_recent, **real_time_streamer.orb_params)
+            
             payload = {
                 "type": "live_tick",
                 "candles": {
@@ -1229,7 +1277,8 @@ async def simulated_live_ticks_worker():
                         "volume": int(latest_60k['volume']),
                         "smc": smc_60k
                     }
-                }
+                },
+                "orb": orb_status
             }
             
             await manager.broadcast(payload)
@@ -1302,7 +1351,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         df_hist['datetime'] = pd.to_datetime(df_hist['ts'])
                         df_hist = df_hist.drop(columns=['ts'])
                         
-                        history_payload = await get_history_init_payload(df_hist)
+                        history_payload = await get_history_init_payload(df_hist, **real_time_streamer.orb_params)
                         await websocket.send_json(history_payload)
                         logger.info("Sent history_init payload to simulated live terminal successfully.")
                 except Exception as e:
@@ -1315,6 +1364,32 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "status",
                     "message": "模擬實時看盤已啟動，每秒鐘動態更新價格。"
                 })
+                
+            elif action == "update_orb_params":
+                new_params = data.get("params", {})
+                real_time_streamer.orb_params.update(new_params)
+                
+                # 重新獲取並推送 history_init 包以讓前端重繪
+                db_path = "Shioaji.db"
+                if not os.path.exists(db_path):
+                    db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
+                try:
+                    conn = sqlite3.connect(db_path)
+                    query = "SELECT ts, Open as open, High as high, Low as low, Close as close, Volume as volume FROM futures1k WHERE code='TXFR1' ORDER BY ts DESC LIMIT 2500;"
+                    df_hist = pd.read_sql_query(query, conn)
+                    conn.close()
+                    
+                    if not df_hist.empty:
+                        df_hist = df_hist.iloc[::-1].copy().reset_index(drop=True)
+                        df_hist['datetime'] = pd.to_datetime(df_hist['ts'])
+                        df_hist = df_hist.drop(columns=['ts'])
+                        df_hist['session'] = df_hist['datetime'].apply(get_session)
+                        
+                        history_payload = await get_history_init_payload(df_hist, **real_time_streamer.orb_params)
+                        await websocket.send_json(history_payload)
+                        logger.info("Successfully updated ORB params and sent updated history_init payload.")
+                except Exception as e:
+                    logger.exception("Error updating ORB params and sending history init")
                 
             elif action == "start_real_live":
                 if active_replay_task and not active_replay_task.done():
@@ -1332,10 +1407,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 if success:
                      # --- [新增] 真實實盤串流預載 150 根歷史數據 ---
                      try:
-                         if not real_time_streamer.df_1k_real.empty:
-                             history_payload = await get_history_init_payload(real_time_streamer.df_1k_real)
-                             await websocket.send_json(history_payload)
-                             logger.info("Sent history_init payload to real live terminal successfully.")
+                          if not real_time_streamer.df_1k_real.empty:
+                              history_payload = await get_history_init_payload(real_time_streamer.df_1k_real, **real_time_streamer.orb_params)
+                              await websocket.send_json(history_payload)
+                              logger.info("Sent history_init payload to real live terminal successfully.")
                      except Exception as e:
                          logger.exception("Error sending history init for start_real_live")
                          

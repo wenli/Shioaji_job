@@ -2168,5 +2168,160 @@ def main():
     print("  真實數據對齊、參數優化與回測任務順利完成！")
     print("==========================================================")
 
+def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, session_filter='both'):
+    """
+    根據當前的 1K 歷史與實時數據 DataFrame，計算並回傳當下最後一根 K 棒的 ORB 狀態。
+    """
+    if df_1k.empty:
+        return {
+            "is_established": False,
+            "countdown_seconds": 0,
+            "high_line": 0.0,
+            "low_line": 0.0,
+            "breakout_status": 0,
+            "vol_avg_5": 0.0
+        }
+        
+    df = df_1k.copy().sort_values('datetime').reset_index(drop=True)
+    last_row = df.iloc[-1]
+    t_last = last_row['datetime']
+    sess_type = last_row['session']
+    
+    def get_session_start_time(dt, session_type):
+        if session_type == 'day':
+            return datetime.combine(dt.date(), datetime.strptime("08:45", "%H:%M").time())
+        else:
+            if dt.hour < 5:
+                base_date = dt.date() - timedelta(days=1)
+            else:
+                base_date = dt.date()
+            return datetime.combine(base_date, datetime.strptime("15:00", "%H:%M").time())
+            
+    sess_start = get_session_start_time(t_last, sess_type)
+    probe_end = sess_start + timedelta(minutes=orb_probe_minutes)
+    
+    df_current_session = df[df['datetime'] >= sess_start]
+    
+    if df_current_session.empty:
+        return {
+            "is_established": False,
+            "countdown_seconds": orb_probe_minutes * 60,
+            "high_line": 0.0,
+            "low_line": 0.0,
+            "breakout_status": 0,
+            "vol_avg_5": 0.0
+        }
+        
+    df_probe = df_current_session[df_current_session['datetime'] <= probe_end]
+    
+    is_established = t_last > probe_end
+    
+    if not is_established:
+        elapsed = (t_last - sess_start).total_seconds()
+        countdown_seconds = max(0, int(orb_probe_minutes * 60 - elapsed))
+    else:
+        countdown_seconds = 0
+        
+    if df_probe.empty:
+        high_val = 0.0
+        low_val = 0.0
+    else:
+        high_val = df_probe['high'].max()
+        low_val = df_probe['low'].min()
+        
+    high_line = high_val + orb_breakout_ticks if high_val > 0 else 0.0
+    low_line = low_val - orb_breakout_ticks if low_val > 0 else 0.0
+    
+    df_monitoring = df_current_session[df_current_session['datetime'] > probe_end].copy().reset_index(drop=True)
+    breakout_status = 0
+    
+    if is_established and not df_monitoring.empty:
+        for idx in range(len(df_monitoring)):
+            row = df_monitoring.iloc[idx]
+            dt_row = row['datetime']
+            
+            main_idx_list = df[df['datetime'] == dt_row].index
+            if len(main_idx_list) > 0:
+                main_idx = main_idx_list[0]
+                prev_vols = df.loc[max(0, main_idx-5):main_idx-1, 'volume'].values
+                avg_vol = np.mean(prev_vols) if len(prev_vols) > 0 else row['volume']
+            else:
+                avg_vol = row['volume']
+                
+            is_buy = row['close'] > high_val + orb_breakout_ticks
+            is_sell = row['close'] < low_val - orb_breakout_ticks
+            
+            if is_buy or is_sell:
+                mom = abs(row['close'] - row['open']) / row['open']
+                is_mom_valid = mom >= momentum_threshold
+                is_vol_valid = row['volume'] >= avg_vol * vol_spike_ratio
+                
+                if is_mom_valid and is_vol_valid:
+                    if is_buy:
+                        breakout_status = 1
+                    else:
+                        breakout_status = -1
+                    break
+                    
+    last_idx = df.index[-1]
+    prev_vols_last = df.loc[max(0, last_idx-5):last_idx-1, 'volume'].values
+    vol_avg_5 = float(np.mean(prev_vols_last)) if len(prev_vols_last) > 0 else float(last_row['volume'])
+
+    return {
+        "is_established": is_established,
+        "countdown_seconds": countdown_seconds,
+        "high_line": float(high_line),
+        "low_line": float(low_line),
+        "breakout_status": breakout_status,
+        "vol_avg_5": vol_avg_5
+    }
+
+
+def get_historical_orb_ranges(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5):
+    """
+    根據歷史 1K K線 DataFrame，計算出每個時段 (sess_start) 的開盤區間高低點與確立狀態。
+    """
+    if df_1k.empty:
+        return {}
+        
+    df = df_1k.copy().sort_values('datetime').reset_index(drop=True)
+    
+    def get_session_start_time(dt, session_type):
+        if session_type == 'day':
+            return datetime.combine(dt.date(), datetime.strptime("08:45", "%H:%M").time())
+        else:
+            if dt.hour < 5:
+                base_date = dt.date() - timedelta(days=1)
+            else:
+                base_date = dt.date()
+            return datetime.combine(base_date, datetime.strptime("15:00", "%H:%M").time())
+            
+    df['sess_start'] = df.apply(lambda r: get_session_start_time(r['datetime'], r['session']), axis=1)
+    
+    orb_history = {}
+    grouped = df.groupby('sess_start')
+    
+    for sess_start, group in grouped:
+        probe_end = sess_start + timedelta(minutes=orb_probe_minutes)
+        df_probe = group[group['datetime'] <= probe_end]
+        
+        if df_probe.empty:
+            continue
+            
+        high_val = df_probe['high'].max()
+        low_val = df_probe['low'].min()
+        is_established = group['datetime'].max() > probe_end
+        
+        orb_history[str(sess_start)] = {
+            "high": float(high_val),
+            "low": float(low_val),
+            "high_line": float(high_val + orb_breakout_ticks),
+            "low_line": float(low_val - orb_breakout_ticks),
+            "is_established": is_established
+        }
+        
+    return orb_history
+
+
 if __name__ == "__main__":
     main()

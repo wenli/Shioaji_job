@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORB 多時區實時交易終端</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <!-- TradingView Lightweight Charts Local Static -->
+    <script src="/static/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root {
+            --bg-color: #06040d;
+            --card-bg: rgba(14, 9, 26, 0.55);
+            --card-border: rgba(255, 255, 255, 0.05);
+            --neon-purple: #c084fc;
+            --neon-cyan: #22d3ee;
+            --neon-pink: #f43f5e;
+            --neon-gold: #fbbf24;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --success: #10b981;
+            --danger: #ef4444;
+            --font-outfit: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 50%, #0d0822 0%, #030206 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 1rem;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .container {
+            max-width: 1680px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            flex: 1;
+        }
+
+        /* Header Style */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .logo h1 {
+            font-family: var(--font-outfit);
+            font-weight: 800;
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .logo p {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            margin-top: 0.1rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(34, 211, 238, 0.06);
+            border: 1px solid rgba(34, 211, 238, 0.12);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.08);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px var(--success); }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        /* Control Panel glassmorphic bar */
+        .control-bar {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-group {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 0.15rem;
+            gap: 0.15rem;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.35rem 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%);
+            color: #05030a;
+            box-shadow: 0 0 8px rgba(34, 211, 238, 0.2);
+        }
+
+        .param-group {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .input-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .input-item label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-item input, .input-item select {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+            color: #fff;
+            padding: 0.3rem 0.5rem;
+            font-size: 0.78rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-item input:focus, .input-item select:focus {
+            border-color: var(--neon-cyan);
+        }
+
+        .btn {
+            padding: 0.4rem 0.8rem;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn-primary {
+            background: var(--neon-cyan);
+            color: #05030a;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-danger {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: var(--neon-pink);
+        }
+
+        .btn-danger:hover {
+            background: rgba(244, 63, 94, 0.25);
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.25);
+        }
+
+        /* 60/40 Grid Layout */
+        .terminal-layout {
+            display: flex;
+            flex-direction: row;
+            gap: 0.8rem;
+            flex: 1;
+            min-height: 580px;
+        }
+
+        .layout-left {
+            flex: 6; /* 60% */
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .layout-right {
+            flex: 4; /* 40% */
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.6rem 0.8rem 0.8rem 0.8rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .chart-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 0.3rem;
+            z-index: 10;
+        }
+
+        .chart-title {
+            font-family: var(--font-outfit);
+            font-weight: 700;
+            font-size: 0.88rem;
+            letter-spacing: 0.2px;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .chart-timeframe-tag {
+            background: rgba(192, 132, 252, 0.08);
+            border: 1px solid rgba(192, 132, 252, 0.15);
+            color: var(--neon-purple);
+            padding: 0.12rem 0.35rem;
+            border-radius: 3px;
+            font-size: 0.62rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+        }
+
+        .chart-canvas-container {
+            flex: 1;
+            width: 100%;
+            min-height: 180px;
+            position: relative;
+        }
+
+        /* Countdown & Status Banner on 1K Chart */
+        .orb-status-banner {
+            position: absolute;
+            top: 2.8rem;
+            right: 1rem;
+            background: rgba(14, 9, 26, 0.8);
+            border: 1px solid var(--neon-purple);
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 100;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            box-shadow: 0 0 10px rgba(192, 132, 252, 0.2);
+        }
+
+        .countdown-num {
+            color: var(--neon-purple);
+            font-weight: bold;
+        }
+
+        /* Trade Dashboard Area */
+        .bottom-layout {
+            display: grid;
+            grid-template-columns: 7fr 3fr;
+            gap: 0.8rem;
+            min-height: 180px;
+        }
+
+        .trade-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.6rem 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding-bottom: 0.25rem;
+        }
+
+        .panel-title {
+            font-family: var(--font-outfit);
+            font-size: 0.82rem;
+            font-weight: bold;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+        }
+
+        /* Positions display */
+        .position-status {
+            display: flex;
+            gap: 1.2rem;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            align-items: center;
+        }
+
+        .pos-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+
+        .pos-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        .pos-val {
+            font-family: var(--font-mono);
+            font-size: 0.88rem;
+            font-weight: bold;
+        }
+
+        .pos-val.long { color: var(--neon-cyan); }
+        .pos-val.short { color: var(--neon-pink); }
+        .pos-val.profit { color: var(--success); }
+        .pos-val.loss { color: var(--danger); }
+
+        /* Trade Log Table */
+        .log-table-container {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 100px;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            text-align: left;
+        }
+
+        .log-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.3rem 0.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .log-table td {
+            padding: 0.3rem 0.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-family: var(--font-mono);
+        }
+
+        /* Alert notifications stream */
+        .alert-section {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.6rem 0.8rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            overflow: hidden;
+        }
+
+        .alert-wall-box {
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            max-height: 120px;
+            padding-right: 5px;
+        }
+
+        .alert-line {
+            display: flex;
+            gap: 0.4rem;
+            align-items: flex-start;
+            line-height: 1.35;
+        }
+
+        .alert-time {
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .alert-msg {
+            color: #fff;
+        }
+
+        .alert-msg.info { color: #8892b0; }
+        .alert-msg.success { color: var(--neon-cyan); text-shadow: 0 0 5px rgba(34,211,238,0.2); }
+        .alert-msg.warning { color: var(--neon-purple); text-shadow: 0 0 5px rgba(192,132,252,0.2); }
+        .alert-msg.danger { color: var(--neon-pink); text-shadow: 0 0 5px rgba(244,63,94,0.2); }
+        .alert-msg.gold { color: var(--neon-gold); text-shadow: 0 0 5px rgba(251,191,36,0.2); }
+
+        /* Floating Alert Dialog */
+        .floating-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(18, 11, 36, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--neon-purple);
+            box-shadow: 0 0 30px rgba(192, 132, 252, 0.4);
+            border-radius: 12px;
+            padding: 1.2rem;
+            z-index: 10000;
+            width: 350px;
+            display: none;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .dialog-header {
+            font-family: var(--font-outfit);
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: var(--neon-gold);
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 0.4rem;
+        }
+
+        .dialog-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+        }
+
+        .dialog-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+        }
+
+        .dialog-row span:first-child {
+            color: var(--text-secondary);
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 0.6rem;
+            justify-content: center;
+            margin-top: 0.4rem;
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.01);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .session-tag {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.08rem 0.3rem;
+            border-radius: 3px;
+            margin-right: 0.3rem;
+            display: inline-block;
+            font-family: var(--font-mono);
+        }
+        .session-tag.day {
+            background: rgba(34, 211, 238, 0.12);
+            border: 1px solid rgba(34, 211, 238, 0.25);
+            color: var(--neon-cyan);
+        }
+        .session-tag.night {
+            background: rgba(192, 132, 252, 0.12);
+            border: 1px solid rgba(192, 132, 252, 0.25);
+            color: var(--neon-purple);
+        }
+
+        @media (max-width: 1024px) {
+            .terminal-layout {
+                flex-direction: column;
+            }
+            .layout-left, .layout-right {
+                flex: none;
+                width: 100%;
+            }
+            .layout-right {
+                height: 450px;
+            }
+            .bottom-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <h1>ORB 多時區實時交易終端</h1>
+                <p>台指期 (TXFR1) 日/夜盤開盤區間突破策略實時監控與模擬交易</p>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span id="conn-lbl">WebSocket 連接中...</span>
+            </div>
+        </header>
+
+        <!-- Control Hub Bar (Glassmorphic) -->
+        <div class="control-bar">
+            <!-- Mode Switcher -->
+            <div class="mode-group">
+                <button class="mode-btn active" id="btn-mode-replay" onclick="switchMode('replay')">⚡ 歷史行情重播</button>
+                <button class="mode-btn" id="btn-mode-live" onclick="switchMode('live')">🟢 模擬實時看盤</button>
+            </div>
+
+            <!-- Parameters Panel -->
+            <div class="param-group" id="replay-controls">
+                <div class="input-item">
+                    <label>重播日期</label>
+                    <input type="date" id="replay-date" value="2026-05-20" min="2024-01-01" max="2026-06-15">
+                </div>
+
+                <div class="input-item">
+                    <label>重播速度</label>
+                    <select id="replay-speed">
+                        <option value="0.25">極速重播 (0.25秒/根)</option>
+                        <option value="0.5">高速重播 (0.5秒/根)</option>
+                        <option value="1.0" selected>標準實時 (1秒/根)</option>
+                        <option value="2.0">慢速覆盤 (2秒/根)</option>
+                        <option value="5.0">深度學習 (5秒/根)</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="btn-play" onclick="controlPlay()">🚀 啟動行情重播</button>
+                <button class="btn btn-danger" id="btn-stop" onclick="controlStop()" disabled>⏹️ 停止</button>
+            </div>
+
+            <div class="param-group" id="live-controls" style="display: none;">
+                <button class="btn btn-primary" id="btn-play-live" onclick="controlLiveStart()">🚀 啟動模擬看盤</button>
+                <button class="btn btn-success" id="btn-play-real-live" onclick="controlRealLiveStart()">🟢 啟動 Shioaji 實盤</button>
+                <button class="btn btn-danger" id="btn-stop-live" onclick="controlLiveStop()" disabled>⏹️ 停止</button>
+            </div>
+
+            <!-- ORB Config Panel (Glassmorphic) -->
+            <div class="param-group">
+                <div class="input-item">
+                    <label>開盤分鐘 (Mins)</label>
+                    <input type="number" id="orb-probe-minutes" value="15" style="width: 55px;" min="1" max="60">
+                </div>
+                <div class="input-item">
+                    <label>突破加減 (Ticks)</label>
+                    <input type="number" id="orb-breakout-ticks" value="5" style="width: 55px;" min="0" max="30">
+                </div>
+                <div class="input-item">
+                    <label>動能門檻 (Mom)</label>
+                    <input type="number" id="momentum-threshold" value="0.0003" style="width: 80px;" step="0.0001">
+                </div>
+                <div class="input-item">
+                    <label>量增倍數 (Vol)</label>
+                    <input type="number" id="vol-spike-ratio" value="1.2" style="width: 60px;" step="0.1">
+                </div>
+                <button class="btn btn-secondary" onclick="applyORBParams()">⚙️ 套用參數</button>
+            </div>
+        </div>
+
+        <!-- 60/40 Grid Layout -->
+        <div class="terminal-layout">
+            <!-- Left 60%: 1K Main Chart -->
+            <div class="layout-left">
+                <div class="chart-card" style="position: relative;">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <span>🦄 1K LTF ORB 突破監控主圖</span>
+                            <span class="chart-timeframe-tag">1K CHART</span>
+                        </div>
+                        <span style="font-size:0.75rem; color:#8892b0; font-family:var(--font-mono);" id="price-lbl-1k">--</span>
+                    </div>
+                    <!-- Countdown & Status Banner -->
+                    <div class="orb-status-banner" id="orb-banner" style="display: none;">
+                        <span>ORB 確立倒數:</span>
+                        <span class="countdown-num" id="countdown-secs">--</span> 秒
+                    </div>
+                    <div class="chart-canvas-container" id="canvas-1k"></div>
+                </div>
+            </div>
+
+            <!-- Right 40%: 5K / 15K Trend Analysis -->
+            <div class="layout-right">
+                <!-- 5K Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <span>⚡ 5K HTF 趨勢與掃蕩</span>
+                            <span class="chart-timeframe-tag">5K CHART</span>
+                        </div>
+                        <span style="font-size:0.75rem; color:#8892b0; font-family:var(--font-mono);" id="price-lbl-5k">--</span>
+                    </div>
+                    <div class="chart-canvas-container" id="canvas-5k"></div>
+                </div>
+
+                <!-- 15K Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <span>🐢 15K 中期結構與 OB 對齊</span>
+                            <span class="chart-timeframe-tag">15K CHART</span>
+                        </div>
+                        <span style="font-size:0.75rem; color:#8892b0; font-family:var(--font-mono);" id="price-lbl-15k">--</span>
+                    </div>
+                    <div class="chart-canvas-container" id="canvas-15k"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Layout: Trading Panel & Alert Wall -->
+        <div class="bottom-layout">
+            <!-- Left: Paper Trading Dashboard -->
+            <div class="trade-panel">
+                <div class="panel-header">
+                    <span class="panel-title">📊 模擬交易 (Paper Trading) 管理中心</span>
+                    <span style="font-size: 0.7rem; color: #8892b0;">前端內存零風險演算</span>
+                </div>
+                
+                <!-- Position Display -->
+                <div class="position-status">
+                    <div class="pos-item">
+                        <span class="pos-label">當前持倉</span>
+                        <span class="pos-val" id="pos-side">無持倉</span>
+                    </div>
+                    <div class="pos-item">
+                        <span class="pos-label">均價</span>
+                        <span class="pos-val" id="pos-avg-price">--</span>
+                    </div>
+                    <div class="pos-item">
+                        <span class="pos-label">口數</span>
+                        <span class="pos-val" id="pos-lots">--</span>
+                    </div>
+                    <div class="pos-item">
+                        <span class="pos-label">止損價 (SL)</span>
+                        <span class="pos-val" id="pos-sl" style="color: var(--neon-pink);">--</span>
+                    </div>
+                    <div class="pos-item">
+                        <span class="pos-label">止盈價 (TP)</span>
+                        <span class="pos-val" id="pos-tp" style="color: var(--neon-cyan);">--</span>
+                    </div>
+                    <div class="pos-item">
+                        <span class="pos-label">浮動損益 (估計)</span>
+                        <span class="pos-val" id="pos-pnl">--</span>
+                    </div>
+                    <div class="pos-item" style="margin-left: auto;">
+                        <button class="btn btn-danger" id="btn-market-exit" onclick="marketExit()" style="padding: 0.3rem 0.6rem; font-size: 0.72rem;" disabled>一鍵市價平倉</button>
+                    </div>
+                </div>
+
+                <!-- Trade Log Table -->
+                <div class="log-table-container">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>進場時間</th>
+                                <th>出場時間</th>
+                                <th>方向</th>
+                                <th>均價</th>
+                                <th>平倉價</th>
+                                <th>止損/止盈</th>
+                                <th>淨盈虧 (NT$)</th>
+                                <th>出場原因</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trade-log-body">
+                            <!-- Rows dynamic load -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right: Alert Wall -->
+            <div class="alert-section">
+                <div class="panel-header">
+                    <span class="panel-title" style="color: var(--neon-purple);">💻 實時信號通知牆</span>
+                    <span style="font-size: 0.7rem; color: #8892b0;">開盤區間與突破警示</span>
+                </div>
+                <div class="alert-wall-box" id="alert-wall">
+                    <div class="alert-line">
+                        <span class="alert-time">[00:00:00]</span>
+                        <span class="alert-msg info">實時看盤終端初始化完成，準備串接 WebSocket 數據通道...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Trigger Alert Dialog -->
+    <div class="floating-dialog" id="alert-dialog">
+        <div class="dialog-header">⚠️ ORB 開盤突破警示</div>
+        <div class="dialog-body">
+            <div class="dialog-row">
+                <span>突破方向:</span>
+                <span id="diag-dir" style="font-weight: bold;">--</span>
+            </div>
+            <div class="dialog-row">
+                <span>最新價格:</span>
+                <span id="diag-price" style="font-weight: bold; color: #fff;">--</span>
+            </div>
+            <div class="dialog-row">
+                <span>預估止損 (SL):</span>
+                <span id="diag-sl" style="color: var(--neon-pink);">--</span>
+            </div>
+            <div class="dialog-row">
+                <span>預估止盈 (TP):</span>
+                <span id="diag-tp" style="color: var(--neon-cyan);">--</span>
+            </div>
+            <div class="dialog-row" style="margin-top: 0.2rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.2rem;">
+                <span style="font-size: 0.7rem; color: var(--text-secondary);">提示: 止損設在突破K棒極值，盈虧比 2.0 倍</span>
+            </div>
+        </div>
+        <div class="dialog-actions">
+            <button class="btn btn-primary" onclick="dialogAccept()">一鍵模擬進場</button>
+            <button class="btn btn-secondary" onclick="dialogIgnore()">忽略</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let ws = null;
+        let activeMode = 'replay'; // replay vs live
+        let isReplaying = false;
+        let isSimulating = false;
+        let isRealStreaming = false;
+
+        // Trade Position State
+        let currentPosition = {
+            active: false,
+            side: null, // 'Long' or 'Short'
+            entryPrice: 0.0,
+            lots: 1,
+            sl: 0.0,
+            tp: 0.0,
+            entryTime: null
+        };
+        let lastSessionTraded = null; // 限制每個交易時段最多交易一次
+
+        // Active trigger dialog values cache
+        let activeTrigger = null;
+
+        // Chart instances and candle series
+        const charts = {};
+        const seriesList = {};
+        const chartKeys = ['1k', '5k', '15k'];
+        
+        // Cache historical data
+        const candleDataCache = { '1k': [], '5k': [], '15k': [] };
+        
+        // Store drawn priceLines for Entry, SL, TP (only for 1K chart)
+        let activePositionLines = [];
+
+        // Store dynamic ORB series (only on 1K chart)
+        let orbHighSeries = null;
+        let orbLowSeries = null;
+
+        // Cache for dynamic ORB series data points
+        let orbHighDataCache = {};
+        let orbLowDataCache = {};
+
+        // [標準轉換] 將台北 Naive 時間字串，轉換為該時刻在台北 (UTC+8) 的標準 Unix 時間戳（秒）
+        function getCorrectedUnixTimestamp(timeStr) {
+            const dt = new Date(timeStr.replace(' ', 'T') + '+08:00');
+            return Math.floor(dt.getTime() / 1000);
+        }
+
+        // [時區格式化] 使用瀏覽器原生時區引擎，強行將 Unix 標準時間戳（秒）轉為台北標準時間顯示
+        function formatUnixToTaipeiString(unixSecs, formatType = 'time') {
+            const dt = new Date(unixSecs * 1000);
+            const formatter = new Intl.DateTimeFormat('zh-TW', {
+                timeZone: 'Asia/Taipei',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            const parts = formatter.formatToParts(dt);
+            const partMap = {};
+            parts.forEach(p => partMap[p.type] = p.value);
+            
+            if (formatType === 'date') {
+                return `${partMap.year}-${partMap.month}-${partMap.day}`;
+            } else if (formatType === 'time') {
+                return `${partMap.hour}:${partMap.minute}`;
+            } else {
+                return `${partMap.year}-${partMap.month}-${partMap.day} ${partMap.hour}:${partMap.minute}`;
+            }
+        }
+
+        // [時段識別] 根據台北時間推導屬於日盤還是夜盤時段
+        function getTaiwanSessionLabel(timeStr) {
+            const parts = timeStr.split(' ');
+            if (parts.length < 2) return "";
+            const timeParts = parts[1].split(':');
+            if (timeParts.length < 2) return "";
+            const h = parseInt(timeParts[0]);
+            const m = parseInt(timeParts[1]);
+            
+            const totalMinutes = h * 60 + m;
+            
+            // 日盤: 08:45 ~ 13:45
+            if (totalMinutes >= 525 && totalMinutes <= 825) {
+                return "[日盤]";
+            }
+            
+            // 夜盤: 15:00 ~ 23:59 以及 00:00 ~ 05:00
+            if (totalMinutes >= 900 || totalMinutes <= 300) {
+                return "[夜盤]";
+            }
+            
+            return "";
+        }
+
+        // Initialize TradingView charts
+        function initCharts() {
+            const chartOptions = {
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#8892b0',
+                    fontSize: 10,
+                    fontFamily: 'JetBrains Mono, Inter, sans-serif'
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.02)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.02)' }
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: {
+                        color: 'rgba(192, 132, 252, 0.25)',
+                        width: 1,
+                        style: 3
+					},
+                    horzLine: {
+                        color: 'rgba(192, 132, 252, 0.25)',
+                        width: 1,
+                        style: 3
+                    }
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    visible: true
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    tickMarkFormatter: (time, tickMarkType, locale) => {
+                        const taipeiStr = formatUnixToTaipeiString(time, 'datetime');
+                        const parts = taipeiStr.split(' ');
+                        const datePart = parts[0];
+                        const timePart = parts[1];
+                        
+                        if (tickMarkType === 0) {
+                            return datePart.split('-')[0]; // 年
+                        } else if (tickMarkType === 1 || tickMarkType === 2) {
+                            const subParts = datePart.split('-');
+                            return `${subParts[1]}-${subParts[2]}`; // MM-DD
+                        } else {
+                            return timePart; // HH:MM
+                        }
+                    }
+                },
+                localization: {
+                    timeFormatter: (timestamp) => {
+                        return formatUnixToTaipeiString(timestamp, 'datetime');
+                    }
+                }
+            };
+
+            chartKeys.forEach(key => {
+                const container = document.getElementById(`canvas-${key}`);
+                const chart = LightweightCharts.createChart(container, chartOptions);
+                
+                const series = chart.addCandlestickSeries({
+                    upColor: '#22d3ee',
+                    downColor: '#f43f5e',
+                    borderUpColor: '#22d3ee',
+                    borderDownColor: '#f43f5e',
+                    wickUpColor: '#22d3ee',
+                    wickDownColor: '#f43f5e'
+                });
+                
+                charts[key] = chart;
+                seriesList[key] = series;
+                
+                // Add resize listener
+                new ResizeObserver(entries => {
+                    if (entries.length === 0 || !entries[0].contentRect) return;
+                    const { width, height } = entries[0].contentRect;
+                    chart.resize(width, height);
+                }).observe(container);
+            });
+
+            // Set up ORB line series on 1K chart
+            const mainChart = charts['1k'];
+            orbHighSeries = mainChart.addLineSeries({
+                color: 'rgba(34, 211, 238, 0.85)', // 青色
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                title: 'ORB HIGH'
+            });
+
+            orbLowSeries = mainChart.addLineSeries({
+                color: 'rgba(244, 63, 94, 0.85)', // 粉色
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                title: 'ORB LOW'
+            });
+
+            // 十字游標連動游標同步 (Crosshair Sync)
+            chartKeys.forEach(sourceKey => {
+                const sourceChart = charts[sourceKey];
+                sourceChart.subscribeCrosshairMove(param => {
+                    if (!param || !param.time) return;
+                    
+                    chartKeys.forEach(targetKey => {
+                        if (targetKey === sourceKey) return;
+                        const targetChart = charts[targetKey];
+                        // 尋找對應時間戳進行同步
+                        targetChart.setCrosshairPosition(param.point, param.time);
+                    });
+                });
+            });
+            
+            appendAlert('圖表初始化成功，左 1K ORB 主監控與右 5K/15K 雙趨勢畫布就緒。', 'info');
+        }
+
+        // Setup WebSocket connection
+        function connectWS() {
+            const loc = window.location;
+            let wsUrl = '';
+            if (loc.protocol === 'https:') {
+                wsUrl = 'wss://' + loc.host + '/api/live/ws';
+            } else {
+                wsUrl = 'ws://' + loc.host + '/api/live/ws';
+            }
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                document.getElementById('conn-lbl').textContent = 'WebSocket 連線正常';
+                document.querySelector('.status-dot').style.backgroundColor = 'var(--success)';
+                appendAlert('已建立後端 WebSocket 即時廣播通道。', 'success');
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('conn-lbl').textContent = 'WebSocket 斷線';
+                document.querySelector('.status-dot').style.backgroundColor = 'var(--danger)';
+                appendAlert('WebSocket 通道斷線，將於 5 秒後重連...', 'danger');
+                setTimeout(connectWS, 5000);
+            };
+            
+            ws.onerror = (err) => {
+                console.error("WS error:", err);
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'error') {
+                    alert(data.message);
+                    appendAlert(data.message, 'danger');
+                    controlStop();
+                    controlLiveStop();
+                } else if (data.type === 'status') {
+                    appendAlert(data.message, 'info');
+                } else if (data.type === 'history_init') {
+                    loadHistoryData(data.data, data.orb_history);
+                } else if (data.type === 'replay_tick' || data.type === 'live_tick') {
+                    processTickData(data);
+                }
+            };
+        }
+
+        // Load preloaded history candles & markers
+        function loadHistoryData(historyMap, orbHistory) {
+            appendAlert("⚙️ 開始載入與預算多時區歷史 ORB 區間與 K 線...", "info");
+            
+            // 1. 載入基本 K 線資料
+            chartKeys.forEach(key => {
+                const list = historyMap[key];
+                if (!list || list.length === 0) return;
+                
+                const candles = [];
+                list.forEach(c => {
+                    const timeUnix = getCorrectedUnixTimestamp(c.time);
+                    candles.push({
+                        time: timeUnix,
+                        open: c.open,
+                        high: c.high,
+                        low: c.low,
+                        close: c.close,
+                        volume: c.volume
+                    });
+                });
+                
+                seriesList[key].setData(candles);
+                candleDataCache[key] = candles;
+                
+                // 更新 Header 價格
+                const lastRawC = list[list.length - 1];
+                document.getElementById(`price-lbl-${key}`).textContent = 
+                    `O: ${lastRawC.open} | H: ${lastRawC.high} | L: ${lastRawC.low} | C: ${lastRawC.close} | VOL: ${lastRawC.volume}`;
+            });
+
+            // 2. 繪製歷史的 ORB 區間水平線
+            if (orbHistory && Object.keys(orbHistory).length > 0) {
+                const list1k = historyMap['1k'];
+                const orbHighData = [];
+                const orbLowData = [];
+
+                list1k.forEach(c => {
+                    const timeUnix = getCorrectedUnixTimestamp(c.time);
+                    // 根據 K 棒時間判斷所屬 session
+                    const dt = new Date(c.time);
+                    let sessStartStr = "";
+                    
+                    // 台指期日/夜盤起點計算
+                    const t = dt.getHours() * 60 + dt.getMinutes();
+                    if (t >= 525 && t <= 825) {
+                        // 日盤: 08:45
+                        const sessDate = formatUnixToTaipeiString(timeUnix, 'date');
+                        sessStartStr = `${sessDate} 08:45:00`;
+                    } else {
+                        // 夜盤: 15:00
+                        let baseDateStr = formatUnixToTaipeiString(timeUnix, 'date');
+                        if (dt.getHours() < 5) {
+                            // 跨日清晨
+                            const prevDate = new Date(dt.getTime() - 24 * 60 * 60 * 1000);
+                            baseDateStr = formatUnixToTaipeiString(Math.floor(prevDate.getTime()/1000), 'date');
+                        }
+                        sessStartStr = `${baseDateStr} 15:00:00`;
+                    }
+
+                    const orbSess = orbHistory[sessStartStr];
+                    if (orbSess) {
+                        const sessStartUnix = getCorrectedUnixTimestamp(sessStartStr);
+                        // 只有在收集區間開始之後，才進行繪線
+                        if (timeUnix >= sessStartUnix) {
+                            // 確立後用 high_line / low_line
+                            // 收集區間內 (未滿確立時間) 在歷史上也是顯示的
+                            orbHighData.push({
+                                time: timeUnix,
+                                value: orbSess.high_line
+                            });
+                            orbLowData.push({
+                                time: timeUnix,
+                                value: orbSess.low_line
+                            });
+                        }
+                    }
+                });
+
+                orbHighSeries.setData(orbHighData);
+                orbLowSeries.setData(orbLowData);
+            }
+            
+            appendAlert("🎉 歷史多時區指標與 ORB 區間加載成功，圖表就緒！", "success");
+        }
+
+        // Process incoming candle and ORB data
+        function processTickData(data) {
+            const candles = data.candles;
+            const orb = data.orb;
+            
+            chartKeys.forEach(key => {
+                const c = candles[key];
+                if (!c) return;
+                
+                const timeUnix = getCorrectedUnixTimestamp(c.time);
+                const newCandle = {
+                    time: timeUnix,
+                    open: c.open,
+                    high: c.high,
+                    low: c.low,
+                    close: c.close,
+                    volume: c.volume
+                };
+                
+                seriesList[key].update(newCandle);
+                
+                // Update header price
+                document.getElementById(`price-lbl-${key}`).textContent = 
+                    `O: ${c.open} | H: ${c.high} | L: ${c.low} | C: ${c.close} | VOL: ${c.volume}`;
+                
+                // Manage local cache
+                let cache = candleDataCache[key];
+                const lastIdx = cache.findIndex(item => item.time === timeUnix);
+                if (lastIdx !== -1) {
+                    cache[lastIdx] = newCandle;
+                } else {
+                    cache.push(newCandle);
+                }
+                
+                if (cache.length > 500) cache.shift();
+            });
+
+            // 處理 1K ORB 行情倒數與動態劃線
+            if (orb && candles['1k']) {
+                const last1k = candles['1k'];
+                const timeUnix = getCorrectedUnixTimestamp(last1k.time);
+                const dt = new Date(last1k.time);
+
+                // 更新倒數 banner
+                const banner = document.getElementById('orb-banner');
+                if (orb.countdown_seconds > 0) {
+                    banner.style.display = 'flex';
+                    document.getElementById('countdown-secs').textContent = orb.countdown_seconds;
+                } else {
+                    banner.style.display = 'none';
+                }
+
+                // 獲取當前 K 棒所屬的 Session
+                const t = dt.getHours() * 60 + dt.getMinutes();
+                let sessStartStr = "";
+                let sessionType = "";
+                if (t >= 525 && t <= 825) {
+                    const sessDate = formatUnixToTaipeiString(timeUnix, 'date');
+                    sessStartStr = `${sessDate} 08:45:00`;
+                    sessionType = "day";
+                } else {
+                    let baseDateStr = formatUnixToTaipeiString(timeUnix, 'date');
+                    if (dt.getHours() < 5) {
+                        const prevDate = new Date(dt.getTime() - 24 * 60 * 60 * 1000);
+                        baseDateStr = formatUnixToTaipeiString(Math.floor(prevDate.getTime()/1000), 'date');
+                    }
+                    sessStartStr = `${baseDateStr} 15:00:00`;
+                    sessionType = "night";
+                }
+
+                const sessStartUnix = getCorrectedUnixTimestamp(sessStartStr);
+
+                // 動態描繪當前交易時段的 ORB 線
+                if (orb.high_line > 0 && orb.low_line > 0) {
+                    // 更新 lineStyle，確立前為虛線，確立後為實線
+                    const lineStyle = orb.is_established ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed;
+                    orbHighSeries.applyOptions({ lineStyle: lineStyle });
+                    orbLowSeries.applyOptions({ lineStyle: lineStyle });
+
+                    // 遍歷 cache 裡所有在這個 session start 之後的點，並補上區間線值
+                    const cache1k = candleDataCache['1k'];
+                    const highPoints = [];
+                    const lowPoints = [];
+
+                    // 我們先抓取舊的其他 session 的畫線數據
+                    const existingHigh = orbHighSeries.data() || [];
+                    const existingLow = orbLowSeries.data() || [];
+
+                    // 過濾掉當前 session 之後的舊畫點，以防重複
+                    const filteredHigh = existingHigh.filter(pt => pt.time < sessStartUnix);
+                    const filteredLow = existingLow.filter(pt => pt.time < sessStartUnix);
+
+                    cache1k.forEach(item => {
+                        if (item.time >= sessStartUnix) {
+                            filteredHigh.push({
+                                time: item.time,
+                                value: orb.high_line
+                            });
+                            filteredLow.push({
+                                time: item.time,
+                                value: orb.low_line
+                            });
+                        }
+                    });
+
+                    orbHighSeries.setData(filteredHigh);
+                    orbLowSeries.setData(filteredLow);
+                }
+
+                // 模擬部位價格觸及 SL/TP 自動平倉
+                if (currentPosition.active) {
+                    const price1k = last1k.close;
+                    const high1k = last1k.high;
+                    const low1k = last1k.low;
+                    
+                    let isFlat = false;
+                    let exitPrice = 0.0;
+                    let exitReason = "";
+
+                    if (currentPosition.side === 'Long') {
+                        if (low1k <= currentPosition.sl) {
+                            isFlat = true;
+                            exitPrice = currentPosition.sl;
+                            exitReason = "SL (止損觸及)";
+                        } else if (high1k >= currentPosition.tp) {
+                            isFlat = true;
+                            exitPrice = currentPosition.tp;
+                            exitReason = "TP (止盈觸及)";
+                        }
+                    } else if (currentPosition.side === 'Short') {
+                        if (high1k >= currentPosition.sl) {
+                            isFlat = true;
+                            exitPrice = currentPosition.sl;
+                            exitReason = "SL (止損觸及)";
+                        } else if (low1k <= currentPosition.tp) {
+                            isFlat = true;
+                            exitPrice = currentPosition.tp;
+                            exitReason = "TP (止盈觸及)";
+                        }
+                    }
+
+                    // 強制平倉檢測：時段即將結束時
+                    if (!isFlat) {
+                        const h = dt.getHours();
+                        const m = dt.getMinutes();
+                        if (sessionType === 'day' && h === 13 && m >= 44) {
+                            isFlat = true;
+                            exitPrice = price1k;
+                            exitReason = "日盤收盤強制平倉";
+                        } else if (sessionType === 'night' && h === 4 && m >= 59) {
+                            isFlat = true;
+                            exitPrice = price1k;
+                            exitReason = "夜盤收盤強制平倉";
+                        }
+                    }
+
+                    if (isFlat) {
+                        executeExit(exitPrice, exitReason, last1k.time);
+                    } else {
+                        // 滾動更新浮動損益
+                        const diffPoints = currentPosition.side === 'Long' ? (price1k - currentPosition.entryPrice) : (currentPosition.entryPrice - price1k);
+                        const pnl = diffPoints * currentPosition.lots * 50; // 小台指 1 點 50 元
+                        const pnlEl = document.getElementById('pos-pnl');
+                        pnlEl.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} 元 (${diffPoints.toFixed(1)} 點)`;
+                        pnlEl.className = `pos-val ${pnl >= 0 ? 'profit' : 'loss'}`;
+                    }
+                }
+
+                // 偵測突破，彈出警示視窗
+                // 每個 session (如 2026-06-15 08:45:00) 最多只能交易一次
+                if (!currentPosition.active && lastSessionTraded !== sessStartStr && orb.breakout_status !== 0 && orb.is_established) {
+                    // 確保沒有彈出中的 activeTrigger，且當前突破符合過濾
+                    if (!activeTrigger) {
+                        const side = orb.breakout_status === 1 ? 'Long' : 'Short';
+                        
+                        // 計算建議的 SL / TP (止損設在突破 K 棒的低點/高點，盈虧比 2.0 倍)
+                        // 突破K棒的極值可直接用最新 1K K棒的 low / high
+                        const entryPrice = last1k.close;
+                        let sl = 0.0;
+                        if (side === 'Long') {
+                            sl = last1k.low - 2; // 給點 buffer
+                        } else {
+                            sl = last1k.high + 2;
+                        }
+                        
+                        const risk = Math.abs(entryPrice - sl);
+                        // R-R 2.0 倍
+                        const tp = side === 'Long' ? (entryPrice + risk * 2.0) : (entryPrice - risk * 2.0);
+
+                        activeTrigger = {
+                            side: side,
+                            entryPrice: entryPrice,
+                            sl: Math.round(sl),
+                            tp: Math.round(tp),
+                            sessionKey: sessStartStr,
+                            time: last1k.time
+                        };
+
+                        // 顯示對話框
+                        document.getElementById('diag-dir').textContent = side === 'Long' ? '📈 多頭突破 (Buy)' : '📉 空頭突破 (Sell)';
+                        document.getElementById('diag-dir').style.color = side === 'Long' ? 'var(--neon-cyan)' : 'var(--neon-pink)';
+                        document.getElementById('diag-price').textContent = entryPrice;
+                        document.getElementById('diag-sl').textContent = activeTrigger.sl + ' 點';
+                        document.getElementById('diag-tp').textContent = activeTrigger.tp + ' 點';
+                        document.getElementById('alert-dialog').style.display = 'flex';
+
+                        appendAlert(`⚠️ 偵測到 ORB 開盤區間突破！方向: ${side}，最新價: ${entryPrice}。`, 'gold', last1k.time);
+                    }
+                }
+            }
+        }
+
+        // Apply ORB parameters dynamically through WS
+        window.applyORBParams = function() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("WebSocket 未連線，無法更新參數。");
+                return;
+            }
+
+            const probeMins = parseInt(document.getElementById('orb-probe-minutes').value);
+            const breakoutTicks = parseInt(document.getElementById('orb-breakout-ticks').value);
+            const mom = parseFloat(document.getElementById('momentum-threshold').value);
+            const vol = parseFloat(document.getElementById('vol-spike-ratio').value);
+
+            ws.send(JSON.stringify({
+                action: "update_orb_params",
+                params: {
+                    orb_probe_minutes: probeMins,
+                    orb_breakout_ticks: breakoutTicks,
+                    momentum_threshold: mom,
+                    vol_spike_ratio: vol
+                }
+            }));
+
+            appendAlert(`⚙️ 已送出更新 ORB 參數設定：收集 ${probeMins}分 | Ticks ${breakoutTicks} | 門檻 ${mom} | 量比 ${vol}。`, 'info');
+        }
+
+        // Dialog actions
+        window.dialogAccept = function() {
+            if (!activeTrigger) return;
+            
+            // 執行進場
+            currentPosition = {
+                active: true,
+                side: activeTrigger.side,
+                entryPrice: activeTrigger.entryPrice,
+                lots: 1,
+                sl: activeTrigger.sl,
+                tp: activeTrigger.tp,
+                entryTime: activeTrigger.time
+            };
+
+            lastSessionTraded = activeTrigger.sessionKey;
+
+            // 更新 UI
+            document.getElementById('pos-side').textContent = currentPosition.side === 'Long' ? '🟢 多單 (Long)' : '🔴 空單 (Short)';
+            document.getElementById('pos-side').className = `pos-val ${currentPosition.side === 'Long' ? 'long' : 'short'}`;
+            document.getElementById('pos-avg-price').textContent = currentPosition.entryPrice;
+            document.getElementById('pos-lots').textContent = currentPosition.lots + ' 口';
+            document.getElementById('pos-sl').textContent = currentPosition.sl + ' 點';
+            document.getElementById('pos-tp').textContent = currentPosition.tp + ' 點';
+            document.getElementById('pos-pnl').textContent = '0 元';
+            document.getElementById('pos-pnl').className = 'pos-val';
+            document.getElementById('btn-market-exit').disabled = false;
+
+            // 在 1K 圖表上繪製 Entry, SL, TP 水平線
+            const series = seriesList['1k'];
+            
+            const entryLine = series.createPriceLine({
+                price: currentPosition.entryPrice,
+                color: '#9ca3af',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'ENTRY'
+            });
+
+            const slLine = series.createPriceLine({
+                price: currentPosition.sl,
+                color: '#ef4444',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                axisLabelVisible: true,
+                title: 'SL'
+            });
+
+            const tpLine = series.createPriceLine({
+                price: currentPosition.tp,
+                color: '#10b981',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                axisLabelVisible: true,
+                title: 'TP'
+            });
+
+            activePositionLines.push(entryLine, slLine, tpLine);
+
+            appendAlert(`🚀 模擬交易已進場！方向: ${currentPosition.side} | 均價: ${currentPosition.entryPrice} | 止損: ${currentPosition.sl} | 止盈: ${currentPosition.tp}`, 'success', currentPosition.entryTime);
+
+            // 關閉對話框
+            document.getElementById('alert-dialog').style.display = 'none';
+            activeTrigger = null;
+        }
+
+        window.dialogIgnore = function() {
+            document.getElementById('alert-dialog').style.display = 'none';
+            activeTrigger = null;
+            appendAlert('已忽略突破警示。', 'info');
+        }
+
+        // Market Exit position
+        window.marketExit = function() {
+            if (!currentPosition.active) return;
+            const lastCandle = candleDataCache['1k'][candleDataCache['1k'].length - 1];
+            const exitPrice = lastCandle ? lastCandle.close : currentPosition.entryPrice;
+            executeExit(exitPrice, "手動市價平倉", lastCandle ? formatUnixToTaipeiString(lastCandle.time, 'datetime') : new Date().toLocaleString());
+        }
+
+        // Execute exit and log to table
+        function executeExit(exitPrice, reason, exitTime) {
+            if (!currentPosition.active) return;
+
+            const diffPoints = currentPosition.side === 'Long' ? (exitPrice - currentPosition.entryPrice) : (currentPosition.entryPrice - exitPrice);
+            const netPnl = diffPoints * currentPosition.lots * 50;
+
+            // 寫入日誌表格
+            const tbody = document.getElementById('trade-log-body');
+            const row = document.createElement('tr');
+            
+            let profitClass = netPnl >= 0 ? 'success' : 'danger';
+            
+            row.innerHTML = `
+                <td>${currentPosition.entryTime}</td>
+                <td>${exitTime}</td>
+                <td style="color: ${currentPosition.side === 'Long' ? 'var(--neon-cyan)' : 'var(--neon-pink)'}; font-weight:bold;">${currentPosition.side === 'Long' ? '多頭' : '空頭'}</td>
+                <td>${currentPosition.entryPrice}</td>
+                <td>${exitPrice}</td>
+                <td>${currentPosition.sl} / ${currentPosition.tp}</td>
+                <td class="alert-msg ${profitClass}" style="font-weight:bold;">${netPnl >= 0 ? '+' : ''}${netPnl.toLocaleString()}</td>
+                <td>${reason}</td>
+            `;
+
+            tbody.appendChild(row);
+
+            // 清除圖表上的部位線
+            const series = seriesList['1k'];
+            activePositionLines.forEach(line => series.removePriceLine(line));
+            activePositionLines = [];
+
+            appendAlert(`🏁 模擬交易已平倉。原因: ${reason} | 出場價: ${exitPrice} | 盈虧: ${netPnl.toLocaleString()} 元 (${diffPoints.toFixed(1)} 點)`, netPnl >= 0 ? 'success' : 'danger', exitTime);
+
+            // 重置 Position
+            currentPosition = {
+                active: false,
+                side: null,
+                entryPrice: 0.0,
+                lots: 1,
+                sl: 0.0,
+                tp: 0.0,
+                entryTime: null
+            };
+
+            // 重置 UI
+            document.getElementById('pos-side').textContent = '無持倉';
+            document.getElementById('pos-side').className = 'pos-val';
+            document.getElementById('pos-avg-price').textContent = '--';
+            document.getElementById('pos-lots').textContent = '--';
+            document.getElementById('pos-sl').textContent = '--';
+            document.getElementById('pos-tp').textContent = '--';
+            document.getElementById('pos-pnl').textContent = '--';
+            document.getElementById('pos-pnl').className = 'pos-val';
+            document.getElementById('btn-market-exit').disabled = true;
+        }
+
+        // Switch modes
+        window.switchMode = function(mode) {
+            if (isReplaying || isSimulating || isRealStreaming) {
+                alert("請先停止當前運作的行情重播或看盤監控，再進行模式切換！");
+                return;
+            }
+            
+            activeMode = mode;
+            
+            document.getElementById('btn-mode-replay').classList.remove('active');
+            document.getElementById('btn-mode-live').classList.remove('active');
+            
+            document.getElementById('replay-controls').style.display = 'none';
+            document.getElementById('live-controls').style.display = 'none';
+            
+            if (mode === 'replay') {
+                document.getElementById('btn-mode-replay').classList.add('active');
+                document.getElementById('replay-controls').style.display = 'flex';
+                appendAlert('已切換至「歷史行情重播模式」。', 'info');
+            } else {
+                document.getElementById('btn-mode-live').classList.add('active');
+                document.getElementById('live-controls').style.display = 'flex';
+                appendAlert('已切換至「模擬實時看盤模式」。', 'info');
+            }
+            
+            clearCharts();
+        }
+
+        // Clear all charts and reset lists
+        function clearCharts() {
+            chartKeys.forEach(key => {
+                candleDataCache[key] = [];
+                seriesList[key].setData([]);
+                document.getElementById(`price-lbl-${key}`).textContent = '--';
+            });
+            orbHighSeries.setData([]);
+            orbLowSeries.setData([]);
+            
+            // 清理可能殘留的部位線
+            const series = seriesList['1k'];
+            activePositionLines.forEach(line => series.removePriceLine(line));
+            activePositionLines = [];
+
+            // 重設交易限制與部位
+            lastSessionTraded = null;
+            currentPosition.active = false;
+            document.getElementById('pos-side').textContent = '無持倉';
+            document.getElementById('pos-side').className = 'pos-val';
+            document.getElementById('pos-avg-price').textContent = '--';
+            document.getElementById('pos-lots').textContent = '--';
+            document.getElementById('pos-sl').textContent = '--';
+            document.getElementById('pos-tp').textContent = '--';
+            document.getElementById('pos-pnl').textContent = '--';
+            document.getElementById('pos-pnl').className = 'pos-val';
+            document.getElementById('btn-market-exit').disabled = true;
+            
+            document.getElementById('orb-banner').style.display = 'none';
+        }
+
+        // Replay controls
+        window.controlPlay = function() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("WebSocket 未連線，請稍候重試。");
+                return;
+            }
+            
+            const date = document.getElementById('replay-date').value;
+            const speed = parseFloat(document.getElementById('replay-speed').value);
+            
+            clearCharts();
+            
+            ws.send(JSON.stringify({
+                action: "start_replay",
+                date: date,
+                speed: speed
+            }));
+            
+            isReplaying = true;
+            document.getElementById('btn-play').disabled = true;
+            document.getElementById('btn-play').textContent = '⏳ 重播中...';
+            document.getElementById('btn-stop').disabled = false;
+            document.getElementById('replay-date').disabled = true;
+            document.getElementById('replay-speed').disabled = true;
+        }
+
+        window.controlStop = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: "stop_replay" }));
+            }
+            
+            isReplaying = false;
+            document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-play').textContent = '🚀 啟動行情重播';
+            document.getElementById('btn-stop').disabled = true;
+            document.getElementById('replay-date').disabled = false;
+            document.getElementById('replay-speed').disabled = false;
+            
+            appendAlert('重播任務已主動終止。', 'danger');
+        }
+
+        // Simulated Live controls
+        window.controlLiveStart = function() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("WebSocket 未連線，請稍候重試。");
+                return;
+            }
+            
+            clearCharts();
+            
+            ws.send(JSON.stringify({ action: "start_sim_live" }));
+            
+            isSimulating = true;
+            document.getElementById('btn-play-live').disabled = true;
+            document.getElementById('btn-play-live').textContent = '⏳ 實時模擬中...';
+            document.getElementById('btn-play-real-live').disabled = true;
+            document.getElementById('btn-stop-live').disabled = false;
+        }
+
+        window.controlRealLiveStart = function() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("WebSocket 未連線，請稍候重試。");
+                return;
+            }
+            
+            clearCharts();
+            
+            ws.send(JSON.stringify({ action: "start_real_live" }));
+            
+            isRealStreaming = true;
+            document.getElementById('btn-play-live').disabled = true;
+            document.getElementById('btn-play-real-live').disabled = true;
+            document.getElementById('btn-play-real-live').textContent = '🟢 實盤傳輸中...';
+            document.getElementById('btn-stop-live').disabled = false;
+        }
+
+        window.controlLiveStop = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: "stop_replay" }));
+            }
+            
+            isSimulating = false;
+            isRealStreaming = false;
+            
+            document.getElementById('btn-play-live').disabled = false;
+            document.getElementById('btn-play-live').textContent = '🚀 啟動模擬看盤';
+            document.getElementById('btn-play-real-live').disabled = false;
+            document.getElementById('btn-play-real-live').textContent = '🟢 啟動 Shioaji 實盤';
+            document.getElementById('btn-stop-live').disabled = true;
+            
+            appendAlert('行情接收已主動停止。', 'danger');
+        }
+
+        // Add dynamic notification alerts to alert wall
+        function appendAlert(message, type = 'info', rawTime = null) {
+            const wall = document.getElementById('alert-wall');
+            let displayTime = new Date().toTimeString().split(' ')[0]; // 預設本地時間
+            let sessionPrefix = "";
+            
+            if (rawTime) {
+                const parts = rawTime.split(' ');
+                if (parts.length >= 2) {
+                    displayTime = parts[1]; // 使用台北 K 線時間
+                }
+                sessionPrefix = getTaiwanSessionLabel(rawTime);
+            }
+            
+            let sessionHtml = "";
+            if (sessionPrefix === "[日盤]") {
+                sessionHtml = `<span class="session-tag day">${sessionPrefix}</span>`;
+            } else if (sessionPrefix === "[夜盤]") {
+                sessionHtml = `<span class="session-tag night">${sessionPrefix}</span>`;
+            }
+            
+            const line = document.createElement('div');
+            line.className = 'alert-line';
+            line.innerHTML = `
+                <span class="alert-time">[${displayTime}]</span>
+                ${sessionHtml}
+                <span class="alert-msg ${type}">${message}</span>
+            `;
+            
+            wall.appendChild(line);
+            wall.scrollTop = wall.scrollHeight;
+        }
+
+        // App Init
+        window.onload = () => {
+            initCharts();
+            connectWS();
+        };
+    </script>
+</body>
+</html>

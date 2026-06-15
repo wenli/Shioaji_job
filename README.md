@@ -1,6 +1,6 @@
-# Futures Data Downloader & SMC Backtest Pro
+# Futures Data Downloader & SMC/ORB Backtest Pro
 
-自動化下載 Shioaji 歷史期貨 K 棒資料，自動排程對齊聚合為多週期結構，提供磨砂玻璃 (Glassmorphic) 風格的一站式 Web 控制面盤，並整合 **SMC 多時區實時交易看盤終端**，支援高精度雙時區 (MTF) SMC 策略量化回測與二維參數最佳化掃描。
+自動化下載 Shioaji 歷史期貨 K 棒資料，自動排程對齊聚合為多週期結構，提供磨砂玻璃 (Glassmorphic) 風格的一站式 Web 控制面盤，整合 **SMC 實時看盤終端** 與 **ORB 多時區實時交易終端**，支援高精度雙時區 (MTF) SMC 策略回測、開盤區間突破 (ORB) 策略回測、多進程參數最佳化掃描與零風險模擬交易 (Paper Trading)。
 
 ---
 
@@ -14,24 +14,35 @@
 ### 2. 📊 雙時區 SMC 策略量化回測 (防止未來偏差)
 * **無未來偏差對齊**：5K (HTF) 大週期訊號在時間對齊時，向後 shift 一根 5K（即移至收盤時間，並採用 `merge_asof`），才傳遞給 1K (LTF) 的進場時間線，徹底消除「偷看大週期未來價格」的舞弊。
 * **實盤手續費與稅金摩擦**：小台指 (MTX) 每筆雙邊收取 **NT$ 40 固定手續費**，大台指 (TX) 每筆雙邊收取 **NT$ 100 固定手續費**，並依進出場價格嚴格課徵 **0.002% 期交稅**。
-* **固定比例資金風控**：動態計算交易口數，使每筆交易曝險（進場點到 1K 結構止損點的點差）嚴格限制在總資金的自訂比例（如 1%）之內。
 * **主力交易策略支援**：
   * 🦄 **Unicorn Model (台指獨角獸)**：5K 流動性獵取後，1K 發生結構轉變 (CHoCH)，回測 1K 破壞塊與 FVG 共振帶進場。
-  * ⚡ **Silver Bullet (台指銀色子彈)**：在日盤剛開盤的黃金 1 小時 (09:00 - 10:00) 與夜盤美股開盤前後的黃金 1 小時 (21:30 - 22:30)，捕捉高流動性下的高勝率交易機會。
+  * ⚡ **Silver Bullet (台指銀色子彈)**：在日/夜盤黃金交易時段捕捉高流動性下的高勝率交易機會。
 
-### 3. ⚡ 一鍵二維參數最佳化掃描 (Unicorn Parameter Sweep)
-* 後端於數秒內對獨角獸策略進行 **13 組賺賠比 (RR: 1.2 ~ 3.6)** 與 **6 組最小止損限制 (Min SL: 15 ~ 40 點)** 的二維參數掃描，並於前端以發光高亮的互動式熱力矩陣圖直觀呈現策略的績效高原。
+### 3. 🎯 ORB 策略回測與多進程並行優化器 [NEW]
+* **開盤區間突破 (ORB) 回測核心**：
+  * 在 `tx_backtest.py` 中實現了獨立的 `ORBBacktestSimulator`。
+  * 精確計算日盤 (08:45) 與夜盤 (15:00) 的開盤收集區間高低點。
+  * 提供突破 Ticks Ticks 緩衝，並整合動能門檻 (`momentum_threshold`) 與 5K 滾動量增 (`vol_spike_ratio`) 過濾，大幅降低震盪盤洗盤風險。
+  * 突破 K 棒高低點動態止損 (SL)，結合賺賠比 (R-R 2.0 倍) 固定止盈 (TP)，每時段結束前強制平倉。
+* **多進程並行網格優化**：
+  * 使用 `concurrent.futures.ProcessPoolExecutor` 多進程並行搜尋最優 ORB 參數組合（收集分鐘、突破 Ticks、賺賠比等）。
+  * 根據「交易次數限制 (>=15次)」與「勝率 -> 獲利因子 -> 淨利」的多重指標排序演算法，快速抓出策略高原。
+  * 自動輸出 JSON 報告與 Markdown 優化摘要檔案至 `logs/backtest/` 目錄下。
 
-### 4. 📌 續流續傳與背景排程
-* 智慧查詢表格「最後一筆 `ts`」時間戳，僅抓取補足後續新生成的資料。
-* 整合 `APScheduler` 背景排程同步。
-
-### 5. 🦄 SMC MTF 實時交易看盤終端 (SMC MTF Live Trading Terminal) [NEW]
+### 4. 🦄 SMC MTF 實時交易看盤終端 (SMC MTF Live Trading Terminal)
 * **2x2 四宮格 TradingView 互動畫布**：Web 前端採用輕量圖表 `lightweight-charts` 同步呈現 1K, 5K, 15K, 60K 實時 K棒生長。
 * **Shioaji 實時串流行情 (Real-time Live Stream)**：工業級 `asyncio.Queue` 執行緒安全消費，實時與 SQLite 拼接歷史並重聚合，秒級廣播 2x2 圖表與動態 SMC 指標（OB 水平帶、Sweep 標記、CHoCH 虛線）。
-* **2 天歷史數據預載與 SMC 同步渲染**：圖表初次連線瞬間預載 2500 根 1K 歷史數據（約為 2 天完整交易日），並同步渲染歷史上的 OB/FVG 霓虹通道帶。
-* **全球台北時區 Asia/Taipei (UTC+8) 強強對齊**：雙層時區格式化強護甲，徹底阻絕海外瀏覽器時區偏移，不論身處何處看盤時間軸皆 100% 台北時間。
-* **日/夜盤台北時段精準識別**：動態識別 Tick 行情日夜盤時段，警報牆帶有 `[日盤]` (天藍) / `[夜盤]` (霓虹紫) 的亮麗標籤。
+* **全球台北時區 Asia/Taipei (UTC+8) 強強對齊**：雙層時區格式化強護甲，徹底阻絕海外瀏覽器時區偏移，不論何處看盤時間軸皆 100% 台北時間。
+
+### 5. ⚡ ORB 多時區實時交易終端 (ORB Real-time Trading Terminal) [NEW]
+* **60/40 比例科技感佈局**：左側 60% 寬度為 1K 主策略監控圖表，右側 40% 寬度上下平分放置 5K 與 15K 趨勢分析圖表。
+* **十字游標同步**：移動 1K 圖表上之游標，右側 5K/15K 的十字游標即時連動，輔助多時區結構分析。
+* **動態區間線繪製**：開盤收集期間以半透明虛線動態標記當前高低點，並於右上角顯示區間確立秒數倒數；確立後自動改為霓虹實線（青色為上界，粉色為下界）。
+* **零風險前端模擬交易 (Paper Trading)**：
+  * 突破時自動彈出「開盤突破警示對話框」，展示突破方向、建議進場價、止損（突破 K 棒極值）與 2.0 倍盈虧比止盈價。
+  * 一鍵進場後，在 1K 圖表上動態繪製 Entry (灰色)、SL (紅色)、TP (綠色) 價格防禦線。
+  * 60 FPS 動態更新持倉點數與金額盈虧（小台指 50 元/點），價格觸及 SL/TP 或收盤時自動平倉。
+  * 平倉明細與盈虧原因自動記錄到下方的歷史日誌表格。
 
 ---
 
@@ -71,20 +82,20 @@ python app/main.py
 
 * **量化回測與控制面盤**: `http://127.0.0.1:8000/`
 * **SMC 實時看盤交易終端**: `http://127.0.0.1:8000/live`
+* **ORB 多時區實時交易終端**: `http://127.0.0.1:8000/orb_terminal` [NEW]
 
 ---
 
 ## 📁 專案架構概覽
 
-* `app/main.py` - FastAPI 服務入口，設定靜態檔案伺服、數據狀態、手動同步，以及**實時看盤 WebSocket 雙模廣播推送與重播引擎**。
-* `tx_backtest.py` - **量化回測與指標核心模組**：SMC 雙時區訊號引擎 (`TaiwanFuturesSMCEngine`)、回測模擬器。
-* `download_futures_data.py` - 核心數據下載層：SQL 表格初始化、斷點補齊、Pandas Resample 聚合對齊。
-* `scheduler_manager.py` - 背景調度中心，管理 `APScheduler` 例行 cron 同步任務。
-* `frontend/dashboard.html` - 回測一體化前端面盤。
-* `frontend/live_terminal.html` - **SMC 實時看盤終端網頁**：磨砂玻璃暗黑霓虹風設計，整合 2x2 lightweight-charts 與 SMC 實時通知警報牆。
-* `scratch/test_shioaji_live.py` - Shioaji 即時行情串流 Mock 測試腳本。
-* `scratch/test_history_init.py` - 預載數據與指標 NaN 清洗 Mock 測試腳本。
-* `Shioaji.db` - SQLite 資料庫（儲存高精度 TXFR1 數據）。
+* `app/main.py` - FastAPI 服務入口，設定靜態檔案伺服、API 路由，以及**實時/重播 WebSocket 雙向推送與參數同步引擎**。
+* `tx_backtest.py` - **回測與計算核心**：包含 MTF SMC 訊號引擎 (`TaiwanFuturesSMCEngine`)、`SMCBacktestSimulator`、`ORBBacktestSimulator`、多進程網格優化器 (`run_orb_parameter_optimization`) 與實時 ORB 計算模組。
+* `download_futures_data.py` - 數據下載層：資料庫表格初始化、自動斷點續傳補齊、K 線 Resample 聚合對齊。
+* `scheduler_manager.py` - 背景調度排程，管理 `APScheduler` 定時同步任務。
+* `frontend/dashboard.html` - 回測一體化控制面盤。
+* `frontend/live_terminal.html` - **SMC 實時看盤終端**：2x2 輕量圖表及訊號警報牆。
+* `frontend/orb_terminal.html` - **ORB 實時交易終端 [NEW]**：60/40 游標同步圖表、開盤區間畫線與前端模擬交易中心。
+* `scripts/backtest/test_orb_calculator.py` - **ORB 實時計算單元測試腳本 [NEW]**：模擬 tick 行情並驗證核心計算邏輯。
 
 ---
 
@@ -94,11 +105,12 @@ python app/main.py
 | :--- | :--- | :--- |
 | `GET` | `/` | 渲染 Web 一體化回測 Dashboard UI |
 | `GET` | `/live` | 渲染 SMC 實時看盤交易終端網頁 UI |
+| `GET` | `/orb_terminal` | 渲染 ORB 多時區實時交易終端網頁 UI [NEW] |
 | `GET` | `/api/status` | 讀取 SQLite 整合狀況與 Shioaji 通訊狀況 |
 | `POST` | `/api/sync` | 背景手動異步觸發 Full-Sync 下載同步 |
 | `POST` | `/api/backtest` | 執行台指期雙時區 SMC 策略量化回測 |
 | `POST` | `/api/backtest/optimize` | 執行獨角獸策略的二維參數優化 |
-| `WS` | `/api/live/ws` | **實時看盤 WebSocket 管道**，支援行情重播、模擬實時與 Shioaji 真實實盤行情廣播 |
+| `POST` | `/api/backtest/orb` | 執行台指期開盤區間突破 (ORB) 策略回測 [NEW] |
+| `POST` | `/api/backtest/orb/optimize` | 執行並行多進程 ORB 網格最佳化優化 [NEW] |
+| `WS` | `/api/live/ws` | **實時看盤 WebSocket 管道**，支援行情重播、模擬實時、參數動態套用與 Shioaji 實時行情廣播 |
 | `GET` | `/api/logs` | 讀取日誌端點 |
-
----
