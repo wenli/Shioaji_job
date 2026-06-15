@@ -21,3 +21,6 @@ __pycache__/
 .gemini/
 .vscode/
 .idea/
+
+# Logs
+logs/
