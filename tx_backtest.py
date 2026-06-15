@@ -649,6 +649,478 @@ class SMCBacktestSimulator:
         
         return metrics, trades, equity_curve
 
+
+# ==============================================================================
+# 3. 台指期開盤區間突破回測模擬器 (TX_ORB_Backtester)
+# ==============================================================================
+class ORBBacktestSimulator:
+    """
+    台指期開盤區間突破 (ORB) 策略回測核心。
+    基於 1K 歷史數據。
+    """
+    def __init__(self, df_1k, start_capital=1000000.0, contract_type='MTX'):
+        self.df = df_1k.copy().sort_values('datetime').reset_index(drop=True)
+        self.start_capital = start_capital
+        self.contract_type = contract_type
+        
+        if contract_type == 'TX':
+            self.point_value = 200.0
+            self.fee_per_side = 50.0
+        else:
+            self.point_value = 50.0
+            self.fee_per_side = 20.0
+            
+        self.tax_rate = 0.00002
+        self.risk_pct = 0.01
+
+    def calculate_costs(self, entry_price, exit_price, lots):
+        total_fee = self.fee_per_side * 2 * lots
+        tax_entry = round(entry_price * self.point_value * self.tax_rate * lots)
+        tax_exit = round(exit_price * self.point_value * self.tax_rate * lots)
+        return total_fee + tax_entry + tax_exit
+
+    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both'):
+        capital = self.start_capital
+        equity_curve = [{'time': str(self.df.loc[0, 'datetime']) if len(self.df) > 0 else '', 'equity': capital}]
+        trades = []
+        
+        position = 0  # 0: 無持倉, 1: 多頭, -1: 空頭
+        entry_price = 0.0
+        entry_time = None
+        stop_loss = 0.0
+        take_profit = 0.0
+        lots = 0
+        entry_sess_start = None
+        
+        # 儲存已交易時段，防止重複進場
+        session_traded = set()
+        
+        # 開盤區間紀錄：{session_start: {'high': float, 'low': float, 'kbars_count': int}}
+        orb_ranges = {}
+        
+        # 滾動成交量紀錄 (用來計算前 5 根 K 棒平均成交量)
+        recent_volumes = []
+        
+        def get_session_start_time(dt, session_type):
+            if session_type == 'day':
+                return datetime.combine(dt.date(), datetime.strptime("08:45", "%H:%M").time())
+            else:
+                if dt.hour < 5:
+                    base_date = dt.date() - timedelta(days=1)
+                else:
+                    base_date = dt.date()
+                return datetime.combine(base_date, datetime.strptime("15:00", "%H:%M").time())
+
+        df_len = len(self.df)
+        if df_len == 0:
+            return {'total_trades': 0, 'win_rate': 0.0, 'profit_factor': 0.0, 'max_drawdown': 0.0, 'total_return': 0.0, 'net_profit': 0.0}, [], []
+
+        for i in range(df_len):
+            row = self.df.iloc[i]
+            t_cur = row['datetime']
+            c_cur = row['close']
+            h_cur = row['high']
+            l_cur = row['low']
+            o_cur = row['open']
+            v_cur = row['volume']
+            sess_type = row['session']
+            
+            # 維護滾動成交量列表
+            avg_vol = np.mean(recent_volumes) if len(recent_volumes) > 0 else v_cur
+            recent_volumes.append(v_cur)
+            if len(recent_volumes) > 5:
+                recent_volumes.pop(0)
+
+            # 過濾交易時段
+            if session_filter == 'day' and sess_type != 'day':
+                if position != 0:
+                    # 強制平倉
+                    gross_pnl = (c_cur - entry_price) * self.point_value * lots * position
+                    costs = self.calculate_costs(entry_price, c_cur, lots)
+                    net_pnl = gross_pnl - costs
+                    capital += net_pnl
+                    trades.append({
+                        'strategy': 'orb_strategy',
+                        'direction': 'Long' if position == 1 else 'Short',
+                        'entry_time': str(entry_time),
+                        'exit_time': str(t_cur),
+                        'entry_price': round(entry_price, 1),
+                        'exit_price': round(c_cur, 1),
+                        'stop_loss': round(stop_loss, 1),
+                        'take_profit': round(take_profit, 1),
+                        'lots': lots,
+                        'net_pnl': round(net_pnl, 1),
+                        'capital_after': round(capital, 1),
+                        'reason': "日盤外強制平倉",
+                        'entry_indicators': {},
+                        'exit_indicators': {'reason': "日盤外強制平倉", 'pnl_points': round((c_cur - entry_price) * position, 1)}
+                    })
+                    position = 0
+                    equity_curve.append({'time': str(t_cur), 'equity': round(capital, 1)})
+                continue
+            elif session_filter == 'night' and sess_type != 'night':
+                if position != 0:
+                    # 強制平倉
+                    gross_pnl = (c_cur - entry_price) * self.point_value * lots * position
+                    costs = self.calculate_costs(entry_price, c_cur, lots)
+                    net_pnl = gross_pnl - costs
+                    capital += net_pnl
+                    trades.append({
+                        'strategy': 'orb_strategy',
+                        'direction': 'Long' if position == 1 else 'Short',
+                        'entry_time': str(entry_time),
+                        'exit_time': str(t_cur),
+                        'entry_price': round(entry_price, 1),
+                        'exit_price': round(c_cur, 1),
+                        'stop_loss': round(stop_loss, 1),
+                        'take_profit': round(take_profit, 1),
+                        'lots': lots,
+                        'net_pnl': round(net_pnl, 1),
+                        'capital_after': round(capital, 1),
+                        'reason': "夜盤外強制平倉",
+                        'entry_indicators': {},
+                        'exit_indicators': {'reason': "夜盤外強制平倉", 'pnl_points': round((c_cur - entry_price) * position, 1)}
+                    })
+                    position = 0
+                    equity_curve.append({'time': str(t_cur), 'equity': round(capital, 1)})
+                continue
+
+            sess_start = get_session_start_time(t_cur, sess_type)
+            probe_end = sess_start + timedelta(minutes=orb_probe_minutes)
+
+            # A. 部位管理 (持倉中)
+            if position != 0:
+                triggered = False
+                exit_reason = ""
+                exit_price_actual = 0.0
+                
+                # 檢查止損與止盈
+                if position == 1:
+                    if l_cur <= stop_loss:
+                        triggered = True
+                        exit_price_actual = stop_loss
+                        exit_reason = "SL (止損)"
+                    elif h_cur >= take_profit:
+                        triggered = True
+                        exit_price_actual = take_profit
+                        exit_reason = "TP (止盈)"
+                elif position == -1:
+                    if h_cur >= stop_loss:
+                        triggered = True
+                        exit_price_actual = stop_loss
+                        exit_reason = "SL (止損)"
+                    elif l_cur <= take_profit:
+                        triggered = True
+                        exit_price_actual = take_profit
+                        exit_reason = "TP (止盈)"
+                
+                # 檢查是否為時段切換或最後一根K棒
+                if not triggered:
+                    is_last_kbar = (i == df_len - 1)
+                    is_session_change = False
+                    if i < df_len - 1:
+                        next_row = self.df.iloc[i + 1]
+                        if next_row['session'] != sess_type:
+                            is_session_change = True
+                    
+                    if is_session_change:
+                        triggered = True
+                        exit_price_actual = c_cur
+                        exit_reason = f"{'日盤' if sess_type == 'day' else '夜盤'}結束強制平倉"
+                    elif is_last_kbar:
+                        triggered = True
+                        exit_price_actual = c_cur
+                        exit_reason = "回測終點強制平倉"
+
+                if triggered:
+                    gross_pnl = (exit_price_actual - entry_price) * self.point_value * lots * position
+                    costs = self.calculate_costs(entry_price, exit_price_actual, lots)
+                    net_pnl = gross_pnl - costs
+                    capital += net_pnl
+                    
+                    trades.append({
+                        'strategy': 'orb_strategy',
+                        'direction': 'Long' if position == 1 else 'Short',
+                        'entry_time': str(entry_time),
+                        'exit_time': str(t_cur),
+                        'entry_price': round(entry_price, 1),
+                        'exit_price': round(exit_price_actual, 1),
+                        'stop_loss': round(stop_loss, 1),
+                        'take_profit': round(take_profit, 1),
+                        'lots': lots,
+                        'net_pnl': round(net_pnl, 1),
+                        'capital_after': round(capital, 1),
+                        'reason': exit_reason,
+                        'entry_indicators': {
+                            'orb_range': f"{round(orb_ranges[entry_sess_start]['low'], 1)} - {round(orb_ranges[entry_sess_start]['high'], 1)}" if entry_sess_start in orb_ranges else "N/A",
+                            'orb_probe': f"{orb_probe_minutes}m",
+                            'momentum': f"{round(abs(o_cur - c_cur)/o_cur, 6)} (門檻: {momentum_threshold})",
+                            'vol_ratio': f"{round(v_cur / avg_vol, 2)}x (門檻: {vol_spike_ratio}x)"
+                        },
+                        'exit_indicators': {
+                            'reason': exit_reason,
+                            'pnl_points': round((exit_price_actual - entry_price) * position, 1)
+                        }
+                    })
+                    
+                    position = 0
+                    equity_curve.append({'time': str(t_cur), 'equity': round(capital, 1)})
+                continue
+
+            # B. 區間建立與突破進場 (無部位)
+            if sess_start not in orb_ranges:
+                orb_ranges[sess_start] = {'high': -999999.0, 'low': 999999.0, 'kbars_count': 0}
+            
+            # 在開盤收集時間內，持續更新 ORB 區間
+            if sess_start <= t_cur <= probe_end:
+                orb_ranges[sess_start]['high'] = max(orb_ranges[sess_start]['high'], h_cur)
+                orb_ranges[sess_start]['low'] = min(orb_ranges[sess_start]['low'], l_cur)
+                orb_ranges[sess_start]['kbars_count'] += 1
+                continue
+            
+            # 超過收集時間後，進行突破監控
+            if t_cur > probe_end:
+                # 確保該時段尚未交易過，且區間有效
+                if sess_start not in session_traded:
+                    rng = orb_ranges[sess_start]
+                    if rng['kbars_count'] > 0:
+                        # 檢查突破
+                        is_buy = c_cur > rng['high'] + orb_breakout_ticks
+                        is_sell = c_cur < rng['low'] - orb_breakout_ticks
+                        
+                        if is_buy or is_sell:
+                            # 檢查動能與成交量過濾條件
+                            mom = abs(c_cur - o_cur) / o_cur
+                            is_mom_valid = mom >= momentum_threshold
+                            is_vol_valid = v_cur >= avg_vol * vol_spike_ratio
+                            
+                            if is_mom_valid and is_vol_valid:
+                                if is_buy:
+                                    position = 1
+                                    entry_price = c_cur
+                                    entry_time = t_cur
+                                    
+                                    # 止損設為突破K棒低點
+                                    sl_candidate = l_cur
+                                    risk_points = max(20.0, entry_price - sl_candidate)  # 最少 20 點保護
+                                    stop_loss = entry_price - risk_points
+                                    take_profit = entry_price + risk_points * rr_ratio
+                                    
+                                    lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
+                                    if lots_to_trade >= 1:
+                                        lots = lots_to_trade
+                                        session_traded.add(sess_start)
+                                        entry_sess_start = sess_start
+                                    else:
+                                        position = 0
+                                        
+                                elif is_sell:
+                                    position = -1
+                                    entry_price = c_cur
+                                    entry_time = t_cur
+                                    
+                                    # 止損設為突破K棒高點
+                                    sl_candidate = h_cur
+                                    risk_points = max(20.0, sl_candidate - entry_price)
+                                    stop_loss = entry_price + risk_points
+                                    take_profit = entry_price - risk_points * rr_ratio
+                                    
+                                    lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
+                                    if lots_to_trade >= 1:
+                                        lots = lots_to_trade
+                                        session_traded.add(sess_start)
+                                        entry_sess_start = sess_start
+                                    else:
+                                        position = 0
+
+        # C. 回測統計指標計算
+        net_profit = capital - self.start_capital
+        total_return = (net_profit / self.start_capital) * 100.0
+        
+        if len(trades) > 0:
+            wins = [t for t in trades if t['net_pnl'] > 0]
+            losses = [t for t in trades if t['net_pnl'] <= 0]
+            win_rate = (len(wins) / len(trades)) * 100.0
+            
+            total_win = sum(t['net_pnl'] for t in wins)
+            total_loss = abs(sum(t['net_pnl'] for t in losses))
+            profit_factor = total_win / total_loss if total_loss > 0 else total_win
+            
+            # 最大回撤
+            equity_series = [t['capital_after'] for t in trades]
+            peak = self.start_capital
+            max_dd = 0.0
+            for eq in equity_series:
+                if eq > peak:
+                    peak = eq
+                dd = (peak - eq) / peak * 100.0
+                if dd > max_dd:
+                    max_dd = dd
+        else:
+            win_rate = 0.0
+            profit_factor = 0.0
+            max_dd = 0.0
+            
+        metrics = {
+            'total_trades': len(trades),
+            'win_rate': round(win_rate, 2),
+            'profit_factor': round(profit_factor, 2),
+            'max_drawdown': round(max_dd, 2),
+            'total_return': round(total_return, 2),
+            'net_profit': round(net_profit, 2)
+        }
+        
+        return metrics, trades, equity_curve
+
+
+def _orb_backtest_worker(args):
+    """
+    用於多進程並行回測的頂層 Worker 函數。
+    """
+    df_1k, contract_type, start_capital, risk_pct, session_filter, probe, breakout, mom, vol = args
+    simulator = ORBBacktestSimulator(df_1k, start_capital=start_capital, contract_type=contract_type)
+    simulator.risk_pct = risk_pct
+    
+    metrics, _, _ = simulator.run_strategy(
+        orb_probe_minutes=probe,
+        orb_breakout_ticks=breakout,
+        momentum_threshold=mom,
+        vol_spike_ratio=vol,
+        rr_ratio=2.0,
+        session_filter=session_filter
+    )
+    
+    return {
+        'params': {
+            'ORB_PROBE_MINUTES': probe,
+            'ORB_BREAKOUT_TICKS': breakout,
+            'MOMENTUM_THRESHOLD': mom,
+            'VOL_SPIKE_RATIO': vol
+        },
+        'summary': {
+            'totalTrades': metrics['total_trades'],
+            'winRate': round(metrics['win_rate'] / 100.0, 4),
+            'winTrades': int(round(metrics['total_trades'] * (metrics['win_rate']/100.0))),
+            'lossTrades': metrics['total_trades'] - int(round(metrics['total_trades'] * (metrics['win_rate']/100.0))),
+            'profitFactor': metrics['profit_factor'],
+            'netPnL': round(metrics['net_profit'] / (50.0 if contract_type == 'MTX' else 200.0), 1)
+        }
+    }
+
+
+def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=1000000.0, risk_pct=0.01, session_filter='both'):
+    """
+    對 ORB 策略進行多進程參數網格搜尋。
+    """
+    import concurrent.futures
+    import multiprocessing
+    
+    orb_probe_range = [5, 10, 15, 20, 30]
+    orb_breakout_range = [3, 5, 8, 10]
+    momentum_range = [0.0002, 0.0003, 0.0005, 0.0007]
+    vol_spike_range = [1.0, 1.2, 1.5, 2.0]
+    
+    tasks = []
+    for probe in orb_probe_range:
+        for breakout in orb_breakout_range:
+            for mom in momentum_range:
+                for vol in vol_spike_range:
+                    tasks.append((
+                        df_1k, contract_type, start_capital, risk_pct, session_filter,
+                        probe, breakout, mom, vol
+                    ))
+                    
+    results = []
+    num_workers = max(1, multiprocessing.cpu_count() - 1)
+    print(f"\n[ORB優化] 啟動 {num_workers} 個子進程並行執行 {len(tasks)} 組參數組合...")
+    
+    # 在 Windows + Uvicorn 下，為了防止 Multiprocessing 的啟動問題，
+    # 這裡加入 try-except，如果 spawn 失敗就 fallback 到單線程或 ThreadPool 執行
+    try:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+            futures = {executor.submit(_orb_backtest_worker, t): t for t in tasks}
+            completed = 0
+            total = len(tasks)
+            for fut in concurrent.futures.as_completed(futures):
+                results.append(fut.result())
+                completed += 1
+                if completed % 40 == 0 or completed == total:
+                    print(f"進度: {completed}/{total} ({completed/total*100:.1f}%)")
+    except Exception as e:
+        print(f"[ORB優化] 多進程執行失敗 ({e})，切換至執行緒池執行...")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(_orb_backtest_worker, t): t for t in tasks}
+            completed = 0
+            total = len(tasks)
+            for fut in concurrent.futures.as_completed(futures):
+                results.append(fut.result())
+                completed += 1
+                if completed % 40 == 0 or completed == total:
+                    print(f"進度: {completed}/{total} ({completed/total*100:.1f}%)")
+                    
+    # A. 篩選與排序
+    filtered_results = [r for r in results if r['summary']['totalTrades'] >= 15]
+    filtered_results.sort(key=lambda x: (
+        -x['summary']['winRate'],
+        -x['summary']['profitFactor'],
+        -x['summary']['netPnL']
+    ))
+    
+    # B. 寫入報告檔案
+    log_dir = os.path.join(os.getcwd(), 'logs', 'backtest')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+        
+    import datetime as dt_module
+    timestamp = dt_module.datetime.now().strftime('%Y%m%d-%H%M%S')
+    
+    start_date_str = df_1k['datetime'].min().strftime('%Y-%m-%d') if len(df_1k) > 0 else 'N/A'
+    end_date_str = df_1k['datetime'].max().strftime('%Y-%m-%d') if len(df_1k) > 0 else 'N/A'
+    
+    json_path = os.path.join(log_dir, f"orb-optimizer-report-{timestamp}.json")
+    md_path = os.path.join(log_dir, f"orb-optimizer-report-{timestamp}.md")
+    
+    report_data = {
+        'metadata': {
+            'contract_type': contract_type,
+            'start_date': start_date_str,
+            'end_date': end_date_str,
+            'session_filter': session_filter,
+            'execution_time': dt_module.datetime.now().isoformat()
+        },
+        'results': results,
+        'filtered_results': filtered_results
+    }
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(report_data, f, ensure_ascii=False, indent=2)
+        
+    md_content = f"# 🏆 ORB 開盤區間突破 - 最佳參數優化報告 ({contract_type})\n\n"
+    md_content += f"* **執行時間**：{dt_module.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+    md_content += f"* **數據範圍**：{start_date_str} 至 {end_date_str}\n"
+    md_content += f"* **交易時段過濾**：{session_filter}\n"
+    md_content += f"* **過濾條件**：總交易次數必須 >= 15 次\n\n"
+    md_content += f"## 🥇 前 10 名最佳參數組合 (依勝率排序)\n\n"
+    md_content += f"| 排名 | 勝率 | 總交易數 | 獲利 / 虧損 | 獲利因子 | 淨損益 (點) | 參數設定 (ORB分 / 緩衝點 / 動能門檻 / 量比) |\n"
+    md_content += f"|:---:|:---:|:---:|:---:|:---:|:---:|:---|\n"
+    
+    top10 = filtered_results[:10]
+    for idx, item in enumerate(top10):
+        p = item['params']
+        s = item['summary']
+        win_rate_pct = f"{s['winRate'] * 100:.2f}%"
+        net_pnl_str = f"+{s['netPnL']}" if s['netPnL'] > 0 else f"{s['netPnL']}"
+        md_content += f"| {idx + 1} | **{win_rate_pct}** | {s['totalTrades']} | {s['winTrades']} / {s['lossTrades']} | {s['profitFactor']:.2f} | {net_pnl_str} | `ORB: {p['ORB_PROBE_MINUTES']}m` \\| `Buffer: {p['ORB_BREAKOUT_TICKS']}` \\| `Mom: {p['MOMENTUM_THRESHOLD']}` \\| `Vol: {p['VOL_SPIKE_RATIO']}x` |\n"
+        
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write(md_content)
+        
+    print(f"\n[ORB優化] 報告已成功輸出：")
+    print(f"1. 摘要 Markdown 報告: {md_path}")
+    print(f"2. 完整明細 JSON 檔: {json_path}")
+    
+    return filtered_results, json_path, md_path
+
+
 # ==============================================================================
 # 4. 儀表板 HTML 模板與替換器 (避免 f-string 花括號衝突)
 # ==============================================================================
