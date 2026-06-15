@@ -130,6 +130,27 @@ class OptimizeRequest(BaseModel):
     contract_type: str = "MTX"
     session_filter: str = "both"
 
+class ORBOptimizeRequest(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    start_capital: float = 1000000.0
+    risk_pct: float = 0.01
+    contract_type: str = "MTX"
+    session_filter: str = "both"
+
+class ORBBacktestRequest(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    start_capital: float = 1000000.0
+    risk_pct: float = 0.01
+    contract_type: str = "MTX"
+    session_filter: str = "both"
+    orb_probe_minutes: int = 15
+    orb_breakout_ticks: int = 5
+    momentum_threshold: float = 0.0003
+    vol_spike_ratio: float = 1.2
+    rr_ratio: float = 2.0
+
 @app.post("/api/backtest")
 def run_backtest(req: BacktestRequest):
     try:
@@ -248,6 +269,101 @@ def run_backtest_optimize(req: OptimizeRequest):
     except Exception as e:
         logger.exception("參數優化執行失敗")
         raise HTTPException(status_code=500, detail=f"優化失敗: {str(e)}")
+
+@app.post("/api/backtest/orb/optimize")
+def run_orb_optimize(req: ORBOptimizeRequest):
+    try:
+        # 1. 載入資料 (只需要 1K 資料)
+        df_1k, _ = tb.load_real_data(
+            code='TXFR1', 
+            start_date=req.start_date, 
+            end_date=req.end_date
+        )
+        if df_1k.empty:
+            raise HTTPException(status_code=400, detail="所選日期區間無行情數據。")
+            
+        # 2. 執行並行優化
+        opt_results, json_path, md_path = tb.run_orb_parameter_optimization(
+            df_1k,
+            contract_type=req.contract_type,
+            start_capital=req.start_capital,
+            risk_pct=req.risk_pct,
+            session_filter=req.session_filter
+        )
+        
+        # 取出最佳組合
+        best_combination = opt_results[0] if len(opt_results) > 0 else None
+        
+        return {
+            "success": True,
+            "best_combination": best_combination,
+            "report_paths": {
+                "json": json_path,
+                "markdown": md_path
+            },
+            "opt_results": opt_results
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("ORB 參數優化執行失敗")
+        raise HTTPException(status_code=500, detail=f"優化失敗: {str(e)}")
+
+@app.post("/api/backtest/orb")
+def run_orb_backtest(req: ORBBacktestRequest):
+    try:
+        # 1. 載入資料
+        df_1k, _ = tb.load_real_data(
+            code='TXFR1', 
+            start_date=req.start_date, 
+            end_date=req.end_date
+        )
+        if df_1k.empty:
+            raise HTTPException(status_code=400, detail="所選日期區間無行情數據。")
+            
+        # 2. 初始化模擬器
+        simulator = tb.ORBBacktestSimulator(
+            df_1k,
+            start_capital=req.start_capital,
+            contract_type=req.contract_type
+        )
+        simulator.risk_pct = req.risk_pct
+        
+        # 3. 執行策略
+        metrics, trades, curve = simulator.run_strategy(
+            orb_probe_minutes=req.orb_probe_minutes,
+            orb_breakout_ticks=req.orb_breakout_ticks,
+            momentum_threshold=req.momentum_threshold,
+            vol_spike_ratio=req.vol_spike_ratio,
+            rr_ratio=req.rr_ratio,
+            session_filter=req.session_filter
+        )
+        
+        # 格式化
+        formatted_curve = [{"time": str(pt["time"]), "equity": pt["equity"]} for pt in curve]
+        formatted_trades = []
+        for t in trades:
+            t_copy = t.copy()
+            t_copy["entry_time"] = str(t_copy["entry_time"])
+            t_copy["exit_time"] = str(t_copy["exit_time"])
+            formatted_trades.append(t_copy)
+            
+        return {
+            "success": True,
+            "metrics": metrics,
+            "trades": formatted_trades,
+            "curve": formatted_curve,
+            "data_info": {
+                "1k_rows": len(df_1k),
+                "start_time": str(df_1k['datetime'].min()),
+                "end_time": str(df_1k['datetime'].max())
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("ORB 回測執行失敗")
+        raise HTTPException(status_code=500, detail=f"回測失敗: {str(e)}")
 
 @app.get("/api/backtest/trade_chart")
 def get_trade_chart(entry_time: str, exit_time: str):
