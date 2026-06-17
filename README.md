@@ -3,7 +3,7 @@
 自動化下載 Shioaji 歷史期貨 K 棒資料，自動排程對齊聚合為多週期結構，提供磨砂玻璃 (Glassmorphic) 風格的一站式 Web 控制面盤，整合 **SMC 實時看盤終端** 與 **ORB 多時區實時交易終端**，支援高精度雙時區 (MTF) SMC 策略回測、開盤區間突破 (ORB) 策略回測、多進程參數最佳化掃描與零風險模擬交易 (Paper Trading)。
 
 > [!IMPORTANT]
-> 📖 **[最新！系統使用與操作手冊 (user_guide.md)](file:///C:/Users/wenli/.gemini/antigravity-ide/brain/fefe79c9-758e-43a4-a3ce-c2ef48f51cf5/user_guide.md)** 已正式發布！手冊內嵌了自動化瀏覽器擷取的系統實時運行畫面截圖，並詳細解說了策略配置與關鍵優化風控參數，建議優先點擊閱讀。
+> 📖 **[最新！系統使用與操作手冊 (user_guide.md)](docs/user_guide.md)** 已正式發布！手冊內嵌了自動化瀏覽器擷取的系統實時運行畫面截圖，並詳細解說了策略配置與關鍵優化風控參數，建議優先點擊閱讀。
 
 ---
 
@@ -100,12 +100,14 @@ python app/main.py
 ## 📖 使用與操作手冊
 
 我們為您準備了圖文並茂的詳細系統說明，其中包含實際運行畫面截圖與關鍵風控優化機制說明：
-👉 **[系統使用與操作手冊 (user_guide.md)](file:///C:/Users/wenli/.gemini/antigravity-ide/brain/fefe79c9-758e-43a4-a3ce-c2ef48f51cf5/user_guide.md)**
+👉 **[系統使用與操作手冊 (user_guide.md)](docs/user_guide.md)**
 
 ---
 
 ## 📁 專案架構概覽
 
+* `docs/user_guide.md` - **系統使用與操作手冊 [NEW]**：內嵌主控制面板、SMC 與 ORB 實時終端運行截圖之詳細圖文操作教學。
+* `docs/images/` - **系統實時運行截圖目錄 [NEW]**。
 * `app/main.py` - FastAPI 服務入口，設定靜態檔案伺服、API 路由，以及**實時/重播 WebSocket 雙向推送與參數同步引擎**。
 * `tx_backtest.py` - **回測與計算核心**：包含 MTF SMC 訊號引擎 (`TaiwanFuturesSMCEngine`)、`SMCBacktestSimulator`、`ORBBacktestSimulator`、多進程網格優化器 (`run_orb_parameter_optimization`) 與實時 ORB 計算模組。
 * `download_futures_data.py` - 數據下載層：資料庫表格初始化、自動斷點續傳補齊、K 線 Resample 聚合對齊。
