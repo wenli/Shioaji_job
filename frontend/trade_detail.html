@@ -361,23 +361,23 @@
             <div class="detail-card entry">
                 <h4 class="card-title">📥 進場策略指標狀態</h4>
                 <div class="row">
-                    <span class="lbl">大週期 (5K) Sweep 流流性獵取</span>
+                    <span class="lbl" id="lbl-htf-sweep">大週期 (5K) Sweep 流流性獵取</span>
                     <span class="val" id="ind-htf-sweep" style="color: var(--neon-cyan); font-weight: bold;">--</span>
                 </div>
                 <div class="row">
-                    <span class="lbl">5K OB (破壞塊) 支撐阻力價格區間</span>
+                    <span class="lbl" id="lbl-ob-zone">5K OB (破壞塊) 支撐阻力價格區間</span>
                     <span class="val" id="ind-ob-zone">--</span>
                 </div>
                 <div class="row">
-                    <span class="lbl">小週期 (1K) CHoCH 突破確認</span>
+                    <span class="lbl" id="lbl-choch">小週期 (1K) CHoCH 突破確認</span>
                     <span class="val" id="ind-choch" style="color: var(--neon-cyan);">--</span>
                 </div>
                 <div class="row">
-                    <span class="lbl">1K FVG 共振進場價格帶</span>
+                    <span class="lbl" id="lbl-fvg-zone">1K FVG 共振進場價格帶</span>
                     <span class="val" id="ind-fvg-zone">--</span>
                 </div>
                 <div class="row">
-                    <span class="lbl">黃金交易時段 (Killzone)</span>
+                    <span class="lbl" id="lbl-killzone">黃金交易時段 (Killzone)</span>
                     <span class="val" id="ind-killzone">--</span>
                 </div>
             </div>
@@ -1025,23 +1025,23 @@
                         const botLine = series.createPriceLine({
                             price: obBot,
                             color: obColor,
-                            lineWidth: 1.5,
-                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            lineWidth: 2,
+                            lineStyle: LightweightCharts.LineStyle.Solid,
                             axisLabelVisible: true,
                             title: '5K OB 下界'
                         });
                         const topLine = series.createPriceLine({
                             price: obTop,
                             color: obColor,
-                            lineWidth: 1.5,
-                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            lineWidth: 2,
+                            lineStyle: LightweightCharts.LineStyle.Solid,
                             axisLabelVisible: true,
                             title: '5K OB 上界'
                         });
                         activePriceLines['5K'].push(botLine, topLine);
 
-                        // 填充 5K OB 半透明區塊
-                        const obFillColor = isLong ? 'rgba(34, 211, 238, 0.15)' : 'rgba(244, 63, 94, 0.15)';
+                        // 填充 5K OB 半透明區塊 (加深透明度為 0.30)
+                        const obFillColor = isLong ? 'rgba(34, 211, 238, 0.3)' : 'rgba(244, 63, 94, 0.3)';
                         seriesList['ob5K'].applyOptions({
                             upColor: obFillColor,
                             downColor: obFillColor
@@ -1172,7 +1172,7 @@
         // Fetch local charts from API
         async function fetchAndDrawCharts() {
             try {
-                const url = `/api/backtest/trade_chart?entry_time=${encodeURIComponent(tradeData.entry_time)}&exit_time=${encodeURIComponent(tradeData.exit_time)}`;
+                const url = `/api/backtest/trade_chart?entry_time=${encodeURIComponent(tradeData.entry_time)}&exit_time=${encodeURIComponent(tradeData.exit_time)}&pre_bars=120&post_bars=60`;
                 const res = await fetch(url);
                 const data = await res.json();
                 

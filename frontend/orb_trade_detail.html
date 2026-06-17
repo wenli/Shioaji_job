@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORB 開盤區間突破策略訊號深度覆盤面盤</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- TradingView Lightweight Charts Local Static -->
+    <script src="/static/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root {
+            --bg-color: #060402;
+            --glass-bg: rgba(26, 20, 10, 0.45);
+            --border-color: rgba(251, 191, 36, 0.09);
+            --accent-color: #fbbf24;
+            --text-color: #fefcf5;
+            
+            /* Neon Colors */
+            --neon-gold: #fbbf24;
+            --neon-orange: #f59e0b;
+            --neon-cyan: #38bdf8;
+            
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #060402 0%, #171105 50%, #060402 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(251, 191, 36, 0.03);
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-title h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--neon-gold), var(--neon-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            text-shadow: 0 0 25px rgba(251, 191, 36, 0.2);
+        }
+
+        .btn-close {
+            background: rgba(251, 191, 36, 0.05);
+            border: 1px solid var(--border-color);
+            color: #d97706;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-close:hover {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--neon-gold);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.25);
+        }
+
+        /* Detail Panel Grid */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .detail-card.entry {
+            border-top: 4px solid var(--neon-gold);
+            box-shadow: inset 0 5px 15px rgba(251, 191, 36, 0.02);
+        }
+
+        .detail-card.exit {
+            border-top: 4px solid var(--neon-orange);
+            box-shadow: inset 0 5px 15px rgba(245, 158, 11, 0.02);
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.05);
+            padding-bottom: 8px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .row:last-child {
+            margin-bottom: 0;
+        }
+
+        .lbl {
+            color: #a1a1aa;
+        }
+
+        .val {
+            font-weight: 500;
+            color: #f4f4f5;
+        }
+
+        /* Charts Layout (單一 1K 寬幅圖表) */
+        .charts-container {
+            width: 100%;
+        }
+
+        .chart-box {
+            background: rgba(6, 4, 2, 0.9);
+            border: 1px solid rgba(251, 191, 36, 0.05);
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+            position: relative;
+            width: 100%;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-badge {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.78rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--neon-gold);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 460px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #080604;
+            border: 1px solid rgba(251, 191, 36, 0.02);
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(6, 4, 2, 0.92);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            transition: opacity 0.3s ease;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-gold);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* TradingView Style Global Toolbar */
+        .tv-toolbar {
+            background: rgba(26, 20, 10, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .tv-toolbar-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #d97706;
+            font-weight: bold;
+            border-right: 1px solid var(--border-color);
+            padding-right: 15px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            color: #a1a1aa;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn:hover {
+            border-color: var(--neon-gold);
+            color: #fff;
+        }
+
+        .toggle-btn.active {
+            background: rgba(251, 191, 36, 0.12);
+            border-color: var(--neon-gold);
+            color: var(--neon-gold);
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
+        }
+
+        .error-message {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid rgba(248, 81, 73, 0.2);
+            color: var(--danger-color);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>🎯 ORB 開盤突破策略深度覆盤</h1>
+            </div>
+            <button class="btn-close" onclick="window.close()">關閉視窗</button>
+        </header>
+
+        <div id="error-alert" class="error-message"></div>
+
+        <!-- 數據指標卡片 (SMC指標已完全被移除，改為ORB專屬) -->
+        <div class="detail-grid">
+            <!-- 進場指標 -->
+            <div class="detail-card entry">
+                <div class="card-title">🟩 ORB 突破進場指標</div>
+                <div class="row">
+                    <span class="lbl">開盤區間範圍 (ORB Range)</span>
+                    <span class="val" id="ind-orb-range">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">開盤收集時間 (ORB Probe)</span>
+                    <span class="val" id="ind-orb-probe">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">突破動能率 (Momentum)</span>
+                    <span class="val" id="ind-orb-momentum">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">突破量增倍數 (Volume Ratio)</span>
+                    <span class="val" id="ind-orb-vol-ratio">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">交易時段 (Session)</span>
+                    <span class="val" id="ind-orb-session">--</span>
+                </div>
+            </div>
+
+            <!-- 出場指標 -->
+            <div class="detail-card exit">
+                <div class="card-title">🟧 ORB 交易出場指標</div>
+                <div class="row">
+                    <span class="lbl">出場原因 (Exit Reason)</span>
+                    <span class="val" id="ind-exit-reason" style="font-weight: bold;">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">進場均價 / 出場均價</span>
+                    <span class="val" id="ind-prices">-- / --</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">合約 / 交易口數</span>
+                    <span class="val" id="ind-lots">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">盈虧點數差 (Pips Diff)</span>
+                    <span class="val" id="ind-pnl-points">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">估算摩擦成本 (手續費/稅)</span>
+                    <span class="val" id="ind-costs">--</span>
+                </div>
+                <div class="row">
+                    <span class="lbl">實際交易淨盈虧 (Net PNL)</span>
+                    <span class="val" id="ind-net-pnl" style="font-weight: bold; font-size: 1.05rem;">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TradingView 控制面板 -->
+        <div class="tv-toolbar">
+            <span class="tv-toolbar-label">圖表開關控制</span>
+            <button id="btn-orbrange" class="toggle-btn active" onclick="toggleIndicator('OrbRange')">
+                🟩 ORB 開盤區間線
+            </button>
+            <button id="btn-rr" class="toggle-btn active" onclick="toggleIndicator('RR')">
+                🟥 賺賠比 (R-R) 盈虧區
+            </button>
+        </div>
+
+        <!-- 單一 1K 寬幅圖表 -->
+        <div class="charts-container">
+            <div class="chart-box">
+                <div class="chart-header">
+                    <span class="chart-badge">1-Minute (1K) 突破時段明細</span>
+                </div>
+                <div class="canvas-wrapper">
+                    <div id="loading-1k" class="loading-overlay">
+                        ⚡正在對接資料庫與 Shioaji API，繪製 1K K線與 ORB 區間...
+                    </div>
+                    <div id="chart1K" style="width: 100%; height: 100%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let tradeData = null;
+        const charts = {};
+        const seriesList = {};
+        const activePriceLines = { '1K': [] };
+
+        let chartState = {
+            showOrbRange: true,
+            showRR: true,
+            data1K: []
+        };
+
+        // On window load
+        window.onload = function() {
+            try {
+                const raw = localStorage.getItem('active_trade_detail');
+                if (!raw) {
+                    showError("未在瀏覽器緩存中偵測到 active_trade_detail，請返回主儀表板並點擊成交流水帳列重試。");
+                    return;
+                }
+                tradeData = JSON.parse(raw);
+                
+                // 渲染指標卡片
+                renderScorecards();
+                
+                // 載入 K 線並繪製圖表
+                fetchAndDrawCharts();
+            } catch (err) {
+                showError("初始化覆盤數據失敗: " + err.message);
+            }
+        };
+
+        function showError(msg) {
+            const el = document.getElementById('error-alert');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        // Render scorecard metrics
+        function renderScorecards() {
+            const entryInd = tradeData.entry_indicators || {};
+            const exit = tradeData.exit_indicators || {};
+            const isLong = tradeData.direction === 'Long';
+            const isWin = tradeData.net_pnl > 0;
+
+            // Entry metrics
+            document.getElementById('ind-orb-range').textContent = entryInd.orb_range || 'N/A';
+            document.getElementById('ind-orb-probe').textContent = entryInd.orb_probe || 'N/A';
+            document.getElementById('ind-orb-momentum').textContent = entryInd.momentum || 'N/A';
+            document.getElementById('ind-orb-vol-ratio').textContent = entryInd.vol_ratio || 'N/A';
+            document.getElementById('ind-orb-session').textContent = entryInd.session || 'N/A';
+
+            // Exit metrics
+            document.getElementById('ind-exit-reason').textContent = tradeData.reason || '強制收盤平倉';
+            document.getElementById('ind-exit-reason').style.color = isWin ? 'var(--success-color)' : 'var(--danger-color)';
+            document.getElementById('ind-prices').textContent = `${tradeData.entry_price} ➔ ${tradeData.exit_price}`;
+            
+            // Lots
+            const contractText = tradeData.contract_type || 'MTX';
+            document.getElementById('ind-lots').textContent = `${contractText} / ${tradeData.lots} 口`;
+
+            // PNL Points
+            const pnlPoints = exit.pnl_points !== undefined ? exit.pnl_points : (tradeData.exit_price - tradeData.entry_price) * (isLong ? 1 : -1);
+            const ptsEl = document.getElementById('ind-pnl-points');
+            ptsEl.textContent = `${pnlPoints >= 0 ? '+' : ''}${pnlPoints.toFixed(1)} 點`;
+            ptsEl.style.color = pnlPoints >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+
+            // Costs & Net PNL
+            // 點值：台指期 (TX) 一點 200元，小台指 (MTX) 一點 50元
+            const isTX = contractText === 'TX';
+            const pointValue = isTX ? 200.0 : 50.0;
+            const grossPnl = pnlPoints * pointValue * tradeData.lots;
+            const cost = grossPnl - tradeData.net_pnl;
+            document.getElementById('ind-costs').textContent = `NT$ ${Math.round(cost).toLocaleString()} 元`;
+
+            const pnlEl = document.getElementById('ind-net-pnl');
+            pnlEl.textContent = `NT$ ${Math.round(tradeData.net_pnl).toLocaleString()} 元`;
+            pnlEl.style.color = isWin ? 'var(--success-color)' : 'var(--danger-color)';
+        }
+
+        // [標準轉換] 將台北 Naive 時間字串，轉換為該時刻在台北 (UTC+8) 的標準 Unix 時間戳（秒）
+        function getCorrectedUnixTimestamp(timeStr) {
+            if (!timeStr) return 0;
+            const dt = new Date(timeStr.replace(' ', 'T') + '+08:00');
+            return Math.floor(dt.getTime() / 1000);
+        }
+
+        // [時區格式化] 使用瀏覽器原生時區引擎，強行將 Unix 標準時間戳（秒）轉為台北標準時間顯示
+        function formatUnixToTaipeiString(unixSecs, formatType = 'time') {
+            const dt = new Date(unixSecs * 1000);
+            const formatter = new Intl.DateTimeFormat('zh-TW', {
+                timeZone: 'Asia/Taipei',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            const parts = formatter.formatToParts(dt);
+            const partMap = {};
+            parts.forEach(p => partMap[p.type] = p.value);
+            
+            if (formatType === 'date') {
+                return `${partMap.year}-${partMap.month}-${partMap.day}`;
+            } else if (formatType === 'time') {
+                return `${partMap.hour}:${partMap.minute}`;
+            } else {
+                return `${partMap.year}-${partMap.month}-${partMap.day} ${partMap.hour}:${partMap.minute}`;
+            }
+        }
+
+        // Toggle state handler
+        window.toggleIndicator = function(type) {
+            const prop = 'show' + type;
+            chartState[prop] = !chartState[prop];
+            
+            const btn = document.getElementById('btn-' + type.toLowerCase());
+            if (chartState[prop]) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            renderPriceLinesAndMarkers();
+        };
+
+        // Initialize TradingView style chart
+        function initCharts() {
+            const chartOptions = {
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#d4d4d8',
+                    fontSize: 10,
+                    fontFamily: 'JetBrains Mono, Roboto, Inter, sans-serif'
+                },
+                grid: {
+                    vertLines: { color: 'rgba(251, 191, 36, 0.02)' },
+                    horzLines: { color: 'rgba(251, 191, 36, 0.02)' }
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: {
+                        color: 'rgba(251, 191, 36, 0.25)',
+                        width: 1,
+                        style: 3
+                    },
+                    horzLine: {
+                        color: 'rgba(251, 191, 36, 0.25)',
+                        width: 1,
+                        style: 3
+                    }
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(251, 191, 36, 0.08)',
+                    visible: true,
+                    autoScale: true
+                },
+                timeScale: {
+                    borderColor: 'rgba(251, 191, 36, 0.08)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    tickMarkFormatter: (time, tickMarkType, locale) => {
+                        const taipeiStr = formatUnixToTaipeiString(time, 'datetime');
+                        const parts = taipeiStr.split(' ');
+                        const datePart = parts[0];
+                        const timePart = parts[1];
+                        
+                        if (tickMarkType === 0) {
+                            return datePart.split('-')[0]; // 年
+                        } else if (tickMarkType === 1 || tickMarkType === 2) {
+                            const subParts = datePart.split('-');
+                            return `${subParts[1]}-${subParts[2]}`; // MM-DD
+                        } else {
+                            return timePart; // HH:MM
+                        }
+                    }
+                },
+                localization: {
+                    timeFormatter: (timestamp) => {
+                        return formatUnixToTaipeiString(timestamp, 'datetime');
+                    }
+                }
+            };
+
+            const container1K = document.getElementById('chart1K');
+            const chart1K = LightweightCharts.createChart(container1K, chartOptions);
+            const series1K = chart1K.addCandlestickSeries({
+                upColor: '#3fb950',
+                downColor: '#f85149',
+                borderUpColor: '#3fb950',
+                borderDownColor: '#f85149',
+                wickUpColor: '#3fb950',
+                wickDownColor: '#f85149'
+            });
+            charts['1K'] = chart1K;
+            seriesList['1K'] = series1K;
+
+            // R-R 持倉輔助區間
+            const tpZoneSeries1K = chart1K.addCandlestickSeries({
+                upColor: 'rgba(63, 185, 80, 0.15)', // 半透明綠色
+                downColor: 'rgba(63, 185, 80, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            const slZoneSeries1K = chart1K.addCandlestickSeries({
+                upColor: 'rgba(248, 81, 73, 0.15)', // 半透明紅色
+                downColor: 'rgba(248, 81, 73, 0.15)',
+                borderVisible: false,
+                wickVisible: false,
+                lastValueVisible: false,
+                priceLineVisible: false,
+            });
+            seriesList['tp1K'] = tpZoneSeries1K;
+            seriesList['sl1K'] = slZoneSeries1K;
+
+            // Resize Observer for dynamic responsive sizing
+            const ro = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    if (chart1K && entry.contentRect) {
+                        chart1K.resize(entry.contentRect.width, entry.contentRect.height);
+                    }
+                }
+            });
+            ro.observe(container1K);
+        }
+
+        // Draw Lines and Markers
+        function renderPriceLinesAndMarkers() {
+            const isLong = tradeData.direction === 'Long';
+            const entryInd = tradeData.entry_indicators || {};
+            const series = seriesList['1K'];
+
+            if (!series || chartState.data1K.length === 0) return;
+
+            // 1. 清空舊的 PriceLines
+            activePriceLines['1K'].forEach(pl => series.removePriceLine(pl));
+            activePriceLines['1K'] = [];
+
+            // 2. 準備進出場時間戳
+            const entryUnix = getCorrectedUnixTimestamp(tradeData.entry_time);
+            const exitUnix = getCorrectedUnixTimestamp(tradeData.exit_time);
+
+            const markers = [];
+
+            // 📥 1K 進場標記
+            const has1KEntry = chartState.data1K.some(k => getCorrectedUnixTimestamp(k.ts) === entryUnix);
+            if (has1KEntry) {
+                markers.push({
+                    time: entryUnix,
+                    position: isLong ? 'belowBar' : 'aboveBar',
+                    color: isLong ? '#3fb950' : '#f85149',
+                    shape: isLong ? 'arrowUp' : 'arrowDown',
+                    text: `📥 入場: ${tradeData.entry_price}`
+                });
+            }
+
+            // 📤 1K 出場標記
+            const has1KExit = chartState.data1K.some(k => getCorrectedUnixTimestamp(k.ts) === exitUnix);
+            if (has1KExit) {
+                markers.push({
+                    time: exitUnix,
+                    position: 'aboveBar',
+                    color: '#f4f4f5',
+                    shape: 'circle',
+                    text: `📤 出場: ${tradeData.exit_price}`
+                });
+            }
+            series.setMarkers(markers);
+
+            // 3. ORB 開盤區間水平虛線
+            if (chartState.showOrbRange && entryInd.orb_range && entryInd.orb_range !== 'N/A') {
+                const rangeParts = entryInd.orb_range.split(' - ');
+                if (rangeParts.length >= 2) {
+                    const orbLow = parseFloat(rangeParts[0]);
+                    const orbHigh = parseFloat(rangeParts[1]);
+
+                    if (!isNaN(orbLow) && !isNaN(orbHigh)) {
+                        const lowLine = series.createPriceLine({
+                            price: orbLow,
+                            color: '#fbbf24',
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: `ORB Low: ${orbLow}`
+                        });
+                        const highLine = series.createPriceLine({
+                            price: orbHigh,
+                            color: '#fbbf24',
+                            lineWidth: 1.5,
+                            lineStyle: LightweightCharts.LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: `ORB High: ${orbHigh}`
+                        });
+                        activePriceLines['1K'].push(lowLine, highLine);
+                    }
+                }
+            }
+
+            // 4. R-R (Risk-Reward) 盈虧水平線及半透明覆蓋
+            if (chartState.showRR) {
+                const tpPrice = tradeData.take_profit;
+                const slPrice = tradeData.stop_loss;
+                const entryPrice = tradeData.entry_price;
+
+                if (tpPrice) {
+                    const tpLine = series.createPriceLine({
+                        price: tpPrice,
+                        color: '#3fb950',
+                        lineWidth: 1.5,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `🎯 TP 止盈: ${Math.round(tpPrice)}`
+                    });
+                    activePriceLines['1K'].push(tpLine);
+                }
+
+                if (slPrice) {
+                    const slLine = series.createPriceLine({
+                        price: slPrice,
+                        color: '#f85149',
+                        lineWidth: 1.5,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `🛑 SL 止損: ${Math.round(slPrice)}`
+                    });
+                    activePriceLines['1K'].push(slLine);
+                }
+
+                const entryPriceLine = series.createPriceLine({
+                    price: entryPrice,
+                    color: '#38bdf8',
+                    lineWidth: 1,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                    axisLabelVisible: true,
+                    title: `📥 入場均價: ${entryPrice}`
+                });
+                activePriceLines['1K'].push(entryPriceLine);
+
+                // 填充持倉半透明區塊 (從 entryUnix 至 exitUnix)
+                const filteredBars = chartState.data1K.filter(k => {
+                    const t = getCorrectedUnixTimestamp(k.ts);
+                    return t >= entryUnix && t <= exitUnix;
+                });
+
+                if (tpPrice && slPrice) {
+                    const tpZoneData = filteredBars.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: entryPrice,
+                        close: tpPrice,
+                        high: Math.max(entryPrice, tpPrice),
+                        low: Math.min(entryPrice, tpPrice)
+                    }));
+                    seriesList['tp1K'].setData(tpZoneData);
+
+                    const slZoneData = filteredBars.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: entryPrice,
+                        close: slPrice,
+                        high: Math.max(entryPrice, slPrice),
+                        low: Math.min(entryPrice, slPrice)
+                    }));
+                    seriesList['sl1K'].setData(slZoneData);
+                }
+            } else {
+                seriesList['tp1K'].setData([]);
+                seriesList['sl1K'].setData([]);
+            }
+        }
+
+        // Fetch charts from API
+        async function fetchAndDrawCharts() {
+            try {
+                const url = `/api/backtest/trade_chart?entry_time=${encodeURIComponent(tradeData.entry_time)}&exit_time=${encodeURIComponent(tradeData.exit_time)}&pre_bars=120&post_bars=60`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.success) {
+                    chartState.data1K = data.kbars_1k || [];
+                    
+                    // 初始化圖表
+                    initCharts();
+                    
+                    // 填充 K線 數據
+                    const formatted1K = chartState.data1K.map(k => ({
+                        time: getCorrectedUnixTimestamp(k.ts),
+                        open: k.open,
+                        high: k.high,
+                        low: k.low,
+                        close: k.close
+                    }));
+                    
+                    seriesList['1K'].setData(formatted1K);
+                    
+                    // 繪製指標
+                    renderPriceLinesAndMarkers();
+                    
+                    // 適配縮放
+                    charts['1K'].timeScale().fitContent();
+
+                    // 隱藏 Loading 遮罩
+                    const loader = document.getElementById('loading-1k');
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 300);
+                } else {
+                    document.getElementById('loading-1k').textContent = 'K線圖數據載入失敗。';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading-1k').textContent = `載入圖表異常: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

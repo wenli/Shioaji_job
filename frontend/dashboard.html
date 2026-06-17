@@ -801,6 +801,7 @@
         <div class="tabs">
             <div class="tab active" data-tab="downloader">⚡ 數據下載與同步</div>
             <div class="tab" data-tab="backtest">📊 SMC 策略回測</div>
+            <div class="tab" data-tab="orb-backtest">🎯 ORB 策略回測</div>
         </div>
 
         <!-- ==================== TAB 1: DOWNLOADER ==================== -->
@@ -861,6 +862,15 @@
                                 <option value="0.01" selected>1.0% 風險金</option>
                                 <option value="0.02">2.0% 風險金</option>
                                 <option value="0.03">3.0% 風險金</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>止盈目標模式 (TP Mode)</label>
+                            <select id="param-tp-mode">
+                                <option value="rr" selected>固定賺賠比 (Risk-to-Reward Ratio)</option>
+                                <option value="opposite_ob">反向 Order Block (Opposite OB)</option>
+                                <option value="opposite_swing">反向 5K Swing High/Low (流動性)</option>
                             </select>
                         </div>
 
@@ -964,6 +974,165 @@
                             </tr>
                         </thead>
                         <tbody id="trades-tbody">
+                            <!-- Dynamic Table Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 3: ORB BACKTEST ==================== -->
+        <div id="orb-backtest-tab" class="tab-content">
+            <div class="backtest-layout">
+                <!-- Sidebar Form Controls -->
+                <div class="backtest-sidebar">
+                    <div class="backtest-form" style="border-color: rgba(251, 191, 36, 0.15);">
+                        <h3 class="form-title" style="color: var(--neon-gold);">⚙️ ORB 回測參數自訂</h3>
+                        
+                        <div class="form-group">
+                            <label>開始日期 (Start Date)</label>
+                            <input type="date" id="orb-param-start-date">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>結束日期 (End Date)</label>
+                            <input type="date" id="orb-param-end-date">
+                        </div>
+
+                        <div class="form-group">
+                            <label>合約類型與點值 (Contract Spec)</label>
+                            <select id="orb-param-contract-type">
+                                <option value="MTX" selected>小台指 (MTX) | 50元/點 | 雙邊手續費40元</option>
+                                <option value="TX">大台指 (TX) | 200元/點 | 雙邊手續費100元</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>初始資金 (Initial Capital)</label>
+                            <input type="number" id="orb-param-capital" value="1000000" min="10000" step="50000">
+                        </div>
+
+                        <div class="form-group">
+                            <label>固定比例風控 (Risk Per Trade)</label>
+                            <select id="orb-param-risk-pct">
+                                <option value="0.005">0.5% 風險金</option>
+                                <option value="0.01" selected>1.0% 風險金</option>
+                                <option value="0.02">2.0% 風險金</option>
+                                <option value="0.03">3.0% 風險金</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>開盤區間分鐘 (ORB Probe Mins - 預設 15)</label>
+                            <input type="number" id="orb-param-probe-mins" value="15" min="1" max="60" step="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>突破加減 (ORB Breakout Ticks - 預設 5)</label>
+                            <input type="number" id="orb-param-breakout-ticks" value="5" min="0" max="30" step="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>動能門檻 (Momentum Threshold - 預設 0.0003)</label>
+                            <input type="number" id="orb-param-momentum-threshold" value="0.0003" min="0.0" max="0.005" step="0.0001">
+                        </div>
+
+                        <div class="form-group">
+                            <label>量增倍數 (Vol Spike Ratio - 預設 1.2)</label>
+                            <input type="number" id="orb-param-vol-spike-ratio" value="1.2" min="0.5" max="5.0" step="0.1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>賺賠比 (RR Ratio - 預設 2.0)</label>
+                            <input type="number" id="orb-param-rr" value="2.0" min="1.0" max="10.0" step="0.1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>ATR 週期 (ATR Period - 預設 14)</label>
+                            <input type="number" id="orb-param-atr-period" value="14" min="1" max="100" step="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>ATR 實體倍數 (ATR Multiplier - 預設 0.0)</label>
+                            <input type="number" id="orb-param-atr-multiplier" value="0.0" min="0.0" max="10.0" step="0.1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>交易時段選擇 (Session Filter)</label>
+                            <select id="orb-param-session-filter">
+                                <option value="both" selected>日夜盤全時段 (Both Sessions)</option>
+                                <option value="day">僅限日盤 (Day Session | 08:45-13:45)</option>
+                                <option value="night">僅限夜盤 (Night Session | 15:00-05:00)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px; margin-top: 5px;">
+                            <input type="checkbox" id="orb-param-force-min-lot" checked style="width: auto; margin-bottom: 0;">
+                            <label for="orb-param-force-min-lot" style="margin-bottom: 0; cursor: pointer; color: var(--neon-gold); font-weight: bold;">保底 1 口交易 (Min 1 Lot Fallback)</label>
+                        </div>
+
+                        <button class="btn btn-primary" id="btn-run-orb-backtest" style="margin-top: 10px; background: var(--neon-gold); color: #000; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.35);">
+                            <div class="spinner" id="spinner-orb-backtest"></div>
+                            <span id="btn-orb-backtest-text" style="color: #000; font-weight: bold;">🚀 執行 ORB 策略回測</span>
+                        </button>
+
+                        <button class="btn btn-secondary" id="btn-run-orb-optimize" style="border-color: rgba(251, 191, 36, 0.3); color: var(--neon-gold); margin-top: 10px;">
+                            <div class="spinner" id="spinner-orb-optimize"></div>
+                            <span id="btn-orb-optimize-text">⚡ ORB 四維參數最佳化</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Results & Charts Area -->
+                <div class="backtest-results">
+                    <!-- Scorecards Grid -->
+                    <div class="scorecard-row" id="orb-backtest-scorecards">
+                        <!-- Default placeholder -->
+                        <div class="result-card" style="grid-column: 1 / -1; text-align: center; color: #8b949e; padding: 30px; border-left: 4px solid var(--neon-gold);">
+                            💡 請在左側設定參數後點擊「執行 ORB 策略回測」，將即時自 Shioaji.db 載入高精度日夜盤 1K 行情計算！
+                        </div>
+                    </div>
+
+                    <!-- Chart Canvas -->
+                    <div class="chart-wrapper">
+                        <canvas id="orbEquityChart"></canvas>
+                    </div>
+
+                    <!-- Optimization Matrix Wrapper -->
+                    <div class="opt-matrix-wrapper" id="orb-opt-matrix-wrapper" style="border-color: rgba(251, 191, 36, 0.15);">
+                        <h3 class="form-title" style="margin-bottom: 5px; color: var(--neon-gold);">🎯 ORB 策略四維最優化參數清單 (Top 20)</h3>
+                        <p style="color: #8b949e; font-size: 0.85rem;">列出淨損益最高的 20 組參數組合。橫軸各參數代表對應數值；損益以小台指點數計算。</p>
+                        <div class="opt-matrix-container">
+                            <table class="opt-matrix-table" id="orb-opt-matrix-table">
+                                <!-- Dynamic Optimization Table -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trades History Detail -->
+            <div class="table-section" id="orb-trades-section" style="display: none; border-color: rgba(251, 191, 36, 0.15);">
+                <div class="table-header">
+                    <h3 class="form-title">📋 ORB 策略成交明細流水帳 <span style="font-size:0.75rem; color:var(--neon-gold); font-weight:normal;">(💡 點擊任一筆交易列，可彈出檢視進出場指標與K線走勢覆盤細節)</span></h3>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>策略</th>
+                                <th>方向</th>
+                                <th>進場時間</th>
+                                <th>出場時間</th>
+                                <th>進場點</th>
+                                <th>出場點</th>
+                                <th>止損/止盈</th>
+                                <th>口數</th>
+                                <th>淨盈虧 (NT$)</th>
+                                <th>出場原因</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orb-trades-tbody">
                             <!-- Dynamic Table Rows -->
                         </tbody>
                     </table>
@@ -1089,13 +1258,49 @@
         const paramRisk = document.getElementById('param-risk-pct');
         const paramRr = document.getElementById('param-rr');
         const paramMinSl = document.getElementById('param-min-sl');
+        const paramTpMode = document.getElementById('param-tp-mode');
         const stratUnicorn = document.getElementById('strat-unicorn');
         const stratSilver = document.getElementById('strat-silver');
 
+        // ORB Backtest DOMs
+        const btnOrbBacktest = document.getElementById('btn-run-orb-backtest');
+        const btnOrbBacktestText = document.getElementById('btn-orb-backtest-text');
+        const spinnerOrbBacktest = document.getElementById('spinner-orb-backtest');
+        
+        const btnOrbOptimize = document.getElementById('btn-run-orb-optimize');
+        const btnOrbOptimizeText = document.getElementById('btn-orb-optimize-text');
+        const spinnerOrbOptimize = document.getElementById('spinner-orb-optimize');
+        
+        const orbScorecardRow = document.getElementById('orb-backtest-scorecards');
+        const orbTradesSection = document.getElementById('orb-trades-section');
+        const orbTradesTbody = document.getElementById('orb-trades-tbody');
+        
+        const orbOptMatrixWrapper = document.getElementById('orb-opt-matrix-wrapper');
+        const orbOptMatrixTable = document.getElementById('orb-opt-matrix-table');
+        
+        // ORB Form DOMs
+        const orbParamStart = document.getElementById('orb-param-start-date');
+        const orbParamEnd = document.getElementById('orb-param-end-date');
+        const orbParamContract = document.getElementById('orb-param-contract-type');
+        const orbParamCapital = document.getElementById('orb-param-capital');
+        const orbParamRisk = document.getElementById('orb-param-risk-pct');
+        const orbParamRr = document.getElementById('orb-param-rr');
+        const orbParamProbe = document.getElementById('orb-param-probe-mins');
+        const orbParamBreakout = document.getElementById('orb-param-breakout-ticks');
+        const orbParamMomentum = document.getElementById('orb-param-momentum-threshold');
+        const orbParamVol = document.getElementById('orb-param-vol-spike-ratio');
+        const orbParamAtrPeriod = document.getElementById('orb-param-atr-period');
+        const orbParamAtrMultiplier = document.getElementById('orb-param-atr-multiplier');
+        const orbParamForceMinLot = document.getElementById('orb-param-force-min-lot');
+        const orbParamSession = document.getElementById('orb-param-session-filter');
+
         // Global Chart & Data Instances
         let equityChartInstance = null;
+        let orbEquityChartInstance = null;
         let globalTrades = [];
+        let orbTrades = [];
         let filteredTradesList = []; // 保存當前渲染的交易明細，供點擊查詢
+        let filteredOrbTradesList = [];
         let modalChart1KInstance = null;
         let modalChart5KInstance = null;
 
@@ -1116,6 +1321,9 @@
             
             paramEnd.value = end.toISOString().split('T')[0];
             paramStart.value = start.toISOString().split('T')[0];
+            
+            orbParamEnd.value = end.toISOString().split('T')[0];
+            orbParamStart.value = start.toISOString().split('T')[0];
         }
         initDates();
 
@@ -1186,6 +1394,14 @@
                 document.getElementById(`${target}-tab`).classList.add('active');
                 
                 appendLog(`切換至頁籤: ${tab.textContent}`, 'info');
+
+                // Resize Chart.js to fix width: 0 when initialized in hidden tab
+                if (target === 'backtest' && equityChartInstance) {
+                    equityChartInstance.resize();
+                }
+                if (target === 'orb-backtest' && orbEquityChartInstance) {
+                    orbEquityChartInstance.resize();
+                }
             });
         });
 
@@ -1220,7 +1436,8 @@
                 min_sl: parseFloat(paramMinSl.value) || 20.0,
                 contract_type: paramContract.value,
                 strategies: stratsSelected,
-                session_filter: sessionFilter
+                session_filter: sessionFilter,
+                tp_mode: paramTpMode.value
             };
 
             try {
@@ -1584,7 +1801,7 @@
             if (modalChart5KInstance) modalChart5KInstance.destroy();
 
             try {
-                const url = `/api/backtest/trade_chart?entry_time=${encodeURIComponent(entryTime)}&exit_time=${encodeURIComponent(exitTime)}`;
+                const url = `/api/backtest/trade_chart?entry_time=${encodeURIComponent(entryTime)}&exit_time=${encodeURIComponent(exitTime)}&pre_bars=120&post_bars=60`;
                 const res = await fetch(url);
                 const data = await res.json();
                 
@@ -1746,6 +1963,308 @@
                 renderTradesTable(btn.dataset.filter);
             });
         });
+
+        // ==================== ORB BACKTEST LOGIC ====================
+        btnOrbBacktest.addEventListener('click', async () => {
+            appendLog(`正在執行台指 1K ORB 策略回測，這需要讀取高精度 SQLite 資料，請稍候...`, 'info');
+            setLoading(btnOrbBacktest, btnOrbBacktestText, spinnerOrbBacktest, true, '回測計算中...');
+            btnOrbOptimize.disabled = true;
+
+            const payload = {
+                start_date: orbParamStart.value || null,
+                end_date: orbParamEnd.value || null,
+                start_capital: parseFloat(orbParamCapital.value) || 1000000.0,
+                risk_pct: parseFloat(orbParamRisk.value) || 0.01,
+                contract_type: orbParamContract.value,
+                session_filter: orbParamSession.value,
+                orb_probe_minutes: parseInt(orbParamProbe.value) || 15,
+                orb_breakout_ticks: parseInt(orbParamBreakout.value) || 5,
+                momentum_threshold: parseFloat(orbParamMomentum.value) || 0.0003,
+                vol_spike_ratio: parseFloat(orbParamVol.value) || 1.2,
+                rr_ratio: parseFloat(orbParamRr.value) || 2.0,
+                orb_atr_period: parseInt(orbParamAtrPeriod.value) || 14,
+                orb_atr_multiplier: parseFloat(orbParamAtrMultiplier.value) || 0.0,
+                force_min_lot: orbParamForceMinLot.checked
+            };
+
+            try {
+                const res = await fetch('/api/backtest/orb', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) {
+                    const errDetail = await res.json();
+                    throw new Error(errDetail.detail || "後端 ORB 計算異常");
+                }
+
+                const data = await res.json();
+                appendLog(`ORB 策略回測完成！覆蓋歷史 1K 行情: ${data.data_info['1k_rows']} 根`, 'success');
+                
+                // 1. Scorecard
+                renderOrbScorecards(data.metrics);
+
+                // 2. Chart
+                drawOrbEquityChart(data.curve);
+
+                // 3. Trades
+                orbTrades = data.trades;
+                filteredOrbTradesList = orbTrades;
+                renderOrbTradesTable();
+                orbTradesSection.style.display = 'block';
+
+            } catch (err) {
+                appendLog(`ORB 回測失敗: ${err.message}`, 'error');
+                alert(`ORB 回測錯誤: ${err.message}`);
+            } finally {
+                setLoading(btnOrbBacktest, btnOrbBacktestText, spinnerOrbBacktest, false, '🚀 執行 ORB 策略回測');
+                btnOrbOptimize.disabled = false;
+            }
+        });
+
+        // ==================== ORB PARAMETER OPTIMIZATION LOGIC ====================
+        btnOrbOptimize.addEventListener('click', async () => {
+            appendLog(`正在啟動台指 ORB 四維參數最佳化網格搜尋，將並行遍歷 320 組參數組合，這可能需要 5-10 秒，請稍候...`, 'info');
+            setLoading(btnOrbOptimize, btnOrbOptimizeText, spinnerOrbOptimize, true, '遍歷優化中...');
+            btnOrbBacktest.disabled = true;
+
+            const payload = {
+                start_date: orbParamStart.value || null,
+                end_date: orbParamEnd.value || null,
+                start_capital: parseFloat(orbParamCapital.value) || 1000000.0,
+                risk_pct: parseFloat(orbParamRisk.value) || 0.01,
+                contract_type: orbParamContract.value,
+                session_filter: orbParamSession.value,
+                force_min_lot: orbParamForceMinLot.checked
+            };
+
+            try {
+                const res = await fetch('/api/backtest/orb/optimize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) {
+                    const errDetail = await res.json();
+                    throw new Error(errDetail.detail || "後端 ORB 優化計算異常");
+                }
+
+                const data = await res.json();
+                
+                const best = data.best_combination;
+                if (best) {
+                    appendLog(`ORB 優化完成！最佳組合為：Mins=${best.params.ORB_PROBE_MINUTES}m | Ticks=${best.params.ORB_BREAKOUT_TICKS} | Mom=${best.params.MOMENTUM_THRESHOLD} | Vol=${best.params.VOL_SPIKE_RATIO}x (總獲利: ${best.summary.netPnL.toFixed(1)}點)`, 'success');
+                }
+                
+                // 渲染優化列表前 20 名
+                renderOrbOptimizationTable(data.opt_results.slice(0, 20));
+
+            } catch (err) {
+                appendLog(`ORB 最佳化失敗: ${err.message}`, 'error');
+                alert(`優化錯誤: ${err.message}`);
+            } finally {
+                setLoading(btnOrbOptimize, btnOrbOptimizeText, spinnerOrbOptimize, false, '⚡ ORB 四維參數最佳化');
+                btnOrbBacktest.disabled = false;
+            }
+        });
+
+        function renderOrbScorecards(metrics) {
+            orbScorecardRow.innerHTML = '';
+            
+            const card = document.createElement('div');
+            card.className = `result-card unicorn`; // 使用 unicorn 主題但邊框可覆寫
+            card.style.borderLeft = "4px solid var(--neon-gold)";
+            
+            card.innerHTML = `
+                <div class="result-card-title">
+                    <span>🎯 台指 ORB 開盤突破策略</span>
+                    <span class="card-badge unicorn-badge" style="background:rgba(251,191,36,0.12); color:var(--neon-gold); border-color:rgba(251,191,36,0.25);">已運行</span>
+                </div>
+                <div class="result-metric-grid">
+                    <div class="metric-item">
+                        <span class="metric-lbl">總淨收益率</span>
+                        <span class="metric-val ${metrics.net_profit >= 0 ? 'up' : 'down'}">${metrics.total_return.toFixed(2)}%<br><span style="font-size:0.75rem;">(NT$ ${Math.round(metrics.net_profit).toLocaleString()})</span></span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-lbl">策略勝率 (Win Rate)</span>
+                        <span class="metric-val" style="color:var(--neon-gold);">${metrics.win_rate.toFixed(2)}%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-lbl">總交易次數</span>
+                        <span class="metric-val">${metrics.total_trades} 次</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-lbl">獲利因子 (PF)</span>
+                        <span class="metric-val" style="color:var(--neon-cyan);">${metrics.profit_factor.toFixed(2)}</span>
+                    </div>
+                    <div class="metric-item" style="grid-column: 1 / -1; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 5px;">
+                        <span class="metric-lbl">最大權益回撤 (MDD)</span>
+                        <span class="metric-val" style="color:var(--neon-pink);">${metrics.max_drawdown.toFixed(2)}%</span>
+                    </div>
+                </div>
+            `;
+            orbScorecardRow.appendChild(card);
+        }
+
+        function drawOrbEquityChart(curve) {
+            const times = curve.map(pt => pt.time.split(' ')[0]);
+            const equities = curve.map(pt => pt.equity);
+
+            if (orbEquityChartInstance) {
+                orbEquityChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('orbEquityChart').getContext('2d');
+            orbEquityChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: times,
+                    datasets: [{
+                        label: '🎯 ORB 策略權益曲線',
+                        data: equities,
+                        borderColor: '#fbbf24', // 金黃色
+                        borderWidth: 2.5,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        hoverRadius: 4,
+                        hitRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.02)' },
+                            ticks: { color: '#9ca3af', maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: {
+                                color: '#9ca3af',
+                                callback: function(value) {
+                                    return 'NT$ ' + Math.round(value).toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#f3f4f6', font: { size: 12 } }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(9, 11, 16, 0.95)',
+                            titleColor: '#fbbf24',
+                            bodyColor: '#f3f4f6',
+                            borderColor: 'rgba(255, 255, 255, 0.08)',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    return '時間: ' + curve[context[0].dataIndex].time;
+                                },
+                                label: function(context) {
+                                    return '權益: NT$ ' + Math.round(context.parsed.y).toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderOrbTradesTable() {
+            orbTradesTbody.innerHTML = '';
+            
+            if (filteredOrbTradesList.length === 0) {
+                orbTradesTbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#8b949e;">所選日期區間在此策略下無成交記錄</td></tr>`;
+                return;
+            }
+
+            filteredOrbTradesList.forEach((t, index) => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.setAttribute('onclick', `showOrbTradeDetail(${index})`);
+                const isWin = t.net_pnl > 0;
+                
+                tr.innerHTML = `
+                    <td style="font-weight: 600; color: #fff;">🎯 ORB 開盤突破</td>
+                    <td><span class="badge-direction ${t.direction === 'Long' ? 'badge-long' : 'badge-short'}">${t.direction === 'Long' ? '做多' : '做空'}</span></td>
+                    <td style="color:#8b949e; font-size:0.8rem;">${t.entry_time.split(' ')[0]}<br>${t.entry_time.split(' ')[1]}</td>
+                    <td style="color:#8b949e; font-size:0.8rem;">${t.exit_time.split(' ')[0]}<br>${t.exit_time.split(' ')[1]}</td>
+                    <td style="font-weight:bold;">${t.entry_price}</td>
+                    <td style="font-weight:bold;">${t.exit_price}</td>
+                    <td style="color:#8b949e; font-size:0.75rem;">SL: ${t.stop_loss}<br>TP: ${t.take_profit}</td>
+                    <td>${t.lots} 口</td>
+                    <td style="font-weight:bold; color: ${isWin ? 'var(--success-color)' : 'var(--danger-color)'};">
+                        ${isWin ? '+' : ''}${Math.round(t.net_pnl).toLocaleString()}
+                    </td>
+                    <td style="color:#d1d5db; font-size:0.8rem;">${t.reason}</td>
+                `;
+                orbTradesTbody.appendChild(tr);
+            });
+        }
+
+        window.showOrbTradeDetail = function(index) {
+            const trade = filteredOrbTradesList[index];
+            if (!trade) return;
+
+            localStorage.setItem('active_trade_detail', JSON.stringify(trade));
+            window.open('/orb_trade_detail', '_blank');
+            appendLog(`另開新分頁深度覆盤 ORB 交易: 進場時間 ${trade.entry_time}`, 'success');
+        };
+
+        function renderOrbOptimizationTable(topResults) {
+            orbOptMatrixTable.innerHTML = '';
+            
+            // 建立表頭
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th>排名</th>
+                    <th>開盤分鐘 (Mins)</th>
+                    <th>突破加減 (Ticks)</th>
+                    <th>動能門檻 (Mom)</th>
+                    <th>量增倍數 (Vol)</th>
+                    <th>交易次數</th>
+                    <th>勝率 (Win Rate)</th>
+                    <th>總盈虧 (小台點數)</th>
+                    <th>獲利因子 (PF)</th>
+                </tr>
+            `;
+            orbOptMatrixTable.appendChild(thead);
+            
+            // 建立內容
+            const tbody = document.createElement('tbody');
+            topResults.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                if (idx === 0) {
+                    tr.style.background = "rgba(251, 191, 36, 0.12)"; // Highlight best
+                }
+                
+                tr.innerHTML = `
+                    <td style="font-weight:bold; color: ${idx === 0 ? 'var(--neon-gold)' : '#fff'};">${idx + 1}</td>
+                    <td>${r.params.ORB_PROBE_MINUTES} 分鐘</td>
+                    <td>${r.params.ORB_BREAKOUT_TICKS} Ticks</td>
+                    <td>${r.params.MOMENTUM_THRESHOLD}</td>
+                    <td>${r.params.VOL_SPIKE_RATIO}x</td>
+                    <td>${r.summary.totalTrades} 次</td>
+                    <td>${(r.summary.winRate * 100).toFixed(1)}%</td>
+                    <td style="font-weight:bold; color: ${r.summary.netPnL >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">
+                        ${r.summary.netPnL >= 0 ? '+' : ''}${Math.round(r.summary.netPnL).toLocaleString()} 點
+                    </td>
+                    <td>${r.summary.profitFactor.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            orbOptMatrixTable.appendChild(tbody);
+            orbOptMatrixWrapper.style.display = 'block';
+        }
 
         // Polling loop to fetch active download metadata
         setInterval(fetchStatus, 6000);
