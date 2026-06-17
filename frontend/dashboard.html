@@ -780,6 +780,48 @@
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Real-time terminal navigation buttons */
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+
+        .smc-nav-btn {
+            background: rgba(34, 211, 238, 0.08);
+            color: var(--neon-cyan);
+            border-color: rgba(34, 211, 238, 0.2);
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.1);
+        }
+
+        .smc-nav-btn:hover {
+            background: rgba(34, 211, 238, 0.18);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .orb-nav-btn {
+            background: rgba(251, 191, 36, 0.08);
+            color: var(--neon-gold);
+            border-color: rgba(251, 191, 36, 0.2);
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.1);
+        }
+
+        .orb-nav-btn:hover {
+            background: rgba(251, 191, 36, 0.18);
+            border-color: var(--neon-gold);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.35);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -791,9 +833,15 @@
                 <h1>Futures SMC Pro</h1>
                 <p style="color: #8b949e; font-size: 0.9rem; margin-top: 4px;">商品代號: <span id="target-code" style="color: #fff; font-weight: bold;">...</span></p>
             </div>
-            <div class="status-badge">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="status-text">Disconnected</span>
+            <div class="header-controls" style="display: flex; align-items: center; gap: 15px;">
+                <div class="nav-btn-group" style="display: flex; gap: 12px;">
+                    <a href="/live" target="_blank" class="nav-btn smc-nav-btn">⚡ SMC 實時終端</a>
+                    <a href="/orb_terminal" target="_blank" class="nav-btn orb-nav-btn">🎯 ORB 實時終端</a>
+                </div>
+                <div class="status-badge">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Disconnected</span>
+                </div>
             </div>
         </header>
 
@@ -1058,6 +1106,26 @@
                         </div>
 
                         <div class="form-group">
+                            <label>停損計算模式 (Stop Loss Mode)</label>
+                            <select id="orb-param-sl-mode">
+                                <option value="bar_extreme" selected>突破 K 棒高低點 (Bar Extreme)</option>
+                                <option value="range_edge">開盤區間上下軌 (Range Edge)</option>
+                                <option value="atr_dynamic">ATR 動態停損 (ATR Dynamic)</option>
+                                <option value="fixed_points">固定點數停損 (Fixed Points)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>最低保護點數 (Min SL Points - 預設 20 點)</label>
+                            <input type="number" id="orb-param-min-sl-points" value="20" min="5" max="100" step="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>固定停損點數 (Fixed SL Points - 預設 30 點)</label>
+                            <input type="number" id="orb-param-fixed-sl-points" value="30" min="5" max="200" step="1">
+                        </div>
+
+                        <div class="form-group">
                             <label>交易時段選擇 (Session Filter)</label>
                             <select id="orb-param-session-filter">
                                 <option value="both" selected>日夜盤全時段 (Both Sessions)</option>
@@ -1293,6 +1361,9 @@
         const orbParamAtrMultiplier = document.getElementById('orb-param-atr-multiplier');
         const orbParamForceMinLot = document.getElementById('orb-param-force-min-lot');
         const orbParamSession = document.getElementById('orb-param-session-filter');
+        const orbParamSlMode = document.getElementById('orb-param-sl-mode');
+        const orbParamMinSlPoints = document.getElementById('orb-param-min-sl-points');
+        const orbParamFixedSlPoints = document.getElementById('orb-param-fixed-sl-points');
 
         // Global Chart & Data Instances
         let equityChartInstance = null;
@@ -1984,7 +2055,10 @@
                 rr_ratio: parseFloat(orbParamRr.value) || 2.0,
                 orb_atr_period: parseInt(orbParamAtrPeriod.value) || 14,
                 orb_atr_multiplier: parseFloat(orbParamAtrMultiplier.value) || 0.0,
-                force_min_lot: orbParamForceMinLot.checked
+                force_min_lot: orbParamForceMinLot.checked,
+                sl_mode: orbParamSlMode.value,
+                min_sl_points: parseFloat(orbParamMinSlPoints.value) || 20.0,
+                fixed_sl_points: parseFloat(orbParamFixedSlPoints.value) || 30.0
             };
 
             try {
@@ -2231,6 +2305,7 @@
                     <th>突破加減 (Ticks)</th>
                     <th>動能門檻 (Mom)</th>
                     <th>量增倍數 (Vol)</th>
+                    <th>停損模式 (SL Mode)</th>
                     <th>交易次數</th>
                     <th>勝率 (Win Rate)</th>
                     <th>總盈虧 (小台點數)</th>
@@ -2241,11 +2316,20 @@
             
             // 建立內容
             const tbody = document.createElement('tbody');
+            const slLabels = {
+                'bar_extreme': '突破 K 棒高低點',
+                'range_edge': '開盤區間上下軌',
+                'atr_dynamic': 'ATR 動態停損',
+                'fixed_points': '固定點數'
+            };
+
             topResults.forEach((r, idx) => {
                 const tr = document.createElement('tr');
                 if (idx === 0) {
                     tr.style.background = "rgba(251, 191, 36, 0.12)"; // Highlight best
                 }
+                
+                const slLabel = slLabels[r.params.SL_MODE] || r.params.SL_MODE || 'N/A';
                 
                 tr.innerHTML = `
                     <td style="font-weight:bold; color: ${idx === 0 ? 'var(--neon-gold)' : '#fff'};">${idx + 1}</td>
@@ -2253,6 +2337,7 @@
                     <td>${r.params.ORB_BREAKOUT_TICKS} Ticks</td>
                     <td>${r.params.MOMENTUM_THRESHOLD}</td>
                     <td>${r.params.VOL_SPIKE_RATIO}x</td>
+                    <td style="font-weight: 500; color: var(--neon-cyan);">${slLabel}</td>
                     <td>${r.summary.totalTrades} 次</td>
                     <td>${(r.summary.winRate * 100).toFixed(1)}%</td>
                     <td style="font-weight:bold; color: ${r.summary.netPnL >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">
