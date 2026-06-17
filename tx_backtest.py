@@ -211,13 +211,17 @@ class SMCBacktestSimulator:
         self.tax_rate = 0.00002
         self.risk_pct = 0.01
 
+        # 為了計算反向 OB 止盈 (Opposite OB TP)，將大週期 OB 邊界向前填充 (ffill)
+        self.ob_b_top_ffill = self.df['htf_ob_bullish_top'].ffill().values
+        self.ob_s_bottom_ffill = self.df['htf_ob_bearish_bottom'].ffill().values
+
     def calculate_costs(self, entry_price, exit_price, lots):
         total_fee = self.fee_per_side * 2 * lots
         tax_entry = round(entry_price * self.point_value * self.tax_rate * lots)
         tax_exit = round(exit_price * self.point_value * self.tax_rate * lots)
         return total_fee + tax_entry + tax_exit
 
-    def run_strategy(self, strategy_name, rr_ratio=2.0, min_sl=20.0, session_filter='both'):
+    def run_strategy(self, strategy_name, rr_ratio=2.0, min_sl=20.0, session_filter='both', tp_mode='rr'):
         capital = self.start_capital
         equity_curve = [{'time': str(self.df.loc[0, 'datetime']), 'equity': capital}]
         trades = []
@@ -251,6 +255,8 @@ class SMCBacktestSimulator:
         htf_ob_s_bottom = self.df['htf_ob_bearish_bottom'].values
         htf_pdh = self.df['htf_pdh'].values
         htf_pdl = self.df['htf_pdl'].values
+        htf_last_piv_h = self.df['htf_last_pivot_h'].values
+        htf_last_piv_l = self.df['htf_last_pivot_l'].values
         
         ltf_choch_b = self.df['ltf_choch_bullish'].values
         ltf_choch_s = self.df['ltf_choch_bearish'].values
@@ -402,7 +408,12 @@ class SMCBacktestSimulator:
                                 entry_price = entry_zone_top
                                 entry_time = t_cur
                                 stop_loss = entry_price - risk_points
-                                take_profit = entry_price + risk_points * rr_ratio
+                                if tp_mode == 'opposite_swing' and not np.isnan(htf_last_piv_h[i]) and htf_last_piv_h[i] > entry_price:
+                                    take_profit = htf_last_piv_h[i]
+                                elif tp_mode == 'opposite_ob' and not np.isnan(self.ob_s_bottom_ffill[i]) and self.ob_s_bottom_ffill[i] > entry_price:
+                                    take_profit = self.ob_s_bottom_ffill[i]
+                                else:
+                                    take_profit = entry_price + risk_points * rr_ratio
                                 lots = lots_to_trade
                                 setup_active = False
                                 
@@ -436,7 +447,12 @@ class SMCBacktestSimulator:
                                 entry_price = entry_zone_bottom
                                 entry_time = t_cur
                                 stop_loss = entry_price + risk_points
-                                take_profit = entry_price - risk_points * rr_ratio
+                                if tp_mode == 'opposite_swing' and not np.isnan(htf_last_piv_l[i]) and htf_last_piv_l[i] < entry_price:
+                                    take_profit = htf_last_piv_l[i]
+                                elif tp_mode == 'opposite_ob' and not np.isnan(self.ob_b_top_ffill[i]) and self.ob_b_top_ffill[i] < entry_price:
+                                    take_profit = self.ob_b_top_ffill[i]
+                                else:
+                                    take_profit = entry_price - risk_points * rr_ratio
                                 lots = lots_to_trade
                                 setup_active = False
                                 
@@ -477,10 +493,17 @@ class SMCBacktestSimulator:
                         
                         risk_points = max(15.0, entry_pr - l_cur + 3)
                         
-                        # 5K 空頭 OB 下界作為止盈目標
-                        tp_price = htf_ob_s_bottom[i]
-                        if np.isnan(tp_price) or tp_price is None:
-                            tp_price = entry_pr + risk_points * 2.5
+                        # 根據 tp_mode 計算止盈目標價位
+                        if tp_mode == 'opposite_swing':
+                            tp_price = htf_last_piv_h[i]
+                            if np.isnan(tp_price) or tp_price <= entry_pr:
+                                tp_price = entry_pr + risk_points * rr_ratio
+                        elif tp_mode == 'opposite_ob':
+                            tp_price = self.ob_s_bottom_ffill[i]
+                            if np.isnan(tp_price) or tp_price <= entry_pr:
+                                tp_price = entry_pr + risk_points * rr_ratio
+                        else:
+                            tp_price = entry_pr + risk_points * rr_ratio
                             
                         # R-R 期望值過濾 (防守)
                         rr = (tp_price - entry_pr) / risk_points
@@ -518,10 +541,17 @@ class SMCBacktestSimulator:
                         
                         risk_points = max(15.0, h_cur - entry_pr + 3)
                         
-                        # 5K 多頭 OB 上界作為止盈目標
-                        tp_price = htf_ob_b_top[i]
-                        if np.isnan(tp_price) or tp_price is None:
-                            tp_price = entry_pr - risk_points * 2.5
+                        # 根據 tp_mode 計算止盈目標價位
+                        if tp_mode == 'opposite_swing':
+                            tp_price = htf_last_piv_l[i]
+                            if np.isnan(tp_price) or tp_price >= entry_pr:
+                                tp_price = entry_pr - risk_points * rr_ratio
+                        elif tp_mode == 'opposite_ob':
+                            tp_price = self.ob_b_top_ffill[i]
+                            if np.isnan(tp_price) or tp_price >= entry_pr:
+                                tp_price = entry_pr - risk_points * rr_ratio
+                        else:
+                            tp_price = entry_pr - risk_points * rr_ratio
                             
                         # R-R 期望值過濾 (防守)
                         rr = (entry_pr - tp_price) / risk_points
@@ -563,7 +593,12 @@ class SMCBacktestSimulator:
                         entry_price = c_cur
                         entry_time = t_cur
                         stop_loss = entry_price - risk_points
-                        take_profit = entry_price + risk_points * 2
+                        if tp_mode == 'opposite_swing' and not np.isnan(htf_last_piv_h[i]) and htf_last_piv_h[i] > entry_price:
+                            take_profit = htf_last_piv_h[i]
+                        elif tp_mode == 'opposite_ob' and not np.isnan(self.ob_s_bottom_ffill[i]) and self.ob_s_bottom_ffill[i] > entry_price:
+                            take_profit = self.ob_s_bottom_ffill[i]
+                        else:
+                            take_profit = entry_price + risk_points * rr_ratio
                         lots = lots_to_trade
                         
                 elif not np.isnan(htf_pdh[i]) and h_cur > htf_pdh[i] and c_cur < htf_pdh[i]:
@@ -576,7 +611,12 @@ class SMCBacktestSimulator:
                         entry_price = c_cur
                         entry_time = t_cur
                         stop_loss = entry_price + risk_points
-                        take_profit = entry_price - risk_points * 2
+                        if tp_mode == 'opposite_swing' and not np.isnan(htf_last_piv_l[i]) and htf_last_piv_l[i] < entry_price:
+                            take_profit = htf_last_piv_l[i]
+                        elif tp_mode == 'opposite_ob' and not np.isnan(self.ob_b_top_ffill[i]) and self.ob_b_top_ffill[i] < entry_price:
+                            take_profit = self.ob_b_top_ffill[i]
+                        else:
+                            take_profit = entry_price - risk_points * rr_ratio
                         lots = lots_to_trade
  
             # --- 策略 4: 台指 ROTE ---
@@ -594,7 +634,12 @@ class SMCBacktestSimulator:
                         entry_price = htf_ob_b_top[i]
                         entry_time = t_cur
                         stop_loss = entry_price - risk_points
-                        take_profit = entry_price + risk_points * 1.5
+                        if tp_mode == 'opposite_swing' and not np.isnan(htf_last_piv_h[i]) and htf_last_piv_h[i] > entry_price:
+                            take_profit = htf_last_piv_h[i]
+                        elif tp_mode == 'opposite_ob' and not np.isnan(self.ob_s_bottom_ffill[i]) and self.ob_s_bottom_ffill[i] > entry_price:
+                            take_profit = self.ob_s_bottom_ffill[i]
+                        else:
+                            take_profit = entry_price + risk_points * rr_ratio
                         lots = lots_to_trade
                         
                 elif ob_bear_valid and h_cur >= htf_ob_s_bottom[i] and h_cur <= htf_ob_s_top[i]:
@@ -607,7 +652,12 @@ class SMCBacktestSimulator:
                         entry_price = htf_ob_s_bottom[i]
                         entry_time = t_cur
                         stop_loss = entry_price + risk_points
-                        take_profit = entry_price - risk_points * 1.5
+                        if tp_mode == 'opposite_swing' and not np.isnan(htf_last_piv_l[i]) and htf_last_piv_l[i] < entry_price:
+                            take_profit = htf_last_piv_l[i]
+                        elif tp_mode == 'opposite_ob' and not np.isnan(self.ob_b_top_ffill[i]) and self.ob_b_top_ffill[i] < entry_price:
+                            take_profit = self.ob_b_top_ffill[i]
+                        else:
+                            take_profit = entry_price - risk_points * rr_ratio
                         lots = lots_to_trade
  
         # --- C. 回測統計指標 ---
@@ -679,7 +729,7 @@ class ORBBacktestSimulator:
         tax_exit = round(exit_price * self.point_value * self.tax_rate * lots)
         return total_fee + tax_entry + tax_exit
 
-    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both'):
+    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0, force_min_lot=True):
         capital = self.start_capital
         equity_curve = [{'time': str(self.df.loc[0, 'datetime']) if len(self.df) > 0 else '', 'equity': capital}]
         trades = []
@@ -714,6 +764,17 @@ class ORBBacktestSimulator:
         df_len = len(self.df)
         if df_len == 0:
             return {'total_trades': 0, 'win_rate': 0.0, 'profit_factor': 0.0, 'max_drawdown': 0.0, 'total_return': 0.0, 'net_profit': 0.0}, [], []
+
+        # 計算 ATR
+        if df_len > 1:
+            self.df['prev_close'] = self.df['close'].shift(1)
+            self.df['tr1'] = self.df['high'] - self.df['low']
+            self.df['tr2'] = (self.df['high'] - self.df['prev_close']).abs()
+            self.df['tr3'] = (self.df['low'] - self.df['prev_close']).abs()
+            self.df['tr'] = self.df[['tr1', 'tr2', 'tr3']].max(axis=1)
+            self.df['atr'] = self.df['tr'].rolling(window=orb_atr_period, min_periods=1).mean()
+        else:
+            self.df['atr'] = 0.0
 
         for i in range(df_len):
             row = self.df.iloc[i]
@@ -855,7 +916,8 @@ class ORBBacktestSimulator:
                             'orb_range': f"{round(orb_ranges[entry_sess_start]['low'], 1)} - {round(orb_ranges[entry_sess_start]['high'], 1)}" if entry_sess_start in orb_ranges else "N/A",
                             'orb_probe': f"{orb_probe_minutes}m",
                             'momentum': f"{round(abs(o_cur - c_cur)/o_cur, 6)} (門檻: {momentum_threshold})",
-                            'vol_ratio': f"{round(v_cur / avg_vol, 2)}x (門檻: {vol_spike_ratio}x)"
+                            'vol_ratio': f"{round(v_cur / avg_vol, 2)}x (門檻: {vol_spike_ratio}x)",
+                            'session': f"{'日盤' if sess_type == 'day' else '夜盤'} ORB時段"
                         },
                         'exit_indicators': {
                             'reason': exit_reason,
@@ -894,7 +956,17 @@ class ORBBacktestSimulator:
                             is_mom_valid = mom >= momentum_threshold
                             is_vol_valid = v_cur >= avg_vol * vol_spike_ratio
                             
-                            if is_mom_valid and is_vol_valid:
+                            # 檢查 ATR 實體強度
+                            is_atr_valid = True
+                            if orb_atr_multiplier > 0.0:
+                                if i > 0:
+                                    atr_prev = self.df.loc[i - 1, 'atr']
+                                    candle_body = abs(c_cur - o_cur)
+                                    is_atr_valid = candle_body >= atr_prev * orb_atr_multiplier
+                                else:
+                                    is_atr_valid = False
+                            
+                            if is_mom_valid and is_vol_valid and is_atr_valid:
                                 if is_buy:
                                     position = 1
                                     entry_price = c_cur
@@ -907,6 +979,11 @@ class ORBBacktestSimulator:
                                     take_profit = entry_price + risk_points * rr_ratio
                                     
                                     lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
+                                    if lots_to_trade < 1 and force_min_lot:
+                                        min_margin = 50000.0 if self.contract_type == 'MTX' else 200000.0
+                                        if capital >= min_margin:
+                                            lots_to_trade = 1
+                                            
                                     if lots_to_trade >= 1:
                                         lots = lots_to_trade
                                         session_traded.add(sess_start)
@@ -926,6 +1003,11 @@ class ORBBacktestSimulator:
                                     take_profit = entry_price - risk_points * rr_ratio
                                     
                                     lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
+                                    if lots_to_trade < 1 and force_min_lot:
+                                        min_margin = 50000.0 if self.contract_type == 'MTX' else 200000.0
+                                        if capital >= min_margin:
+                                            lots_to_trade = 1
+                                            
                                     if lots_to_trade >= 1:
                                         lots = lots_to_trade
                                         session_traded.add(sess_start)
@@ -977,7 +1059,7 @@ def _orb_backtest_worker(args):
     """
     用於多進程並行回測的頂層 Worker 函數。
     """
-    df_1k, contract_type, start_capital, risk_pct, session_filter, probe, breakout, mom, vol = args
+    df_1k, contract_type, start_capital, risk_pct, session_filter, probe, breakout, mom, vol, force_min_lot = args
     simulator = ORBBacktestSimulator(df_1k, start_capital=start_capital, contract_type=contract_type)
     simulator.risk_pct = risk_pct
     
@@ -987,7 +1069,8 @@ def _orb_backtest_worker(args):
         momentum_threshold=mom,
         vol_spike_ratio=vol,
         rr_ratio=2.0,
-        session_filter=session_filter
+        session_filter=session_filter,
+        force_min_lot=force_min_lot
     )
     
     return {
@@ -1008,7 +1091,7 @@ def _orb_backtest_worker(args):
     }
 
 
-def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=1000000.0, risk_pct=0.01, session_filter='both'):
+def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=1000000.0, risk_pct=0.01, session_filter='both', force_min_lot=True):
     """
     對 ORB 策略進行多進程參數網格搜尋。
     """
@@ -1027,7 +1110,7 @@ def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=100
                 for vol in vol_spike_range:
                     tasks.append((
                         df_1k, contract_type, start_capital, risk_pct, session_filter,
-                        probe, breakout, mom, vol
+                        probe, breakout, mom, vol, force_min_lot
                     ))
                     
     results = []
@@ -2168,7 +2251,7 @@ def main():
     print("  真實數據對齊、參數優化與回測任務順利完成！")
     print("==========================================================")
 
-def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, session_filter='both'):
+def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0):
     """
     根據當前的 1K 歷史與實時數據 DataFrame，計算並回傳當下最後一根 K 棒的 ORB 狀態。
     """
@@ -2183,6 +2266,17 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
         }
         
     df = df_1k.copy().sort_values('datetime').reset_index(drop=True)
+    
+    # 計算 ATR
+    if len(df) > 1:
+        df['prev_close'] = df['close'].shift(1)
+        df['tr1'] = df['high'] - df['low']
+        df['tr2'] = (df['high'] - df['prev_close']).abs()
+        df['tr3'] = (df['low'] - df['prev_close']).abs()
+        df['tr'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
+        df['atr'] = df['tr'].rolling(window=orb_atr_period, min_periods=1).mean()
+    else:
+        df['atr'] = 0.0
     last_row = df.iloc[-1]
     t_last = last_row['datetime']
     sess_type = last_row['session']
@@ -2256,7 +2350,17 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
                 is_mom_valid = mom >= momentum_threshold
                 is_vol_valid = row['volume'] >= avg_vol * vol_spike_ratio
                 
-                if is_mom_valid and is_vol_valid:
+                # 檢查 ATR 實體強度
+                is_atr_valid = True
+                if orb_atr_multiplier > 0.0:
+                    if len(main_idx_list) > 0 and main_idx > 0:
+                        atr_prev = df.loc[main_idx - 1, 'atr']
+                        candle_body = abs(row['close'] - row['open'])
+                        is_atr_valid = candle_body >= atr_prev * orb_atr_multiplier
+                    else:
+                        is_atr_valid = False
+                
+                if is_mom_valid and is_vol_valid and is_atr_valid:
                     if is_buy:
                         breakout_status = 1
                     else:

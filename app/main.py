@@ -121,6 +121,7 @@ class BacktestRequest(BaseModel):
     contract_type: str = "MTX"
     strategies: List[str] = ["unicorn_model", "silver_bullet"]
     session_filter: str = "both"
+    tp_mode: str = "rr"
 
 class OptimizeRequest(BaseModel):
     start_date: Optional[str] = None
@@ -137,6 +138,7 @@ class ORBOptimizeRequest(BaseModel):
     risk_pct: float = 0.01
     contract_type: str = "MTX"
     session_filter: str = "both"
+    force_min_lot: bool = True
 
 class ORBBacktestRequest(BaseModel):
     start_date: Optional[str] = None
@@ -150,6 +152,9 @@ class ORBBacktestRequest(BaseModel):
     momentum_threshold: float = 0.0003
     vol_spike_ratio: float = 1.2
     rr_ratio: float = 2.0
+    orb_atr_period: int = 14
+    orb_atr_multiplier: float = 0.0
+    force_min_lot: bool = True
 
 @app.post("/api/backtest")
 def run_backtest(req: BacktestRequest):
@@ -189,7 +194,8 @@ def run_backtest(req: BacktestRequest):
                 strat, 
                 rr_ratio=req.rr_ratio, 
                 min_sl=req.min_sl,
-                session_filter=req.session_filter
+                session_filter=req.session_filter,
+                tp_mode=req.tp_mode
             )
             
             # 格式化權益曲線的 timestamp 為字串以便 JSON 序列化
@@ -288,7 +294,8 @@ def run_orb_optimize(req: ORBOptimizeRequest):
             contract_type=req.contract_type,
             start_capital=req.start_capital,
             risk_pct=req.risk_pct,
-            session_filter=req.session_filter
+            session_filter=req.session_filter,
+            force_min_lot=req.force_min_lot
         )
         
         # 取出最佳組合
@@ -336,7 +343,10 @@ def run_orb_backtest(req: ORBBacktestRequest):
             momentum_threshold=req.momentum_threshold,
             vol_spike_ratio=req.vol_spike_ratio,
             rr_ratio=req.rr_ratio,
-            session_filter=req.session_filter
+            session_filter=req.session_filter,
+            orb_atr_period=req.orb_atr_period,
+            orb_atr_multiplier=req.orb_atr_multiplier,
+            force_min_lot=req.force_min_lot
         )
         
         # 格式化
@@ -366,9 +376,13 @@ def run_orb_backtest(req: ORBBacktestRequest):
         raise HTTPException(status_code=500, detail=f"回測失敗: {str(e)}")
 
 @app.get("/api/backtest/trade_chart")
-def get_trade_chart(entry_time: str, exit_time: str):
+def get_trade_chart(entry_time: str, exit_time: str, pre_bars: int = 120, post_bars: int = 60):
     import sqlite3
     try:
+        # 強制轉為整數防 SQL 注入
+        pre_bars = int(pre_bars)
+        post_bars = int(post_bars)
+
         db_path = "Shioaji.db"
         if not os.path.exists(db_path):
             db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
@@ -380,14 +394,14 @@ def get_trade_chart(entry_time: str, exit_time: str):
         # 1. 取得 1K 範圍
         c = conn.cursor()
         c.execute(
-            "SELECT ts FROM futures1k WHERE code='TXFR1' AND ts < ? ORDER BY ts DESC LIMIT 30;",
+            f"SELECT ts FROM futures1k WHERE code='TXFR1' AND ts < ? ORDER BY ts DESC LIMIT {pre_bars};",
             (entry_time,)
         )
         rows_pre = c.fetchall()
         start_ts_1k = rows_pre[-1][0] if rows_pre else entry_time
         
         c.execute(
-            "SELECT ts FROM futures1k WHERE code='TXFR1' AND ts > ? ORDER BY ts ASC LIMIT 15;",
+            f"SELECT ts FROM futures1k WHERE code='TXFR1' AND ts > ? ORDER BY ts ASC LIMIT {post_bars};",
             (exit_time,)
         )
         rows_post = c.fetchall()
@@ -401,14 +415,14 @@ def get_trade_chart(entry_time: str, exit_time: str):
         
         # 2. 取得 5K 範圍
         c.execute(
-            "SELECT ts FROM futures5k WHERE code='TXFR1' AND ts < ? ORDER BY ts DESC LIMIT 30;",
+            f"SELECT ts FROM futures5k WHERE code='TXFR1' AND ts < ? ORDER BY ts DESC LIMIT {pre_bars};",
             (entry_time,)
         )
         rows_pre_5k = c.fetchall()
         start_ts_5k = rows_pre_5k[-1][0] if rows_pre_5k else entry_time
         
         c.execute(
-            "SELECT ts FROM futures5k WHERE code='TXFR1' AND ts > ? ORDER BY ts ASC LIMIT 15;",
+            f"SELECT ts FROM futures5k WHERE code='TXFR1' AND ts > ? ORDER BY ts ASC LIMIT {post_bars};",
             (exit_time,)
         )
         rows_post_5k = c.fetchall()
@@ -438,6 +452,15 @@ async def get_trade_detail_page():
     if html_file.exists():
         return html_file.read_text(encoding="utf-8")
     return "<h1>Trade Review Page (trade_detail.html) not found.</h1>"
+
+@app.get("/orb_trade_detail", response_class=HTMLResponse)
+async def get_orb_trade_detail_page():
+    """Serves the ORB Trade Review Candlestick Dashboard HTML."""
+    html_file = frontend_path / "orb_trade_detail.html"
+    if html_file.exists():
+        return html_file.read_text(encoding="utf-8")
+    return "<h1>ORB Trade Review Page (orb_trade_detail.html) not found.</h1>"
+
 
 @app.get("/live", response_class=HTMLResponse)
 async def get_live_terminal():
@@ -511,7 +534,9 @@ class RealTimeQuoteStreamer:
             "orb_probe_minutes": 15,
             "orb_breakout_ticks": 5,
             "momentum_threshold": 0.0003,
-            "vol_spike_ratio": 1.2
+            "vol_spike_ratio": 1.2,
+            "orb_atr_period": 14,
+            "orb_atr_multiplier": 0.0
         }
 
     def start_stream(self, api) -> bool:
@@ -796,7 +821,7 @@ class RealTimeQuoteStreamer:
 
 real_time_streamer = RealTimeQuoteStreamer()
 
-async def get_history_init_payload(df_1k_base: pd.DataFrame, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2) -> dict:
+async def get_history_init_payload(df_1k_base: pd.DataFrame, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, orb_atr_period=14, orb_atr_multiplier=0.0) -> dict:
     """
     將預加載的最近 150 根 1K K線進行多時區聚合與全量 SMC 指標計算，
     清洗 NaN 數值為 None (null)，包裝成 history_init 封包返回給前端。
