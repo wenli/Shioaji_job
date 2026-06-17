@@ -23,9 +23,11 @@
   * 在 `tx_backtest.py` 中實現了獨立的 `ORBBacktestSimulator`。
   * 精確計算日盤 (08:45) 與夜盤 (15:00) 的開盤收集區間高低點。
   * 提供突破 Ticks Ticks 緩衝，並整合動能門檻 (`momentum_threshold`) 與 5K 滾動量增 (`vol_spike_ratio`) 過濾，大幅降低震盪盤洗盤風險。
+  * **ATR 動態實體強度過濾器 (ATR Body Filter)** [NEW]：支援 `orb_atr_period`（預設 14）與 `orb_atr_multiplier`（預設 0.0，大於 0.0 時啟用）。在價格突破時，要求突破 K 棒的實體高度（`|Close - Open|`）必須大於或等於前一根 K 棒的 ATR 乘以該乘數，有效過濾無力、慢速爬行式的假突破。
+  * **保底 1 口交易機制 (Min 1 Lot Fallback)** [NEW]：解決小資金帳戶在嚴格風控（如 1%）下，計算出的交易口數（`lots_to_trade`）因不足 1 口而被四捨五入/無條件捨去為 0 的問題。當啟動 `force_min_lot`（預設 True）且總資金大於最低保證金門檻（小台指 MTX 為 50,000 元，大台指 TX 為 200,000 元）時，強制以 1 口進場，確保小帳戶回測與實盤不漏接訊號。
   * 突破 K 棒高低點動態止損 (SL)，結合賺賠比 (R-R 2.0 倍) 固定止盈 (TP)，每時段結束前強制平倉。
 * **多進程並行網格優化**：
-  * 使用 `concurrent.futures.ProcessPoolExecutor` 多進程並行搜尋最優 ORB 參數組合（收集分鐘、突破 Ticks、賺賠比等）。
+  * 使用 `concurrent.futures.ProcessPoolExecutor` 多進程並行搜尋最優 ORB 參數組合（收集分鐘、突破 Ticks、賺賠比、ATR 乘數等）。
   * 根據「交易次數限制 (>=15次)」與「勝率 -> 獲利因子 -> 淨利」的多重指標排序演算法，快速抓出策略高原。
   * 自動輸出 JSON 報告與 Markdown 優化摘要檔案至 `logs/backtest/` 目錄下。
 
