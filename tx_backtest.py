@@ -729,7 +729,72 @@ class ORBBacktestSimulator:
         tax_exit = round(exit_price * self.point_value * self.tax_rate * lots)
         return total_fee + tax_entry + tax_exit
 
-    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0, force_min_lot=True):
+    def calculate_orb_stop_loss(self, sl_mode, direction, entry_price, k_high, k_low, orb_range, atr_val, min_sl_points=20.0, fixed_sl_points=30.0, orb_atr_multiplier=2.0, orb_breakout_ticks=5.0):
+        """
+        計算 ORB 策略停損價位與實際風險點數。
+        
+        sl_mode: 'bar_extreme', 'range_edge', 'atr_dynamic', 'fixed_points'
+        direction: 1 (多單), -1 (空單)
+        entry_price: 進場價格
+        k_high: 突破 K 棒最高點
+        k_low: 突破 K 棒最低點
+        orb_range: {'high': float, 'low': float}
+        atr_val: 當前 ATR 值 (可為 float, numpy float, 或 NaN)
+        min_sl_points: 最低保護點數 (預設 20.0 點)
+        fixed_sl_points: 固定停損點數 (預設 30.0 點)
+        orb_atr_multiplier: ATR 乘數 (預設 2.0 倍)
+        orb_breakout_ticks: 突破緩衝點數 (預設 5.0 點)
+        
+        回傳: (stop_loss, risk_points)
+        """
+        import numpy as np
+        
+        # 安全處理 NaN 或無效 ATR
+        if np.isnan(atr_val) or atr_val <= 0.0:
+            # 當無有效 ATR 時，使用 min_sl_points 作為 ATR 基準
+            atr_val = min_sl_points
+            
+        risk_points = 20.0
+        
+        if sl_mode == 'bar_extreme':
+            if direction == 1:
+                risk_points = max(min_sl_points, entry_price - k_low)
+            else:
+                risk_points = max(min_sl_points, k_high - entry_price)
+                
+        elif sl_mode == 'range_edge':
+            high_bound = orb_range.get('high', entry_price)
+            low_bound = orb_range.get('low', entry_price)
+            if direction == 1:
+                # 多單停損設在上軌減去緩衝點數
+                target_sl = high_bound - orb_breakout_ticks
+                risk_points = max(min_sl_points, entry_price - target_sl)
+            else:
+                # 空單停損設在下軌加上緩衝點數
+                target_sl = low_bound + orb_breakout_ticks
+                risk_points = max(min_sl_points, target_sl - entry_price)
+                
+        elif sl_mode == 'atr_dynamic':
+            risk_points = max(min_sl_points, atr_val * orb_atr_multiplier)
+            
+        elif sl_mode == 'fixed_points':
+            risk_points = fixed_sl_points
+            
+        else:
+            # 預設 fallback
+            if direction == 1:
+                risk_points = max(min_sl_points, entry_price - k_low)
+            else:
+                risk_points = max(min_sl_points, k_high - entry_price)
+                
+        if direction == 1:
+            stop_loss = entry_price - risk_points
+        else:
+            stop_loss = entry_price + risk_points
+            
+        return stop_loss, risk_points
+
+    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0, force_min_lot=True, sl_mode='bar_extreme', min_sl_points=20.0, fixed_sl_points=30.0):
         capital = self.start_capital
         equity_curve = [{'time': str(self.df.loc[0, 'datetime']) if len(self.df) > 0 else '', 'equity': capital}]
         trades = []
@@ -917,7 +982,8 @@ class ORBBacktestSimulator:
                             'orb_probe': f"{orb_probe_minutes}m",
                             'momentum': f"{round(abs(o_cur - c_cur)/o_cur, 6)} (門檻: {momentum_threshold})",
                             'vol_ratio': f"{round(v_cur / avg_vol, 2)}x (門檻: {vol_spike_ratio}x)",
-                            'session': f"{'日盤' if sess_type == 'day' else '夜盤'} ORB時段"
+                            'session': f"{'日盤' if sess_type == 'day' else '夜盤'} ORB時段",
+                            'sl_mode': sl_mode
                         },
                         'exit_indicators': {
                             'reason': exit_reason,
@@ -972,10 +1038,21 @@ class ORBBacktestSimulator:
                                     entry_price = c_cur
                                     entry_time = t_cur
                                     
-                                    # 止損設為突破K棒低點
-                                    sl_candidate = l_cur
-                                    risk_points = max(20.0, entry_price - sl_candidate)  # 最少 20 點保護
-                                    stop_loss = entry_price - risk_points
+                                    # 呼叫模組化停損計算器
+                                    atr_val = self.df.loc[i - 1, 'atr'] if i > 0 else row.get('atr', 0.0)
+                                    stop_loss, risk_points = self.calculate_orb_stop_loss(
+                                        sl_mode=sl_mode,
+                                        direction=1,
+                                        entry_price=entry_price,
+                                        k_high=h_cur,
+                                        k_low=l_cur,
+                                        orb_range=rng,
+                                        atr_val=atr_val,
+                                        min_sl_points=min_sl_points,
+                                        fixed_sl_points=fixed_sl_points,
+                                        orb_atr_multiplier=orb_atr_multiplier,
+                                        orb_breakout_ticks=orb_breakout_ticks
+                                    )
                                     take_profit = entry_price + risk_points * rr_ratio
                                     
                                     lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
@@ -996,10 +1073,21 @@ class ORBBacktestSimulator:
                                     entry_price = c_cur
                                     entry_time = t_cur
                                     
-                                    # 止損設為突破K棒高點
-                                    sl_candidate = h_cur
-                                    risk_points = max(20.0, sl_candidate - entry_price)
-                                    stop_loss = entry_price + risk_points
+                                    # 呼叫模組化停損計算器
+                                    atr_val = self.df.loc[i - 1, 'atr'] if i > 0 else row.get('atr', 0.0)
+                                    stop_loss, risk_points = self.calculate_orb_stop_loss(
+                                        sl_mode=sl_mode,
+                                        direction=-1,
+                                        entry_price=entry_price,
+                                        k_high=h_cur,
+                                        k_low=l_cur,
+                                        orb_range=rng,
+                                        atr_val=atr_val,
+                                        min_sl_points=min_sl_points,
+                                        fixed_sl_points=fixed_sl_points,
+                                        orb_atr_multiplier=orb_atr_multiplier,
+                                        orb_breakout_ticks=orb_breakout_ticks
+                                    )
                                     take_profit = entry_price - risk_points * rr_ratio
                                     
                                     lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
@@ -1059,7 +1147,7 @@ def _orb_backtest_worker(args):
     """
     用於多進程並行回測的頂層 Worker 函數。
     """
-    df_1k, contract_type, start_capital, risk_pct, session_filter, probe, breakout, mom, vol, force_min_lot = args
+    df_1k, contract_type, start_capital, risk_pct, session_filter, probe, breakout, mom, vol, force_min_lot, sl_mode = args
     simulator = ORBBacktestSimulator(df_1k, start_capital=start_capital, contract_type=contract_type)
     simulator.risk_pct = risk_pct
     
@@ -1070,7 +1158,11 @@ def _orb_backtest_worker(args):
         vol_spike_ratio=vol,
         rr_ratio=2.0,
         session_filter=session_filter,
-        force_min_lot=force_min_lot
+        force_min_lot=force_min_lot,
+        sl_mode=sl_mode,
+        min_sl_points=20.0,
+        fixed_sl_points=30.0,
+        orb_atr_multiplier=2.0
     )
     
     return {
@@ -1078,7 +1170,8 @@ def _orb_backtest_worker(args):
             'ORB_PROBE_MINUTES': probe,
             'ORB_BREAKOUT_TICKS': breakout,
             'MOMENTUM_THRESHOLD': mom,
-            'VOL_SPIKE_RATIO': vol
+            'VOL_SPIKE_RATIO': vol,
+            'SL_MODE': sl_mode
         },
         'summary': {
             'totalTrades': metrics['total_trades'],
@@ -1102,17 +1195,19 @@ def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=100
     orb_breakout_range = [3, 5, 8, 10]
     momentum_range = [0.0002, 0.0003, 0.0005, 0.0007]
     vol_spike_range = [1.0, 1.2, 1.5, 2.0]
+    sl_modes = ['bar_extreme', 'range_edge', 'atr_dynamic', 'fixed_points']
     
     tasks = []
     for probe in orb_probe_range:
         for breakout in orb_breakout_range:
             for mom in momentum_range:
                 for vol in vol_spike_range:
-                    tasks.append((
-                        df_1k, contract_type, start_capital, risk_pct, session_filter,
-                        probe, breakout, mom, vol, force_min_lot
-                    ))
-                    
+                    for sl_mode in sl_modes:
+                        tasks.append((
+                            df_1k, contract_type, start_capital, risk_pct, session_filter,
+                            probe, breakout, mom, vol, force_min_lot, sl_mode
+                        ))
+                        
     results = []
     num_workers = max(1, multiprocessing.cpu_count() - 1)
     print(f"\n[ORB優化] 啟動 {num_workers} 個子進程並行執行 {len(tasks)} 組參數組合...")
@@ -1183,7 +1278,7 @@ def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=100
     md_content += f"* **交易時段過濾**：{session_filter}\n"
     md_content += f"* **過濾條件**：總交易次數必須 >= 15 次\n\n"
     md_content += f"## 🥇 前 10 名最佳參數組合 (依勝率排序)\n\n"
-    md_content += f"| 排名 | 勝率 | 總交易數 | 獲利 / 虧損 | 獲利因子 | 淨損益 (點) | 參數設定 (ORB分 / 緩衝點 / 動能門檻 / 量比) |\n"
+    md_content += f"| 排名 | 勝率 | 總交易數 | 獲利 / 虧損 | 獲利因子 | 淨損益 (點) | 參數設定 (ORB分 / 緩衝點 / 動能門檻 / 量比 / 停損模式) |\n"
     md_content += f"|:---:|:---:|:---:|:---:|:---:|:---:|:---|\n"
     
     top10 = filtered_results[:10]
@@ -1192,7 +1287,7 @@ def run_orb_parameter_optimization(df_1k, contract_type='MTX', start_capital=100
         s = item['summary']
         win_rate_pct = f"{s['winRate'] * 100:.2f}%"
         net_pnl_str = f"+{s['netPnL']}" if s['netPnL'] > 0 else f"{s['netPnL']}"
-        md_content += f"| {idx + 1} | **{win_rate_pct}** | {s['totalTrades']} | {s['winTrades']} / {s['lossTrades']} | {s['profitFactor']:.2f} | {net_pnl_str} | `ORB: {p['ORB_PROBE_MINUTES']}m` \\| `Buffer: {p['ORB_BREAKOUT_TICKS']}` \\| `Mom: {p['MOMENTUM_THRESHOLD']}` \\| `Vol: {p['VOL_SPIKE_RATIO']}x` |\n"
+        md_content += f"| {idx + 1} | **{win_rate_pct}** | {s['totalTrades']} | {s['winTrades']} / {s['lossTrades']} | {s['profitFactor']:.2f} | {net_pnl_str} | `ORB: {p['ORB_PROBE_MINUTES']}m` \\| `Buffer: {p['ORB_BREAKOUT_TICKS']}` \\| `Mom: {p['MOMENTUM_THRESHOLD']}` \\| `Vol: {p['VOL_SPIKE_RATIO']}x` \\| `SL: {p['SL_MODE']}` |\n"
         
     with open(md_path, 'w', encoding='utf-8') as f:
         f.write(md_content)

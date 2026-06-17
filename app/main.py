@@ -155,6 +155,9 @@ class ORBBacktestRequest(BaseModel):
     orb_atr_period: int = 14
     orb_atr_multiplier: float = 0.0
     force_min_lot: bool = True
+    sl_mode: str = "bar_extreme"
+    min_sl_points: float = 20.0
+    fixed_sl_points: float = 30.0
 
 @app.post("/api/backtest")
 def run_backtest(req: BacktestRequest):
@@ -346,7 +349,10 @@ def run_orb_backtest(req: ORBBacktestRequest):
             session_filter=req.session_filter,
             orb_atr_period=req.orb_atr_period,
             orb_atr_multiplier=req.orb_atr_multiplier,
-            force_min_lot=req.force_min_lot
+            force_min_lot=req.force_min_lot,
+            sl_mode=req.sl_mode,
+            min_sl_points=req.min_sl_points,
+            fixed_sl_points=req.fixed_sl_points
         )
         
         # 格式化
