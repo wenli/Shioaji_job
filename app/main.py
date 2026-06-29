@@ -14,6 +14,22 @@ from pathlib import Path
 # Custom Modules
 import download_futures_data as dfd
 import scheduler_manager as sm
+import sqlite3
+
+def get_db_connection() -> sqlite3.Connection:
+    """Helper to connect to the database (configured via DB_NAME in .env or fallback)."""
+    db_path = dfd.DB_NAME
+    if not os.path.exists(db_path):
+        fallback_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
+        if os.path.exists(fallback_path):
+            db_path = fallback_path
+    
+    # Ensure directory exists if needed
+    path_obj = Path(db_path)
+    if path_obj.parent != Path("."):
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        
+    return sqlite3.connect(db_path, timeout=30.0)
 
 # Setup Logging
 logging.basicConfig(
@@ -25,6 +41,14 @@ logger = logging.getLogger(__name__)
 # Lifespan for Shioaji Init & Scheduler Startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 0. Initialize SQLite database tables
+    try:
+        logger.info("Auto-initializing SQLite database tables...")
+        dfd.init_db()
+        logger.info("SQLite database tables initialized successfully.")
+    except Exception as e:
+        logger.exception(f"Failed to auto-initialize SQLite database: {e}")
+
     # 1. Initialize Shioaji Client
     api = dfd.get_shioaji_client()
     if api:
@@ -389,13 +413,10 @@ def get_trade_chart(entry_time: str, exit_time: str, pre_bars: int = 120, post_b
         pre_bars = int(pre_bars)
         post_bars = int(post_bars)
 
-        db_path = "Shioaji.db"
-        if not os.path.exists(db_path):
-            db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
-        if not os.path.exists(db_path):
-            raise HTTPException(status_code=500, detail="資料庫檔案不存在。")
-            
-        conn = sqlite3.connect(db_path)
+        try:
+            conn = get_db_connection()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"無法連接資料庫: {str(e)}")
         
         # 1. 取得 1K 範圍
         c = conn.cursor()
@@ -559,11 +580,7 @@ class RealTimeQuoteStreamer:
         # 1. 預加載最近 1K 歷史數據以確保 SMC 指標可計算
         logger.info("RealTimeQuoteStreamer: Pre-loading 1K history data from DB...")
         try:
-            db_path = "Shioaji.db"
-            if not os.path.exists(db_path):
-                db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
-                
-            conn = sqlite3.connect(db_path)
+            conn = get_db_connection()
             # 載入最近 2500 筆 1K 數據 (約為 2 天完整交易日數據)
             query = "SELECT ts, Open as open, High as high, Low as low, Close as close, Volume as volume FROM futures1k WHERE code='TXFR1' ORDER BY ts DESC LIMIT 2500;"
             df_hist = pd.read_sql_query(query, conn)
@@ -989,11 +1006,7 @@ async def replay_simulator_worker(date_str: str, speed_seconds: float):
     try:
         logger.info(f"Replay worker started for {date_str} at speed {speed_seconds}s/bar")
         
-        db_path = "Shioaji.db"
-        if not os.path.exists(db_path):
-            db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
-            
-        conn = sqlite3.connect(db_path)
+        conn = get_db_connection()
         query = f"SELECT ts, Open as open, High as high, Low as low, Close as close, Volume as volume FROM futures1k WHERE code='TXFR1' AND ts >= '{date_str} 00:00:00' AND ts <= '{date_str} 23:59:59' ORDER BY ts;"
         df_1k_all = pd.read_sql_query(query, conn)
         conn.close()
@@ -1153,11 +1166,7 @@ async def simulated_live_ticks_worker():
     """
     try:
         logger.info("Simulated live ticks worker started.")
-        db_path = "Shioaji.db"
-        if not os.path.exists(db_path):
-            db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
-            
-        conn = sqlite3.connect(db_path)
+        conn = get_db_connection()
         # 載入最近 2500 筆 1K 數據 (約為 2 天完整交易日數據)
         query = "SELECT ts, Open as open, High as high, Low as low, Close as close, Volume as volume FROM futures1k WHERE code='TXFR1' ORDER BY ts DESC LIMIT 2500;"
         df_1k_recent = pd.read_sql_query(query, conn)
@@ -1174,11 +1183,14 @@ async def simulated_live_ticks_worker():
         
         import random
         
+        last_real_minute = datetime.now().minute
+        
         while True:
             now_dt = datetime.now()
             last_bar_dt = df_1k_recent['datetime'].iloc[-1]
             
-            if last_bar_dt.minute != now_dt.minute:
+            if now_dt.minute != last_real_minute:
+                last_real_minute = now_dt.minute
                 new_dt = last_bar_dt + timedelta(minutes=1)
                 last_close = df_1k_recent['close'].iloc[-1]
                 new_row = pd.DataFrame([{
@@ -1367,11 +1379,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 real_time_streamer.stop_stream()
                 
                 # --- [新增] 模擬實時看盤預載 150 根歷史數據 ---
-                db_path = "Shioaji.db"
-                if not os.path.exists(db_path):
-                    db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
                 try:
-                    conn = sqlite3.connect(db_path)
+                    conn = get_db_connection()
                     # 載入最近 2500 筆 1K 數據 (約為 2 天完整交易日數據)
                     query = "SELECT ts, Open as open, High as high, Low as low, Close as close, Volume as volume FROM futures1k WHERE code='TXFR1' ORDER BY ts DESC LIMIT 2500;"
                     df_hist = pd.read_sql_query(query, conn)
@@ -1401,11 +1410,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 real_time_streamer.orb_params.update(new_params)
                 
                 # 重新獲取並推送 history_init 包以讓前端重繪
-                db_path = "Shioaji.db"
-                if not os.path.exists(db_path):
-                    db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
                 try:
-                    conn = sqlite3.connect(db_path)
+                    conn = get_db_connection()
                     query = "SELECT ts, Open as open, High as high, Low as low, Close as close, Volume as volume FROM futures1k WHERE code='TXFR1' ORDER BY ts DESC LIMIT 2500;"
                     df_hist = pd.read_sql_query(query, conn)
                     conn.close()

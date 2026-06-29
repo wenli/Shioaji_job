@@ -2154,9 +2154,13 @@ class ObsidianReportGenerator:
 # 6. 真實數據加載與二維參數優化引擎
 # ==============================================================================
 def load_real_data(code='TXFR1', start_date=None, end_date=None):
-    db_path = "Shioaji.db"
+    from dotenv import load_dotenv
+    load_dotenv()
+    db_path = os.getenv("DB_NAME", "Shioaji.db")
     if not os.path.exists(db_path):
-        db_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
+        fallback_path = r"C:\Intel\TW_Stock_K-Line_Chart\SK.db"
+        if os.path.exists(fallback_path):
+            db_path = fallback_path
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"找不到 SQLite 資料庫: {db_path}")
         
