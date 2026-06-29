@@ -164,7 +164,12 @@ def aggregate_kbars(df_1k: pd.DataFrame, interval: str) -> pd.DataFrame:
     # Drop NaNs that occur in non-trading hours
     resampled.dropna(subset=['open'], inplace=True)
     
-    # Restore code and ts (nanosecs for timestamp integer)
+    # Shift timestamps forward to represent interval end time (except for Daily 'D' interval)
+    if interval != 'D' and not resampled.empty:
+        shift_mins = int(''.join(filter(str.isdigit, interval)))
+        resampled.index = resampled.index + pd.Timedelta(minutes=shift_mins)
+        
+    # Restore code
     if not df_1k.empty:
          resampled['code'] = df_1k['code'].iloc[0]
          
@@ -230,15 +235,17 @@ def resample_60k(df: pd.DataFrame) -> pd.DataFrame:
 
     # 4. Resample Day Session
     if not df_day.empty:
-        df_day_res = df_day.resample("60min", closed="right", label="right", offset="45min").agg(agg_rules)
+        df_day_res = df_day.resample("60min", closed="left", label="left", offset="45min").agg(agg_rules)
         df_day_res.dropna(subset=['open'], inplace=True)
+        df_day_res.index = df_day_res.index + pd.Timedelta(minutes=60)
     else:
         df_day_res = pd.DataFrame()
 
     # 5. Resample Night Session
     if not df_night.empty:
-        df_night_res = df_night.resample("60min", closed="right", label="right").agg(agg_rules)
+        df_night_res = df_night.resample("60min", closed="left", label="left").agg(agg_rules)
         df_night_res.dropna(subset=['open'], inplace=True)
+        df_night_res.index = df_night_res.index + pd.Timedelta(minutes=60)
     else:
         df_night_res = pd.DataFrame()
 

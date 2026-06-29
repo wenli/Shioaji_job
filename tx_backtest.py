@@ -147,7 +147,7 @@ class TaiwanFuturesSMCEngine:
         將 5K (HTF) 的分析訊號對齊併入 1K (LTF)。
         """
         df_5k_shifted = df_5k_analyzed.copy()
-        df_5k_shifted['datetime'] = df_5k_shifted['datetime'] + timedelta(minutes=5)
+        # 資料庫與聚合結果已統一儲存為收盤時間，此處不需再進行平移
         
         columns_to_merge = [
             'datetime', 'sweep_low', 'sweep_high', 'last_pivot_h', 'last_pivot_l',
