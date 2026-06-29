@@ -877,8 +877,8 @@
         let orbLowSeries = null;
 
         // Cache for dynamic ORB series data points
-        let orbHighDataCache = {};
-        let orbLowDataCache = {};
+        let orbHighDataCache = [];
+        let orbLowDataCache = [];
 
         // [標準轉換] 將台北 Naive 時間字串，轉換為該時刻在台北 (UTC+8) 的標準 Unix 時間戳（秒）
         function getCorrectedUnixTimestamp(timeStr) {
@@ -1184,6 +1184,8 @@
 
                 orbHighSeries.setData(orbHighData);
                 orbLowSeries.setData(orbLowData);
+                orbHighDataCache = orbHighData;
+                orbLowDataCache = orbLowData;
             }
             
             appendAlert("🎉 歷史多時區指標與 ORB 區間加載成功，圖表就緒！", "success");
@@ -1230,7 +1232,12 @@
             if (orb && candles['1k']) {
                 const last1k = candles['1k'];
                 const timeUnix = getCorrectedUnixTimestamp(last1k.time);
-                const dt = new Date(last1k.time);
+                // 獲取當前 K 棒所屬的 Session (以台北時間為準，防瀏覽器本地時區移位)
+                const taipeiTimeStr = formatUnixToTaipeiString(timeUnix, 'time');
+                const [hStr, mStr] = taipeiTimeStr.split(':');
+                const h = parseInt(hStr, 10);
+                const m = parseInt(mStr, 10);
+                const t = h * 60 + m;
 
                 // 更新倒數 banner
                 const banner = document.getElementById('orb-banner');
@@ -1241,8 +1248,6 @@
                     banner.style.display = 'none';
                 }
 
-                // 獲取當前 K 棒所屬的 Session
-                const t = dt.getHours() * 60 + dt.getMinutes();
                 let sessStartStr = "";
                 let sessionType = "";
                 if (t >= 525 && t <= 825) {
@@ -1251,8 +1256,8 @@
                     sessionType = "day";
                 } else {
                     let baseDateStr = formatUnixToTaipeiString(timeUnix, 'date');
-                    if (dt.getHours() < 5) {
-                        const prevDate = new Date(dt.getTime() - 24 * 60 * 60 * 1000);
+                    if (h < 5) {
+                        const prevDate = new Date(timeUnix * 1000 - 24 * 60 * 60 * 1000);
                         baseDateStr = formatUnixToTaipeiString(Math.floor(prevDate.getTime()/1000), 'date');
                     }
                     sessStartStr = `${baseDateStr} 15:00:00`;
@@ -1268,34 +1273,28 @@
                     orbHighSeries.applyOptions({ lineStyle: lineStyle });
                     orbLowSeries.applyOptions({ lineStyle: lineStyle });
 
-                    // 遍歷 cache 裡所有在這個 session start 之後的點，並補上區間線值
+                    // 遍歷 cache 裡所有在這個 session start 之後 the 點，並補上區間線值
                     const cache1k = candleDataCache['1k'];
-                    const highPoints = [];
-                    const lowPoints = [];
 
-                    // 我們先抓取舊的其他 session 的畫線數據
-                    const existingHigh = orbHighSeries.data() || [];
-                    const existingLow = orbLowSeries.data() || [];
-
-                    // 過濾掉當前 session 之後的舊畫點，以防重複
-                    const filteredHigh = existingHigh.filter(pt => pt.time < sessStartUnix);
-                    const filteredLow = existingLow.filter(pt => pt.time < sessStartUnix);
+                    // 過濾快取中的歷史數據以移除當前 Session 及其之後的點，避免重疊與重複繪點
+                    orbHighDataCache = orbHighDataCache.filter(pt => pt.time < sessStartUnix);
+                    orbLowDataCache = orbLowDataCache.filter(pt => pt.time < sessStartUnix);
 
                     cache1k.forEach(item => {
                         if (item.time >= sessStartUnix) {
-                            filteredHigh.push({
+                            orbHighDataCache.push({
                                 time: item.time,
                                 value: orb.high_line
                             });
-                            filteredLow.push({
+                            orbLowDataCache.push({
                                 time: item.time,
                                 value: orb.low_line
                             });
                         }
                     });
 
-                    orbHighSeries.setData(filteredHigh);
-                    orbLowSeries.setData(filteredLow);
+                    orbHighSeries.setData(orbHighDataCache);
+                    orbLowSeries.setData(orbLowDataCache);
                 }
 
                 // 模擬部位價格觸及 SL/TP 自動平倉
@@ -1604,6 +1603,8 @@
             });
             orbHighSeries.setData([]);
             orbLowSeries.setData([]);
+            orbHighDataCache = [];
+            orbLowDataCache = [];
             
             // 清理可能殘留的部位線
             const series = seriesList['1k'];
