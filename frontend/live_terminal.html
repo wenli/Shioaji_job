@@ -738,11 +738,12 @@
                 const list = historyMap[key];
                 if (!list || list.length === 0) return;
                 
-                const candles = [];
+                const uniqueMap = new Map();
                 const allMarkers = [];
                 
                 list.forEach(c => {
                     const timeUnix = getCorrectedUnixTimestamp(c.time);
+                    if (isNaN(timeUnix) || timeUnix <= 0) return;
                     
                     const candleItem = {
                         time: timeUnix,
@@ -754,7 +755,7 @@
                         smc_markers: []
                     };
                     
-                    candles.push(candleItem);
+                    uniqueMap.set(timeUnix, candleItem);
                     
                     const smc = c.smc;
                     if (smc) {
@@ -802,8 +803,14 @@
                     }
                 });
                 
+                const candles = Array.from(uniqueMap.values()).sort((a, b) => a.time - b.time);
+
                 // 1. 全量 setData 加載 (秒開)
-                seriesList[key].setData(candles);
+                try {
+                    seriesList[key].setData(candles);
+                } catch (err) {
+                    console.warn(`[setData History Error] ${key}:`, err.message);
+                }
                 candleDataCache[key] = candles;
                 
                 // 2. 批量加載 markers
@@ -856,10 +863,9 @@
                 const c = candles[key];
                 if (!c) return;
                 
-                // Format time string to UNIX timestamp (needed for lightweight-charts)
-                // lightweight-charts handles time in YYYY-MM-DD or Unix timestamp
                 const timeUnix = getCorrectedUnixTimestamp(c.time);
-                
+                if (isNaN(timeUnix) || timeUnix <= 0) return;
+
                 const newCandle = {
                     time: timeUnix,
                     open: c.open,
@@ -869,27 +875,40 @@
                     volume: c.volume
                 };
                 
-                // 1. Update series candle
-                const series = seriesList[key];
-                series.update(newCandle);
-                
-                // Update header price
-                document.getElementById(`price-lbl-${key}`).textContent = 
-                    `O: ${c.open} | H: ${c.high} | L: ${c.low} | C: ${c.close} | VOL: ${c.volume}`;
-                
-                // 2. Manage local cache
+                // 1. Manage local cache
                 let cache = candleDataCache[key];
                 const lastIdx = cache.findIndex(item => item.time === timeUnix);
                 if (lastIdx !== -1) {
                     cache[lastIdx] = newCandle;
                 } else {
                     cache.push(newCandle);
+                    cache.sort((a, b) => a.time - b.time);
+                }
+                if (cache.length > 300) cache.shift();
+
+                const lastCandleInCache = cache.length > 0 ? cache[cache.length - 1] : null;
+                const isLatest = lastCandleInCache && newCandle.time >= lastCandleInCache.time;
+                const series = seriesList[key];
+
+                try {
+                    if (isLatest || cache.length <= 1) {
+                        series.update(newCandle);
+                    } else {
+                        series.setData(cache);
+                    }
+                } catch (err) {
+                    try {
+                        series.setData(cache);
+                    } catch (fallbackErr) {
+                        console.warn(`[Chart Update Warning] ${key} update bypassed (${fallbackErr.message})`);
+                    }
                 }
                 
-                // Keep cache tight
-                if (cache.length > 300) cache.shift();
+                // Update header price
+                document.getElementById(`price-lbl-${key}`).textContent = 
+                    `O: ${c.open} | H: ${c.high} | L: ${c.low} | C: ${c.close} | VOL: ${c.volume}`;
                 
-                // 3. Draw SMC Overlays & Markers
+                // 2. Draw SMC Overlays & Markers
                 drawSMCOverlays(key, newCandle, c.smc, c.time);
             });
         }

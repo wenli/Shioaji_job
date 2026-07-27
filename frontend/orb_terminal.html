@@ -548,6 +548,35 @@
             margin-top: 0.4rem;
         }
 
+        /* Filter Pipeline Modal Overlay */
+        .terminal-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(3, 2, 6, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        }
+
+        .terminal-modal-card {
+            background: rgba(14, 9, 26, 0.95);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            box-shadow: 0 0 40px rgba(34, 211, 238, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
         /* Scrollbar styles */
         ::-webkit-scrollbar {
             width: 4px;
@@ -678,6 +707,7 @@
                     <input type="number" id="orb-atr-multiplier" value="0.0" style="width: 60px;" step="0.1" min="0.0" max="10.0">
                 </div>
                 <button class="btn btn-secondary" onclick="applyORBParams()">⚙️ 套用參數</button>
+                <button class="btn btn-secondary" style="border-color: rgba(34, 211, 238, 0.4); color: var(--neon-cyan);" onclick="openFilterModal()">🛡️ 過濾管道</button>
             </div>
         </div>
 
@@ -838,9 +868,151 @@
         </div>
     </div>
 
+    <!-- Filter Pipeline Modal Overlay -->
+    <div class="terminal-modal-overlay" id="filter-pipeline-modal">
+        <div class="terminal-modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.8rem;">
+                <h3 style="color: var(--neon-cyan); font-family: var(--font-outfit); font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    🛡️ ORB 突破過濾管道設定 (Filter Pipeline)
+                </h3>
+                <button onclick="closeFilterModal()" style="background: transparent; border: none; color: #8b949e; font-size: 1.4rem; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.9rem; font-size: 0.82rem;">
+                <!-- 1. Volume Spike -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label for="t-filter-vol-enable" style="color: #fff; font-weight: bold; cursor: pointer;">1. 成交量突波過濾 (Volume Spike)</label>
+                        <input type="checkbox" id="t-filter-vol-enable" checked style="accent-color: var(--neon-cyan); width: 16px; height: 16px;">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">突波倍數 Ratio:</span>
+                            <input type="number" id="t-filter-vol-ratio" value="1.5" min="1.0" max="5.0" step="0.1" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">MA 週期:</span>
+                            <input type="number" id="t-filter-vol-ma" value="20" min="5" max="100" step="1" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Momentum -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label for="t-filter-mom-enable" style="color: #fff; font-weight: bold; cursor: pointer;">2. 動能門檻過濾 (Momentum)</label>
+                        <input type="checkbox" id="t-filter-mom-enable" checked style="accent-color: var(--neon-cyan); width: 16px; height: 16px;">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">日盤動能 %:</span>
+                            <input type="number" id="t-filter-mom-day" value="0.0005" min="0.0" max="0.01" step="0.0001" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">夜盤動能 %:</span>
+                            <input type="number" id="t-filter-mom-night" value="0.0003" min="0.0" max="0.01" step="0.0001" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. VWAP -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="t-filter-vwap-enable" style="color: #fff; font-weight: bold; cursor: pointer;">3. VWAP 均價線過濾 (VWAP Align)</label>
+                        <input type="checkbox" id="t-filter-vwap-enable" checked style="accent-color: var(--neon-cyan); width: 16px; height: 16px;">
+                    </div>
+                </div>
+
+                <!-- 4. Over Extension -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label for="t-filter-over-enable" style="color: #fff; font-weight: bold; cursor: pointer;">4. 過度延伸保護 (Over-Extension)</label>
+                        <input type="checkbox" id="t-filter-over-enable" checked style="accent-color: var(--neon-cyan); width: 16px; height: 16px;">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">ATR 倍數:</span>
+                            <input type="number" id="t-filter-over-atr" value="2.0" min="0.5" max="10.0" step="0.1" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">區間倍數:</span>
+                            <input type="number" id="t-filter-over-orb" value="1.5" min="0.5" max="10.0" step="0.1" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 0.5rem;">
+                <button class="btn btn-secondary" onclick="closeFilterModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveFilterModal()">💾 儲存套用</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Global variables
-        let ws = null;
+        // Filter Pipeline Config State
+        let filterPipelineConfig = {
+            enable_volume_spike: true,
+            vol_spike_ratio: 1.5,
+            vol_ma_period: 20,
+            enable_momentum: true,
+            mom_day_pct: 0.0005,
+            mom_night_pct: 0.0003,
+            enable_vwap: true,
+            enable_over_extension: true,
+            over_ext_atr_mult: 2.0,
+            over_ext_orb_mult: 1.5
+        };
+
+        window.openFilterModal = function() {
+            document.getElementById('filter-pipeline-modal').style.display = 'flex';
+        };
+
+        window.closeFilterModal = function() {
+            document.getElementById('filter-pipeline-modal').style.display = 'none';
+        };
+
+        window.saveFilterModal = function() {
+            filterPipelineConfig.enable_volume_spike = document.getElementById('t-filter-vol-enable').checked;
+            filterPipelineConfig.vol_spike_ratio = parseFloat(document.getElementById('t-filter-vol-ratio').value) || 1.5;
+            filterPipelineConfig.vol_ma_period = parseInt(document.getElementById('t-filter-vol-ma').value) || 20;
+
+            filterPipelineConfig.enable_momentum = document.getElementById('t-filter-mom-enable').checked;
+            filterPipelineConfig.mom_day_pct = parseFloat(document.getElementById('t-filter-mom-day').value) || 0.0005;
+            filterPipelineConfig.mom_night_pct = parseFloat(document.getElementById('t-filter-mom-night').value) || 0.0003;
+
+            filterPipelineConfig.enable_vwap = document.getElementById('t-filter-vwap-enable').checked;
+
+            filterPipelineConfig.enable_over_extension = document.getElementById('t-filter-over-enable').checked;
+            filterPipelineConfig.over_ext_atr_mult = parseFloat(document.getElementById('t-filter-over-atr').value) || 2.0;
+            filterPipelineConfig.over_ext_orb_mult = parseFloat(document.getElementById('t-filter-over-orb').value) || 1.5;
+
+            closeFilterModal();
+            appendAlert('🛡️ ORB 突破過濾管道設定已更新並套用！', 'success');
+        };
+
+        window.applyORBParams = function() {
+            const probeMins = parseInt(document.getElementById('orb-probe-minutes').value) || 15;
+            const breakoutTicks = parseInt(document.getElementById('orb-breakout-ticks').value) || 5;
+            const momThresh = parseFloat(document.getElementById('momentum-threshold').value) || 0.0003;
+            const volSpike = parseFloat(document.getElementById('vol-spike-ratio').value) || 1.2;
+            const atrPeriod = parseInt(document.getElementById('orb-atr-period').value) || 14;
+            const atrMult = parseFloat(document.getElementById('orb-atr-multiplier').value) || 0.0;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: "update_params",
+                    orb_probe_minutes: probeMins,
+                    orb_breakout_ticks: breakoutTicks,
+                    momentum_threshold: momThresh,
+                    vol_spike_ratio: volSpike,
+                    orb_atr_period: atrPeriod,
+                    orb_atr_multiplier: atrMult,
+                    filter_config: filterPipelineConfig
+                }));
+            }
+            appendAlert(`⚙️ ORB 策略與過濾管道參數已同步套用 (Probe: ${probeMins}m | Breakout: ${breakoutTicks}t)`, 'success');
+        };
         let activeMode = 'replay'; // replay vs live
         let isReplaying = false;
         let isSimulating = false;
@@ -1112,20 +1284,28 @@
                 const list = historyMap[key];
                 if (!list || list.length === 0) return;
                 
-                const candles = [];
+                const uniqueMap = new Map();
                 list.forEach(c => {
                     const timeUnix = getCorrectedUnixTimestamp(c.time);
-                    candles.push({
-                        time: timeUnix,
-                        open: c.open,
-                        high: c.high,
-                        low: c.low,
-                        close: c.close,
-                        volume: c.volume
-                    });
+                    if (!isNaN(timeUnix) && timeUnix > 0) {
+                        uniqueMap.set(timeUnix, {
+                            time: timeUnix,
+                            open: c.open,
+                            high: c.high,
+                            low: c.low,
+                            close: c.close,
+                            volume: c.volume
+                        });
+                    }
                 });
                 
-                seriesList[key].setData(candles);
+                const candles = Array.from(uniqueMap.values()).sort((a, b) => a.time - b.time);
+                
+                try {
+                    seriesList[key].setData(candles);
+                } catch (err) {
+                    console.warn(`[setData History Error] ${key}:`, err.message);
+                }
                 candleDataCache[key] = candles;
                 
                 // 更新 Header 價格
@@ -1201,6 +1381,8 @@
                 if (!c) return;
                 
                 const timeUnix = getCorrectedUnixTimestamp(c.time);
+                if (isNaN(timeUnix) || timeUnix <= 0) return;
+
                 const newCandle = {
                     time: timeUnix,
                     open: c.open,
@@ -1210,12 +1392,6 @@
                     volume: c.volume
                 };
                 
-                seriesList[key].update(newCandle);
-                
-                // Update header price
-                document.getElementById(`price-lbl-${key}`).textContent = 
-                    `O: ${c.open} | H: ${c.high} | L: ${c.low} | C: ${c.close} | VOL: ${c.volume}`;
-                
                 // Manage local cache
                 let cache = candleDataCache[key];
                 const lastIdx = cache.findIndex(item => item.time === timeUnix);
@@ -1223,9 +1399,31 @@
                     cache[lastIdx] = newCandle;
                 } else {
                     cache.push(newCandle);
+                    cache.sort((a, b) => a.time - b.time);
+                }
+                if (cache.length > 500) cache.shift();
+
+                const lastCandleInCache = cache.length > 0 ? cache[cache.length - 1] : null;
+                const isLatest = lastCandleInCache && newCandle.time >= lastCandleInCache.time;
+
+                try {
+                    if (isLatest || cache.length <= 1) {
+                        seriesList[key].update(newCandle);
+                    } else {
+                        seriesList[key].setData(cache);
+                    }
+                } catch (err) {
+                    // Fallback to setData on update failure
+                    try {
+                        seriesList[key].setData(cache);
+                    } catch (fallbackErr) {
+                        console.warn(`[Chart Update Warning] ${key} update bypassed (${fallbackErr.message})`);
+                    }
                 }
                 
-                if (cache.length > 500) cache.shift();
+                // Update header price
+                document.getElementById(`price-lbl-${key}`).textContent = 
+                    `O: ${c.open} | H: ${c.high} | L: ${c.low} | C: ${c.close} | VOL: ${c.volume}`;
             });
 
             // 處理 1K ORB 行情倒數與動態劃線
@@ -1293,8 +1491,21 @@
                         }
                     });
 
-                    orbHighSeries.setData(orbHighDataCache);
-                    orbLowSeries.setData(orbLowDataCache);
+                    // 去重與排序確保增量時間序列遞增
+                    const uniqueHighMap = new Map();
+                    orbHighDataCache.forEach(pt => uniqueHighMap.set(pt.time, pt));
+                    const sortedHighData = Array.from(uniqueHighMap.values()).sort((a, b) => a.time - b.time);
+
+                    const uniqueLowMap = new Map();
+                    orbLowDataCache.forEach(pt => uniqueLowMap.set(pt.time, pt));
+                    const sortedLowData = Array.from(uniqueLowMap.values()).sort((a, b) => a.time - b.time);
+
+                    try {
+                        orbHighSeries.setData(sortedHighData);
+                        orbLowSeries.setData(sortedLowData);
+                    } catch (err) {
+                        console.warn(`[ORB Line Update Warning] ${err.message}`);
+                    }
                 }
 
                 // 模擬部位價格觸及 SL/TP 自動平倉
@@ -1331,8 +1542,6 @@
 
                     // 強制平倉檢測：時段即將結束時
                     if (!isFlat) {
-                        const h = dt.getHours();
-                        const m = dt.getMinutes();
                         if (sessionType === 'day' && h === 13 && m >= 44) {
                             isFlat = true;
                             exitPrice = price1k;
