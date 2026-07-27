@@ -254,6 +254,24 @@
             box-shadow: 0 0 8px rgba(88, 166, 255, 0.2);
         }
 
+        /* Date Picker Calendar Icon Fix for Dark Theme */
+        input[type="date"] {
+            color-scheme: dark;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.85) sepia(100%) hue-rotate(180deg);
+            cursor: pointer;
+            opacity: 0.85;
+            transition: all 0.2s ease;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1.0;
+            filter: invert(1);
+            transform: scale(1.1);
+        }
+
         .checkbox-group {
             display: flex;
             gap: 15px;
@@ -1139,7 +1157,77 @@
                             <label for="orb-param-force-min-lot" style="margin-bottom: 0; cursor: pointer; color: var(--neon-gold); font-weight: bold;">保底 1 口交易 (Min 1 Lot Fallback)</label>
                         </div>
 
+                        <!-- ORB Filter Pipeline Card -->
+                        <div class="filter-pipeline-card" style="margin-top: 15px; margin-bottom: 10px; padding: 12px; background: rgba(22, 27, 34, 0.6); border: 1px solid rgba(88, 166, 255, 0.2); border-radius: 12px;">
+                            <h4 style="color: var(--neon-cyan); font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                                🛡️ ORB 突破過濾管道 (Filter Pipeline)
+                            </h4>
+                            
+                            <!-- 1. Volume Spike Filter -->
+                            <div style="margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                                    <label for="orb-filter-vol-enable" style="font-size: 0.78rem; cursor: pointer; color: #fff;">1. 成交量突波 (Volume Spike)</label>
+                                    <input type="checkbox" id="orb-filter-vol-enable" checked style="width: auto; accent-color: var(--neon-cyan);">
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <div style="flex: 1;">
+                                        <span style="font-size: 0.7rem; color: #8b949e;">倍數 Ratio:</span>
+                                        <input type="number" id="orb-filter-vol-ratio" value="1.5" min="1.0" max="5.0" step="0.1" style="padding: 3px 6px; font-size: 0.75rem;">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <span style="font-size: 0.7rem; color: #8b949e;">MA 週期:</span>
+                                        <input type="number" id="orb-filter-vol-ma" value="20" min="5" max="100" step="1" style="padding: 3px 6px; font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Momentum Filter -->
+                            <div style="margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                                    <label for="orb-filter-mom-enable" style="font-size: 0.78rem; cursor: pointer; color: #fff;">2. 動能門檻 (Momentum)</label>
+                                    <input type="checkbox" id="orb-filter-mom-enable" checked style="width: auto; accent-color: var(--neon-cyan);">
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <div style="flex: 1;">
+                                        <span style="font-size: 0.7rem; color: #8b949e;">日盤 %:</span>
+                                        <input type="number" id="orb-filter-mom-day" value="0.0005" min="0.0" max="0.01" step="0.0001" style="padding: 3px 6px; font-size: 0.75rem;">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <span style="font-size: 0.7rem; color: #8b949e;">夜盤 %:</span>
+                                        <input type="number" id="orb-filter-mom-night" value="0.0003" min="0.0" max="0.01" step="0.0001" style="padding: 3px 6px; font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. VWAP Filter -->
+                            <div style="margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <label for="orb-filter-vwap-enable" style="font-size: 0.78rem; cursor: pointer; color: #fff;">3. VWAP 均價線 (VWAP Align)</label>
+                                    <input type="checkbox" id="orb-filter-vwap-enable" checked style="width: auto; accent-color: var(--neon-cyan);">
+                                </div>
+                            </div>
+
+                            <!-- 4. Over-Extension Protection -->
+                            <div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+                                    <label for="orb-filter-over-enable" style="font-size: 0.78rem; cursor: pointer; color: #fff;">4. 過度延伸保護 (Over-Ext)</label>
+                                    <input type="checkbox" id="orb-filter-over-enable" checked style="width: auto; accent-color: var(--neon-cyan);">
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <div style="flex: 1;">
+                                        <span style="font-size: 0.7rem; color: #8b949e;">ATR 倍數:</span>
+                                        <input type="number" id="orb-filter-over-atr" value="2.0" min="0.5" max="10.0" step="0.1" style="padding: 3px 6px; font-size: 0.75rem;">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <span style="font-size: 0.7rem; color: #8b949e;">區間倍數:</span>
+                                        <input type="number" id="orb-filter-over-orb" value="1.5" min="0.5" max="10.0" step="0.1" style="padding: 3px 6px; font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button class="btn btn-primary" id="btn-run-orb-backtest" style="margin-top: 10px; background: var(--neon-gold); color: #000; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.35);">
+
                             <div class="spinner" id="spinner-orb-backtest"></div>
                             <span id="btn-orb-backtest-text" style="color: #000; font-weight: bold;">🚀 執行 ORB 策略回測</span>
                         </button>
@@ -1196,7 +1284,9 @@
                                 <th>出場點</th>
                                 <th>止損/止盈</th>
                                 <th>口數</th>
+                                <th>損益點數</th>
                                 <th>淨盈虧 (NT$)</th>
+                                <th>過濾驗證</th>
                                 <th>出場原因</th>
                             </tr>
                         </thead>
@@ -2041,6 +2131,17 @@
             setLoading(btnOrbBacktest, btnOrbBacktestText, spinnerOrbBacktest, true, '回測計算中...');
             btnOrbOptimize.disabled = true;
 
+            const orbFilterVolEnable = document.getElementById('orb-filter-vol-enable');
+            const orbFilterVolRatio = document.getElementById('orb-filter-vol-ratio');
+            const orbFilterVolMa = document.getElementById('orb-filter-vol-ma');
+            const orbFilterMomEnable = document.getElementById('orb-filter-mom-enable');
+            const orbFilterMomDay = document.getElementById('orb-filter-mom-day');
+            const orbFilterMomNight = document.getElementById('orb-filter-mom-night');
+            const orbFilterVwapEnable = document.getElementById('orb-filter-vwap-enable');
+            const orbFilterOverEnable = document.getElementById('orb-filter-over-enable');
+            const orbFilterOverAtr = document.getElementById('orb-filter-over-atr');
+            const orbFilterOverOrb = document.getElementById('orb-filter-over-orb');
+
             const payload = {
                 start_date: orbParamStart.value || null,
                 end_date: orbParamEnd.value || null,
@@ -2058,7 +2159,19 @@
                 force_min_lot: orbParamForceMinLot.checked,
                 sl_mode: orbParamSlMode.value,
                 min_sl_points: parseFloat(orbParamMinSlPoints.value) || 20.0,
-                fixed_sl_points: parseFloat(orbParamFixedSlPoints.value) || 30.0
+                fixed_sl_points: parseFloat(orbParamFixedSlPoints.value) || 30.0,
+                
+                // 4 大過濾管道參數
+                enable_volume_spike: orbFilterVolEnable ? orbFilterVolEnable.checked : true,
+                vol_spike_ratio: orbFilterVolRatio ? parseFloat(orbFilterVolRatio.value) || 1.5 : 1.5,
+                vol_ma_period: orbFilterVolMa ? parseInt(orbFilterVolMa.value) || 20 : 20,
+                enable_momentum: orbFilterMomEnable ? orbFilterMomEnable.checked : true,
+                mom_day_pct: orbFilterMomDay ? parseFloat(orbFilterMomDay.value) || 0.0005 : 0.0005,
+                mom_night_pct: orbFilterMomNight ? parseFloat(orbFilterMomNight.value) || 0.0003 : 0.0003,
+                enable_vwap: orbFilterVwapEnable ? orbFilterVwapEnable.checked : true,
+                enable_over_extension: orbFilterOverEnable ? orbFilterOverEnable.checked : true,
+                over_ext_atr_mult: orbFilterOverAtr ? parseFloat(orbFilterOverAtr.value) || 2.0 : 2.0,
+                over_ext_orb_mult: orbFilterOverOrb ? parseFloat(orbFilterOverOrb.value) || 1.5 : 1.5
             };
 
             try {
@@ -2170,6 +2283,10 @@
                         <span class="metric-val">${metrics.total_trades} 次</span>
                     </div>
                     <div class="metric-item">
+                        <span class="metric-lbl">假突破攔截次數</span>
+                        <span class="metric-val" style="color:var(--neon-purple);">${metrics.filtered_count !== undefined ? metrics.filtered_count : 0} 次</span>
+                    </div>
+                    <div class="metric-item">
                         <span class="metric-lbl">獲利因子 (PF)</span>
                         <span class="metric-val" style="color:var(--neon-cyan);">${metrics.profit_factor.toFixed(2)}</span>
                     </div>
@@ -2181,6 +2298,7 @@
             `;
             orbScorecardRow.appendChild(card);
         }
+
 
         function drawOrbEquityChart(curve) {
             const times = curve.map(pt => pt.time.split(' ')[0]);
@@ -2256,7 +2374,7 @@
             orbTradesTbody.innerHTML = '';
             
             if (filteredOrbTradesList.length === 0) {
-                orbTradesTbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#8b949e;">所選日期區間在此策略下無成交記錄</td></tr>`;
+                orbTradesTbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#8b949e;">所選日期區間在此策略下無成交記錄</td></tr>`;
                 return;
             }
 
@@ -2265,19 +2383,24 @@
                 tr.style.cursor = 'pointer';
                 tr.setAttribute('onclick', `showOrbTradeDetail(${index})`);
                 const isWin = t.net_pnl > 0;
-                
+                const mult = (t.direction === 'Long' || t.direction === 'long') ? 1 : -1;
+                const pnlPts = (t.exit_price - t.entry_price) * mult;
+                const pnlPtsText = (pnlPts >= 0 ? '+' : '') + pnlPts.toFixed(1) + ' 點';
+
                 tr.innerHTML = `
-                    <td style="font-weight: 600; color: #fff;">🎯 ORB 開盤突破</td>
-                    <td><span class="badge-direction ${t.direction === 'Long' ? 'badge-long' : 'badge-short'}">${t.direction === 'Long' ? '做多' : '做空'}</span></td>
+                    <td style="font-weight: 600; color: #fff;">🎯 ORB 突破</td>
+                    <td><span class="badge-direction ${t.direction === 'Long' || t.direction === 'long' ? 'badge-long' : 'badge-short'}">${t.direction === 'Long' || t.direction === 'long' ? '做多' : '做空'}</span></td>
                     <td style="color:#8b949e; font-size:0.8rem;">${t.entry_time.split(' ')[0]}<br>${t.entry_time.split(' ')[1]}</td>
                     <td style="color:#8b949e; font-size:0.8rem;">${t.exit_time.split(' ')[0]}<br>${t.exit_time.split(' ')[1]}</td>
                     <td style="font-weight:bold;">${t.entry_price}</td>
                     <td style="font-weight:bold;">${t.exit_price}</td>
                     <td style="color:#8b949e; font-size:0.75rem;">SL: ${t.stop_loss}<br>TP: ${t.take_profit}</td>
                     <td>${t.lots} 口</td>
+                    <td><span style="padding: 2px 7px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; background: ${pnlPts >= 0 ? 'rgba(63, 185, 80, 0.15)' : 'rgba(248, 81, 73, 0.15)'}; color: ${pnlPts >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">${pnlPtsText}</span></td>
                     <td style="font-weight:bold; color: ${isWin ? 'var(--success-color)' : 'var(--danger-color)'};">
                         ${isWin ? '+' : ''}${Math.round(t.net_pnl).toLocaleString()}
                     </td>
+                    <td><span style="padding: 2px 7px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background: rgba(34, 211, 238, 0.12); color: var(--neon-cyan); border: 1px solid rgba(34, 211, 238, 0.25);">PASSED 🛡️</span></td>
                     <td style="color:#d1d5db; font-size:0.8rem;">${t.reason}</td>
                 `;
                 orbTradesTbody.appendChild(tr);
