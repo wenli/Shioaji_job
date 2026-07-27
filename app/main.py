@@ -15,6 +15,7 @@ from pathlib import Path
 import download_futures_data as dfd
 import scheduler_manager as sm
 import sqlite3
+from app.strategy.orb_filters import FilterConfig
 
 def get_db_connection() -> sqlite3.Connection:
     """Helper to connect to the database (configured via DB_NAME in .env or fallback)."""
@@ -182,6 +183,17 @@ class ORBBacktestRequest(BaseModel):
     sl_mode: str = "bar_extreme"
     min_sl_points: float = 20.0
     fixed_sl_points: float = 30.0
+    
+    # 4 大過濾管道配置
+    enable_volume_spike: bool = True
+    vol_ma_period: int = 20
+    enable_momentum: bool = True
+    mom_day_pct: float = 0.0005
+    mom_night_pct: float = 0.0003
+    enable_vwap: bool = True
+    enable_over_extension: bool = True
+    over_ext_atr_mult: float = 2.0
+    over_ext_orb_mult: float = 1.5
 
 @app.post("/api/backtest")
 def run_backtest(req: BacktestRequest):
@@ -363,6 +375,19 @@ def run_orb_backtest(req: ORBBacktestRequest):
         )
         simulator.risk_pct = req.risk_pct
         
+        filter_cfg = FilterConfig(
+            enable_volume_spike=req.enable_volume_spike,
+            vol_spike_ratio=req.vol_spike_ratio,
+            vol_ma_period=req.vol_ma_period,
+            enable_momentum=req.enable_momentum,
+            mom_day_pct=req.mom_day_pct,
+            mom_night_pct=req.mom_night_pct,
+            enable_vwap=req.enable_vwap,
+            enable_over_extension=req.enable_over_extension,
+            over_ext_atr_mult=req.over_ext_atr_mult,
+            over_ext_orb_mult=req.over_ext_orb_mult
+        )
+        
         # 3. 執行策略
         metrics, trades, curve = simulator.run_strategy(
             orb_probe_minutes=req.orb_probe_minutes,
@@ -376,7 +401,8 @@ def run_orb_backtest(req: ORBBacktestRequest):
             force_min_lot=req.force_min_lot,
             sl_mode=req.sl_mode,
             min_sl_points=req.min_sl_points,
-            fixed_sl_points=req.fixed_sl_points
+            fixed_sl_points=req.fixed_sl_points,
+            filter_config=filter_cfg
         )
         
         # 格式化

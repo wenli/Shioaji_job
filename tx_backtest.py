@@ -12,6 +12,13 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
+try:
+    from app.strategy.orb_filters import ORBFilterPipeline, FilterConfig
+except ImportError:
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parent))
+    from app.strategy.orb_filters import ORBFilterPipeline, FilterConfig
+
 # ==============================================================================
 # 0. 自動安裝缺失套件
 # ==============================================================================
@@ -794,10 +801,11 @@ class ORBBacktestSimulator:
             
         return stop_loss, risk_points
 
-    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0, force_min_lot=True, sl_mode='bar_extreme', min_sl_points=20.0, fixed_sl_points=30.0):
+    def run_strategy(self, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, rr_ratio=2.0, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0, force_min_lot=True, sl_mode='bar_extreme', min_sl_points=20.0, fixed_sl_points=30.0, filter_config=None):
         capital = self.start_capital
         equity_curve = [{'time': str(self.df.loc[0, 'datetime']) if len(self.df) > 0 else '', 'equity': capital}]
         trades = []
+        filtered_count = 0
         
         position = 0  # 0: 無持倉, 1: 多頭, -1: 空頭
         entry_price = 0.0
@@ -815,6 +823,14 @@ class ORBBacktestSimulator:
         
         # 滾動成交量紀錄 (用來計算前 5 根 K 棒平均成交量)
         recent_volumes = []
+
+        # 配置過濾器管道
+        pipeline_cfg = filter_config or FilterConfig(
+            vol_spike_ratio=vol_spike_ratio,
+            mom_day_pct=momentum_threshold if momentum_threshold != 0.0003 else 0.0005,
+            mom_night_pct=momentum_threshold if momentum_threshold != 0.0003 else 0.0003
+        )
+        pipeline = ORBFilterPipeline(pipeline_cfg)
         
         def get_session_start_time(dt, session_type):
             if session_type == 'day':
@@ -828,7 +844,7 @@ class ORBBacktestSimulator:
 
         df_len = len(self.df)
         if df_len == 0:
-            return {'total_trades': 0, 'win_rate': 0.0, 'profit_factor': 0.0, 'max_drawdown': 0.0, 'total_return': 0.0, 'net_profit': 0.0}, [], []
+            return {'total_trades': 0, 'win_rate': 0.0, 'profit_factor': 0.0, 'max_drawdown': 0.0, 'total_return': 0.0, 'net_profit': 0.0, 'filtered_count': 0}, [], []
 
         # 計算 ATR
         if df_len > 1:
@@ -838,8 +854,17 @@ class ORBBacktestSimulator:
             self.df['tr3'] = (self.df['low'] - self.df['prev_close']).abs()
             self.df['tr'] = self.df[['tr1', 'tr2', 'tr3']].max(axis=1)
             self.df['atr'] = self.df['tr'].rolling(window=orb_atr_period, min_periods=1).mean()
+            self.df['vol_ma_20'] = self.df['volume'].rolling(window=20, min_periods=1).mean()
+            
+            # 計算 VWAP
+            tp = (self.df['high'] + self.df['low'] + self.df['close']) / 3.0
+            cum_tp_v = (tp * self.df['volume']).cumsum()
+            cum_v = self.df['volume'].cumsum()
+            self.df['vwap'] = cum_tp_v / cum_v.replace(0, 1.0)
         else:
             self.df['atr'] = 0.0
+            self.df['vol_ma_20'] = self.df['volume']
+            self.df['vwap'] = self.df['close']
 
         for i in range(df_len):
             row = self.df.iloc[i]
@@ -878,7 +903,7 @@ class ORBBacktestSimulator:
                         'net_pnl': round(net_pnl, 1),
                         'capital_after': round(capital, 1),
                         'reason': "日盤外強制平倉",
-                        'entry_indicators': {},
+                        'entry_indicators': {'filter_status': 'PASSED'},
                         'exit_indicators': {'reason': "日盤外強制平倉", 'pnl_points': round((c_cur - entry_price) * position, 1)}
                     })
                     position = 0
@@ -904,7 +929,7 @@ class ORBBacktestSimulator:
                         'net_pnl': round(net_pnl, 1),
                         'capital_after': round(capital, 1),
                         'reason': "夜盤外強制平倉",
-                        'entry_indicators': {},
+                        'entry_indicators': {'filter_status': 'PASSED'},
                         'exit_indicators': {'reason': "夜盤外強制平倉", 'pnl_points': round((c_cur - entry_price) * position, 1)}
                     })
                     position = 0
@@ -980,8 +1005,7 @@ class ORBBacktestSimulator:
                         'entry_indicators': {
                             'orb_range': f"{round(orb_ranges[entry_sess_start]['low'], 1)} - {round(orb_ranges[entry_sess_start]['high'], 1)}" if entry_sess_start in orb_ranges else "N/A",
                             'orb_probe': f"{orb_probe_minutes}m",
-                            'momentum': f"{round(abs(o_cur - c_cur)/o_cur, 6)} (門檻: {momentum_threshold})",
-                            'vol_ratio': f"{round(v_cur / avg_vol, 2)}x (門檻: {vol_spike_ratio}x)",
+                            'filter_status': 'PASSED',
                             'session': f"{'日盤' if sess_type == 'day' else '夜盤'} ORB時段",
                             'sl_mode': sl_mode
                         },
@@ -1017,91 +1041,99 @@ class ORBBacktestSimulator:
                         is_sell = c_cur < rng['low'] - orb_breakout_ticks
                         
                         if is_buy or is_sell:
-                            # 檢查動能與成交量過濾條件
-                            mom = abs(c_cur - o_cur) / o_cur
-                            is_mom_valid = mom >= momentum_threshold
-                            is_vol_valid = v_cur >= avg_vol * vol_spike_ratio
-                            
-                            # 檢查 ATR 實體強度
-                            is_atr_valid = True
-                            if orb_atr_multiplier > 0.0:
-                                if i > 0:
-                                    atr_prev = self.df.loc[i - 1, 'atr']
-                                    candle_body = abs(c_cur - o_cur)
-                                    is_atr_valid = candle_body >= atr_prev * orb_atr_multiplier
-                                else:
-                                    is_atr_valid = False
-                            
-                            if is_mom_valid and is_vol_valid and is_atr_valid:
-                                if is_buy:
-                                    position = 1
-                                    entry_price = c_cur
-                                    entry_time = t_cur
-                                    
-                                    # 呼叫模組化停損計算器
-                                    atr_val = self.df.loc[i - 1, 'atr'] if i > 0 else row.get('atr', 0.0)
-                                    stop_loss, risk_points = self.calculate_orb_stop_loss(
-                                        sl_mode=sl_mode,
-                                        direction=1,
-                                        entry_price=entry_price,
-                                        k_high=h_cur,
-                                        k_low=l_cur,
-                                        orb_range=rng,
-                                        atr_val=atr_val,
-                                        min_sl_points=min_sl_points,
-                                        fixed_sl_points=fixed_sl_points,
-                                        orb_atr_multiplier=orb_atr_multiplier,
-                                        orb_breakout_ticks=orb_breakout_ticks
-                                    )
-                                    take_profit = entry_price + risk_points * rr_ratio
-                                    
-                                    lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
-                                    if lots_to_trade < 1 and force_min_lot:
-                                        min_margin = 50000.0 if self.contract_type == 'MTX' else 200000.0
-                                        if capital >= min_margin:
-                                            lots_to_trade = 1
-                                            
-                                    if lots_to_trade >= 1:
-                                        lots = lots_to_trade
-                                        session_traded.add(sess_start)
-                                        entry_sess_start = sess_start
-                                    else:
-                                        position = 0
+                            direction = "LONG" if is_buy else "SHORT"
+                            vol_ma_val = row.get('vol_ma_20', avg_vol)
+                            atr_val = row.get('atr', 0.0)
+                            vwap_val = row.get('vwap', 0.0)
+
+                            filter_ctx = {
+                                "direction": direction,
+                                "current_price": float(c_cur),
+                                "current_volume": int(v_cur),
+                                "vol_ma": float(vol_ma_val),
+                                "bar_open": float(o_cur),
+                                "bar_close": float(c_cur),
+                                "session": str(sess_type).lower(),
+                                "vwap": float(vwap_val),
+                                "orb_high": float(rng['high']),
+                                "orb_low": float(rng['low']),
+                                "atr": float(atr_val)
+                            }
+
+                            filter_res = pipeline.filter(filter_ctx)
+
+                            if not filter_res.passed:
+                                filtered_count += 1
+                                session_traded.add(sess_start)
+                                continue
+
+                            if is_buy:
+                                position = 1
+                                entry_price = c_cur
+                                entry_time = t_cur
+                                
+                                atr_val = self.df.loc[i - 1, 'atr'] if i > 0 else row.get('atr', 0.0)
+                                stop_loss, risk_points = self.calculate_orb_stop_loss(
+                                    sl_mode=sl_mode,
+                                    direction=1,
+                                    entry_price=entry_price,
+                                    k_high=h_cur,
+                                    k_low=l_cur,
+                                    orb_range=rng,
+                                    atr_val=atr_val,
+                                    min_sl_points=min_sl_points,
+                                    fixed_sl_points=fixed_sl_points,
+                                    orb_atr_multiplier=orb_atr_multiplier,
+                                    orb_breakout_ticks=orb_breakout_ticks
+                                )
+                                take_profit = entry_price + risk_points * rr_ratio
+                                
+                                lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
+                                if lots_to_trade < 1 and force_min_lot:
+                                    min_margin = 50000.0 if self.contract_type == 'MTX' else 200000.0
+                                    if capital >= min_margin:
+                                        lots_to_trade = 1
                                         
-                                elif is_sell:
-                                    position = -1
-                                    entry_price = c_cur
-                                    entry_time = t_cur
+                                if lots_to_trade >= 1:
+                                    lots = lots_to_trade
+                                    session_traded.add(sess_start)
+                                    entry_sess_start = sess_start
+                                else:
+                                    position = 0
                                     
-                                    # 呼叫模組化停損計算器
-                                    atr_val = self.df.loc[i - 1, 'atr'] if i > 0 else row.get('atr', 0.0)
-                                    stop_loss, risk_points = self.calculate_orb_stop_loss(
-                                        sl_mode=sl_mode,
-                                        direction=-1,
-                                        entry_price=entry_price,
-                                        k_high=h_cur,
-                                        k_low=l_cur,
-                                        orb_range=rng,
-                                        atr_val=atr_val,
-                                        min_sl_points=min_sl_points,
-                                        fixed_sl_points=fixed_sl_points,
-                                        orb_atr_multiplier=orb_atr_multiplier,
-                                        orb_breakout_ticks=orb_breakout_ticks
-                                    )
-                                    take_profit = entry_price - risk_points * rr_ratio
-                                    
-                                    lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
-                                    if lots_to_trade < 1 and force_min_lot:
-                                        min_margin = 50000.0 if self.contract_type == 'MTX' else 200000.0
-                                        if capital >= min_margin:
-                                            lots_to_trade = 1
-                                            
-                                    if lots_to_trade >= 1:
-                                        lots = lots_to_trade
-                                        session_traded.add(sess_start)
-                                        entry_sess_start = sess_start
-                                    else:
-                                        position = 0
+                            elif is_sell:
+                                position = -1
+                                entry_price = c_cur
+                                entry_time = t_cur
+                                
+                                atr_val = self.df.loc[i - 1, 'atr'] if i > 0 else row.get('atr', 0.0)
+                                stop_loss, risk_points = self.calculate_orb_stop_loss(
+                                    sl_mode=sl_mode,
+                                    direction=-1,
+                                    entry_price=entry_price,
+                                    k_high=h_cur,
+                                    k_low=l_cur,
+                                    orb_range=rng,
+                                    atr_val=atr_val,
+                                    min_sl_points=min_sl_points,
+                                    fixed_sl_points=fixed_sl_points,
+                                    orb_atr_multiplier=orb_atr_multiplier,
+                                    orb_breakout_ticks=orb_breakout_ticks
+                                )
+                                take_profit = entry_price - risk_points * rr_ratio
+                                
+                                lots_to_trade = int((capital * self.risk_pct) / (risk_points * self.point_value))
+                                if lots_to_trade < 1 and force_min_lot:
+                                    min_margin = 50000.0 if self.contract_type == 'MTX' else 200000.0
+                                    if capital >= min_margin:
+                                        lots_to_trade = 1
+                                        
+                                if lots_to_trade >= 1:
+                                    lots = lots_to_trade
+                                    session_traded.add(sess_start)
+                                    entry_sess_start = sess_start
+                                else:
+                                    position = 0
 
         # C. 回測統計指標計算
         net_profit = capital - self.start_capital
@@ -1137,10 +1169,12 @@ class ORBBacktestSimulator:
             'profit_factor': round(profit_factor, 2),
             'max_drawdown': round(max_dd, 2),
             'total_return': round(total_return, 2),
-            'net_profit': round(net_profit, 2)
+            'net_profit': round(net_profit, 2),
+            'filtered_count': filtered_count
         }
         
         return metrics, trades, equity_curve
+
 
 
 def _orb_backtest_worker(args):
@@ -2350,9 +2384,9 @@ def main():
     print("  真實數據對齊、參數優化與回測任務順利完成！")
     print("==========================================================")
 
-def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0):
+def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5, momentum_threshold=0.0003, vol_spike_ratio=1.2, session_filter='both', orb_atr_period=14, orb_atr_multiplier=0.0, filter_config=None):
     """
-    根據當前的 1K 歷史與實時數據 DataFrame，計算並回傳當下最後一根 K 棒的 ORB 狀態。
+    根據當前的 1K 歷史與實時數據 DataFrame，計算並回傳當下最後一根 K 棒的 ORB 狀態與過濾管道檢測結果。
     """
     if df_1k.empty:
         return {
@@ -2361,11 +2395,16 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
             "high_line": 0.0,
             "low_line": 0.0,
             "breakout_status": 0,
-            "vol_avg_5": 0.0
+            "vol_avg_5": 0.0,
+            "filter_reasons": [],
+            "filter_details": {}
         }
         
     df = df_1k.copy().sort_values('datetime').reset_index(drop=True)
     
+    # 計算 Volume MA 20
+    df['vol_ma_20'] = df['volume'].rolling(window=20, min_periods=1).mean()
+
     # 計算 ATR
     if len(df) > 1:
         df['prev_close'] = df['close'].shift(1)
@@ -2393,7 +2432,7 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
     sess_start = get_session_start_time(t_last, sess_type)
     probe_end = sess_start + timedelta(minutes=orb_probe_minutes)
     
-    df_current_session = df[df['datetime'] >= sess_start]
+    df_current_session = df[df['datetime'] >= sess_start].copy()
     
     if df_current_session.empty:
         return {
@@ -2402,8 +2441,16 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
             "high_line": 0.0,
             "low_line": 0.0,
             "breakout_status": 0,
-            "vol_avg_5": 0.0
+            "vol_avg_5": 0.0,
+            "filter_reasons": [],
+            "filter_details": {}
         }
+
+    # 計算當前 Session 的 VWAP (Typical Price Volume Weighted Average Price)
+    tp = (df_current_session['high'] + df_current_session['low'] + df_current_session['close']) / 3.0
+    cum_tp_v = (tp * df_current_session['volume']).cumsum()
+    cum_v = df_current_session['volume'].cumsum()
+    df_current_session['vwap'] = cum_tp_v / cum_v.replace(0, 1.0)
         
     df_probe = df_current_session[df_current_session['datetime'] <= probe_end]
     
@@ -2427,8 +2474,18 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
     
     df_monitoring = df_current_session[df_current_session['datetime'] > probe_end].copy().reset_index(drop=True)
     breakout_status = 0
+    filter_reasons = []
+    filter_details = {}
     
     if is_established and not df_monitoring.empty:
+        # 配置過濾器管道
+        pipeline_config = filter_config or FilterConfig(
+            vol_spike_ratio=vol_spike_ratio,
+            mom_day_pct=momentum_threshold if momentum_threshold != 0.0003 else 0.0005,
+            mom_night_pct=momentum_threshold if momentum_threshold != 0.0003 else 0.0003
+        )
+        pipeline = ORBFilterPipeline(pipeline_config)
+
         for idx in range(len(df_monitoring)):
             row = df_monitoring.iloc[idx]
             dt_row = row['datetime']
@@ -2436,35 +2493,43 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
             main_idx_list = df[df['datetime'] == dt_row].index
             if len(main_idx_list) > 0:
                 main_idx = main_idx_list[0]
-                prev_vols = df.loc[max(0, main_idx-5):main_idx-1, 'volume'].values
-                avg_vol = np.mean(prev_vols) if len(prev_vols) > 0 else row['volume']
+                vol_ma_val = df.loc[main_idx, 'vol_ma_20']
+                atr_val = df.loc[main_idx, 'atr']
             else:
-                avg_vol = row['volume']
+                vol_ma_val = row['volume']
+                atr_val = 0.0
                 
+            vwap_val = row.get('vwap', 0.0)
+
             is_buy = row['close'] > high_val + orb_breakout_ticks
             is_sell = row['close'] < low_val - orb_breakout_ticks
             
             if is_buy or is_sell:
-                mom = abs(row['close'] - row['open']) / row['open']
-                is_mom_valid = mom >= momentum_threshold
-                is_vol_valid = row['volume'] >= avg_vol * vol_spike_ratio
+                direction = "LONG" if is_buy else "SHORT"
                 
-                # 檢查 ATR 實體強度
-                is_atr_valid = True
-                if orb_atr_multiplier > 0.0:
-                    if len(main_idx_list) > 0 and main_idx > 0:
-                        atr_prev = df.loc[main_idx - 1, 'atr']
-                        candle_body = abs(row['close'] - row['open'])
-                        is_atr_valid = candle_body >= atr_prev * orb_atr_multiplier
-                    else:
-                        is_atr_valid = False
+                filter_ctx = {
+                    "direction": direction,
+                    "current_price": float(row['close']),
+                    "current_volume": int(row['volume']),
+                    "vol_ma": float(vol_ma_val),
+                    "bar_open": float(row['open']),
+                    "bar_close": float(row['close']),
+                    "session": str(sess_type).lower(),
+                    "vwap": float(vwap_val),
+                    "orb_high": float(high_val),
+                    "orb_low": float(low_val),
+                    "atr": float(atr_val)
+                }
+
+                filter_res = pipeline.filter(filter_ctx)
+                filter_details = filter_res.details
                 
-                if is_mom_valid and is_vol_valid and is_atr_valid:
-                    if is_buy:
-                        breakout_status = 1
-                    else:
-                        breakout_status = -1
+                if filter_res.passed:
+                    breakout_status = 1 if is_buy else -1
+                    filter_reasons = []
                     break
+                else:
+                    filter_reasons = filter_res.reasons
                     
     last_idx = df.index[-1]
     prev_vols_last = df.loc[max(0, last_idx-5):last_idx-1, 'volume'].values
@@ -2476,8 +2541,11 @@ def calculate_realtime_orb_status(df_1k, orb_probe_minutes=15, orb_breakout_tick
         "high_line": float(high_line),
         "low_line": float(low_line),
         "breakout_status": breakout_status,
-        "vol_avg_5": vol_avg_5
+        "vol_avg_5": vol_avg_5,
+        "filter_reasons": filter_reasons,
+        "filter_details": filter_details
     }
+
 
 
 def get_historical_orb_ranges(df_1k, orb_probe_minutes=15, orb_breakout_ticks=5):
