@@ -38,6 +38,16 @@ class FilterConfig:
     over_ext_atr_mult: float = 2.0
     over_ext_orb_mult: float = 1.5
 
+    # 5. Price Action K線過濾器
+    enable_price_action: bool = True
+    min_body_ratio: float = 0.4
+    max_shadow_ratio: float = 0.5
+
+    # 6. 開盤區間結構過濾器
+    enable_range_structure: bool = True
+    max_range_atr_mult: float = 2.5
+    min_range_atr_mult: float = 0.3
+
 
 @dataclass
 class FilterResult:
@@ -204,6 +214,104 @@ class OverExtensionFilter(BaseFilter):
         return True, None, detail
 
 
+class PriceActionFilter(BaseFilter):
+    """
+    5. Price Action K線型態過濾器 (Price Action Pattern Filter)
+    檢測突破當下的 K棒實體與影線關係：
+    - 實體佔比 (Body / High-Low) 必須大於等於 min_body_ratio，排除十字星。
+    - 做多時，上影線長度不得超過實體長度的 max_shadow_ratio 倍，防範流星線/假突破。
+    - 做空時，下影線長度不得超過實體長度的 max_shadow_ratio 倍，防範錘子/吊人線。
+    """
+    def check(self, context: Dict[str, Any]) -> Tuple[bool, Optional[str], Dict[str, Any]]:
+        if not self.config.enable_price_action:
+            return True, None, {}
+
+        bar_open = context.get("bar_open", 0.0)
+        bar_close = context.get("bar_close", 0.0)
+        direction = context.get("direction", "LONG").upper()
+
+        price = context.get("current_price", bar_close)
+        bar_high = context.get("bar_high", max(bar_open, bar_close, price))
+        bar_low = context.get("bar_low", min(bar_open, bar_close, price))
+
+        body = abs(bar_close - bar_open)
+        high_low = max(bar_high - bar_low, 1.0)
+        body_ratio = body / high_low
+
+        detail = {
+            "bar_open": bar_open,
+            "bar_close": bar_close,
+            "bar_high": bar_high,
+            "bar_low": bar_low,
+            "body": body,
+            "high_low": high_low,
+            "body_ratio": body_ratio
+        }
+
+        # 1. 檢測實體佔比 (排除十字星)
+        if body_ratio < self.config.min_body_ratio:
+            reason = f"PriceAction: K棒實體佔比不足 ({body_ratio:.2f} < 門檻 {self.config.min_body_ratio:.2f})"
+            return False, reason, detail
+
+        # 2. 檢測反向影線比例 (排除長影線假突破)
+        if direction == "LONG":
+            upper_shadow = bar_high - max(bar_open, bar_close)
+            detail["upper_shadow"] = upper_shadow
+            limit_shadow = self.config.max_shadow_ratio * body
+            if upper_shadow > limit_shadow:
+                reason = f"PriceAction: 上影線過長，上方賣壓重 (上影線 {upper_shadow:.1f} > 門檻 {limit_shadow:.1f})"
+                return False, reason, detail
+        else:  # SHORT
+            lower_shadow = min(bar_open, bar_close) - bar_low
+            detail["lower_shadow"] = lower_shadow
+            limit_shadow = self.config.max_shadow_ratio * body
+            if lower_shadow > limit_shadow:
+                reason = f"PriceAction: 下影線過長，下方支撐強 (下影線 {lower_shadow:.1f} > 門檻 {limit_shadow:.1f})"
+                return False, reason, detail
+
+        return True, None, detail
+
+
+class OpeningRangeStructureFilter(BaseFilter):
+    """
+    6. 開盤區間結構過濾器 (Opening Range Structure Filter)
+    檢測當日的開盤區間寬度是否合理：
+    - 當區間寬度 (orb_high - orb_low) 超過當前 ATR 的 max_range_atr_mult 倍時，放棄交易 (過寬，當天易為大波動洗盤)。
+    - 當區間寬度低於 min_range_atr_mult 倍時，放棄交易 (過窄，可能缺乏市場動能)。
+    """
+    def check(self, context: Dict[str, Any]) -> Tuple[bool, Optional[str], Dict[str, Any]]:
+        if not self.config.enable_range_structure:
+            return True, None, {}
+
+        orb_high = context.get("orb_high", 0.0)
+        orb_low = context.get("orb_low", 0.0)
+        atr = context.get("atr", 0.0)
+
+        if orb_high <= 0 or orb_low <= 0 or atr <= 0:
+            return True, None, {"status": "skipped_missing_range_data"}
+
+        orb_range = max(orb_high - orb_low, 1.0)
+        max_limit = self.config.max_range_atr_mult * atr
+        min_limit = self.config.min_range_atr_mult * atr
+
+        detail = {
+            "orb_range": orb_range,
+            "atr": atr,
+            "max_limit": max_limit,
+            "min_limit": min_limit
+        }
+
+        if orb_range > max_limit:
+            reason = f"RangeStructure: 開盤區間過寬 (區間 {orb_range:.1f} > 門檻 {max_limit:.1f})"
+            return False, reason, detail
+
+        if orb_range < min_limit:
+            reason = f"RangeStructure: 開盤區間過窄 (區間 {orb_range:.1f} < 門檻 {min_limit:.1f})"
+            return False, reason, detail
+
+        return True, None, detail
+
+
 class ORBFilterPipeline:
     """
     ORB 突破過濾器管道
@@ -216,6 +324,8 @@ class ORBFilterPipeline:
             MomentumFilter(self.config),
             VWAPFilter(self.config),
             OverExtensionFilter(self.config),
+            PriceActionFilter(self.config),
+            OpeningRangeStructureFilter(self.config),
         ]
 
     def filter(self, context: Dict[str, Any]) -> FilterResult:
