@@ -295,9 +295,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            padding-bottom: 0.3rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding-bottom: 0.35rem;
             z-index: 10;
+            flex-wrap: wrap;
+            gap: 0.4rem;
         }
 
         .chart-title {
@@ -319,6 +321,85 @@
             font-size: 0.62rem;
             font-weight: bold;
             font-family: var(--font-mono);
+        }
+
+        /* Chart Header HUD Values */
+        .price-hud {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            flex-wrap: wrap;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .hud-item {
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.15rem;
+            white-space: nowrap;
+        }
+
+        .hud-time {
+            color: #a78bfa;
+            font-weight: 600;
+        }
+
+        .hud-num {
+            color: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .hud-vol {
+            color: #fbbf24;
+        }
+
+        .val-up {
+            color: var(--neon-cyan) !important;
+            text-shadow: 0 0 6px rgba(34, 211, 238, 0.25);
+        }
+
+        .val-down {
+            color: var(--neon-pink) !important;
+            text-shadow: 0 0 6px rgba(244, 63, 94, 0.25);
+        }
+
+        .val-flat {
+            color: var(--text-secondary) !important;
+        }
+
+        .val-muted {
+            color: #6b7280;
+            font-size: 0.7rem;
+        }
+
+        .hud-orb-h {
+            color: var(--neon-cyan);
+            background: rgba(34, 211, 238, 0.08);
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            border-radius: 4px;
+            padding: 0 0.3rem;
+        }
+
+        .hud-orb-l {
+            color: var(--neon-pink);
+            background: rgba(244, 63, 94, 0.08);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            border-radius: 4px;
+            padding: 0 0.3rem;
+        }
+
+        .hud-orb-r {
+            color: var(--neon-purple);
+            background: rgba(192, 132, 252, 0.08);
+            border: 1px solid rgba(192, 132, 252, 0.2);
+            border-radius: 4px;
+            padding: 0 0.3rem;
         }
 
         .chart-canvas-container {
@@ -721,7 +802,7 @@
                             <span>🦄 1K LTF ORB 突破監控主圖</span>
                             <span class="chart-timeframe-tag">1K CHART</span>
                         </div>
-                        <span style="font-size:0.75rem; color:#8892b0; font-family:var(--font-mono);" id="price-lbl-1k">--</span>
+                        <div class="price-hud" id="price-lbl-1k"><span class="val-muted">等待數據...</span></div>
                     </div>
                     <!-- Countdown & Status Banner -->
                     <div class="orb-status-banner" id="orb-banner" style="display: none;">
@@ -741,7 +822,7 @@
                             <span>⚡ 5K HTF 趨勢與掃蕩</span>
                             <span class="chart-timeframe-tag">5K CHART</span>
                         </div>
-                        <span style="font-size:0.75rem; color:#8892b0; font-family:var(--font-mono);" id="price-lbl-5k">--</span>
+                        <div class="price-hud" id="price-lbl-5k"><span class="val-muted">等待數據...</span></div>
                     </div>
                     <div class="chart-canvas-container" id="canvas-5k"></div>
                 </div>
@@ -753,7 +834,7 @@
                             <span>🐢 15K 中期結構與 OB 對齊</span>
                             <span class="chart-timeframe-tag">15K CHART</span>
                         </div>
-                        <span style="font-size:0.75rem; color:#8892b0; font-family:var(--font-mono);" id="price-lbl-15k">--</span>
+                        <div class="price-hud" id="price-lbl-15k"><span class="val-muted">等待數據...</span></div>
                     </div>
                     <div class="chart-canvas-container" id="canvas-15k"></div>
                 </div>
@@ -1033,9 +1114,10 @@
         // Active trigger dialog values cache
         let activeTrigger = null;
 
-        // Chart instances and candle series
+        // Chart instances and candle/volume series
         const charts = {};
         const seriesList = {};
+        const volumeSeriesList = {};
         const chartKeys = ['1k', '5k', '15k'];
         
         // Cache historical data
@@ -1051,6 +1133,11 @@
         // Cache for dynamic ORB series data points
         let orbHighDataCache = [];
         let orbLowDataCache = [];
+
+        // Global cache for ORB historical sessions & latest active ORB
+        let latestOrbHistory = {};
+        let latestCurrentOrb = null;
+        let isCrosshairHovering = false;
 
         // [標準轉換] 將台北 Naive 時間字串，轉換為該時刻在台北 (UTC+8) 的標準 Unix 時間戳（秒）
         function getCorrectedUnixTimestamp(timeStr) {
@@ -1178,9 +1265,22 @@
                     wickUpColor: '#22d3ee',
                     wickDownColor: '#f43f5e'
                 });
+
+                // 新增全時區半透明成交量柱狀圖 (Volume Histogram Series)
+                const volumeSeries = chart.addHistogramSeries({
+                    priceFormat: {
+                        type: 'volume'
+                    },
+                    priceScaleId: '', // 獨立比例尺，不干擾主價格軸
+                    scaleMargins: {
+                        top: 0.8,   // 佔據底部 20%
+                        bottom: 0
+                    }
+                });
                 
                 charts[key] = chart;
                 seriesList[key] = series;
+                volumeSeriesList[key] = volumeSeries;
                 
                 // Add resize listener
                 new ResizeObserver(entries => {
@@ -1196,8 +1296,8 @@
                 color: 'rgba(34, 211, 238, 0.85)', // 青色
                 lineWidth: 2,
                 lineStyle: LightweightCharts.LineStyle.Solid,
-                priceLineVisible: false,
-                lastValueVisible: false,
+                priceLineVisible: true,
+                lastValueVisible: true,
                 title: 'ORB HIGH'
             });
 
@@ -1205,27 +1305,184 @@
                 color: 'rgba(244, 63, 94, 0.85)', // 粉色
                 lineWidth: 2,
                 lineStyle: LightweightCharts.LineStyle.Solid,
-                priceLineVisible: false,
-                lastValueVisible: false,
+                priceLineVisible: true,
+                lastValueVisible: true,
                 title: 'ORB LOW'
             });
 
-            // 十字游標連動游標同步 (Crosshair Sync)
+            // 十字游標連動游標同步 (Crosshair Sync) 與 頂部動態數值 (HUD Legend) 更新
             chartKeys.forEach(sourceKey => {
                 const sourceChart = charts[sourceKey];
                 sourceChart.subscribeCrosshairMove(param => {
-                    if (!param || !param.time) return;
+                    if (!param || !param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+                        // 滑鼠離開圖表區域，恢復顯示最新 K 棒數據
+                        if (isCrosshairHovering) {
+                            isCrosshairHovering = false;
+                            updateAllHeadersToLatest();
+                        }
+                        return;
+                    }
                     
+                    isCrosshairHovering = true;
+                    const hoveredTime = param.time;
+
                     chartKeys.forEach(targetKey => {
-                        if (targetKey === sourceKey) return;
-                        const targetChart = charts[targetKey];
-                        // 尋找對應時間戳進行同步
-                        targetChart.setCrosshairPosition(param.point, param.time);
+                        // 同步其他圖表的十字線
+                        if (targetKey !== sourceKey) {
+                            const targetChart = charts[targetKey];
+                            targetChart.setCrosshairPosition(param.point, hoveredTime);
+                        }
+                        
+                        // 聯動更新各圖表頂部的數值列
+                        const candle = findCandleAtOrBefore(targetKey, hoveredTime);
+                        const orbData = targetKey === '1k' ? getOrbForTime(hoveredTime) : null;
+                        updateHeaderDisplay(targetKey, candle, orbData);
                     });
                 });
             });
             
-            appendAlert('圖表初始化成功，左 1K ORB 主監控與右 5K/15K 雙趨勢畫布就緒。', 'info');
+            appendAlert('圖表初始化成功，左 1K ORB 主監控與右 5K/15K 雙趨勢畫布 (含成交量柱狀圖) 就緒。', 'info');
+        }
+
+        // 二分搜尋或最近時間戳查找 K 棒 (以小於等於 targetTime 為準)
+        function findCandleAtOrBefore(key, targetTime) {
+            const cache = candleDataCache[key];
+            if (!cache || cache.length === 0) return null;
+            
+            let low = 0, high = cache.length - 1;
+            let result = null;
+            while (low <= high) {
+                const mid = Math.floor((low + high) / 2);
+                if (cache[mid].time <= targetTime) {
+                    result = cache[mid];
+                    low = mid + 1;
+                } else {
+                    high = mid - 1;
+                }
+            }
+            return result || cache[0];
+        }
+
+        // 根據時間戳獲取對應時段的 ORB 上下界數值
+        function getOrbForTime(timeUnix) {
+            const taipeiTimeStr = formatUnixToTaipeiString(timeUnix, 'datetime');
+            const parts = taipeiTimeStr.split(' ');
+            if (parts.length >= 2) {
+                const dateStr = parts[0];
+                const timePart = parts[1];
+                const [hStr, mStr] = timePart.split(':');
+                const h = parseInt(hStr, 10);
+                const m = parseInt(mStr, 10);
+                const t = h * 60 + m;
+
+                let sessStartStr = "";
+                if (t >= 525 && t <= 825) {
+                    sessStartStr = `${dateStr} 08:45:00`;
+                } else {
+                    let baseDateStr = dateStr;
+                    if (h < 5) {
+                        const prevDate = new Date(timeUnix * 1000 - 24 * 60 * 60 * 1000);
+                        baseDateStr = formatUnixToTaipeiString(Math.floor(prevDate.getTime() / 1000), 'date');
+                    }
+                    sessStartStr = `${baseDateStr} 15:00:00`;
+                }
+
+                if (latestOrbHistory && latestOrbHistory[sessStartStr]) {
+                    const orbSess = latestOrbHistory[sessStartStr];
+                    return {
+                        high: orbSess.high_line,
+                        low: orbSess.low_line
+                    };
+                }
+            }
+
+            if (latestCurrentOrb && latestCurrentOrb.high_line > 0 && latestCurrentOrb.low_line > 0) {
+                return {
+                    high: latestCurrentOrb.high_line,
+                    low: latestCurrentOrb.low_line
+                };
+            }
+
+            if (orbHighDataCache.length > 0) {
+                for (let i = orbHighDataCache.length - 1; i >= 0; i--) {
+                    if (orbHighDataCache[i].time <= timeUnix) {
+                        return {
+                            high: orbHighDataCache[i].value,
+                            low: orbLowDataCache[i] ? orbLowDataCache[i].value : 0
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // 獲取當前最新的 ORB 數據
+        function getLatestOrb() {
+            if (latestCurrentOrb && latestCurrentOrb.high_line > 0 && latestCurrentOrb.low_line > 0) {
+                return {
+                    high: latestCurrentOrb.high_line,
+                    low: latestCurrentOrb.low_line
+                };
+            }
+            if (orbHighDataCache.length > 0) {
+                const lastHigh = orbHighDataCache[orbHighDataCache.length - 1];
+                const lastLow = orbLowDataCache.length > 0 ? orbLowDataCache[orbLowDataCache.length - 1] : null;
+                if (lastHigh && lastLow) {
+                    return {
+                        high: lastHigh.value,
+                        low: lastLow.value
+                    };
+                }
+            }
+            return null;
+        }
+
+        // 渲染更新單一圖表頂部的 HUD 數值列
+        function updateHeaderDisplay(key, candle, orbData) {
+            const el = document.getElementById(`price-lbl-${key}`);
+            if (!el) return;
+            if (!candle) {
+                el.innerHTML = '<span class="val-muted">等待數據...</span>';
+                return;
+            }
+
+            const timeStr = formatUnixToTaipeiString(candle.time, 'time');
+            const diff = candle.close - candle.open;
+            const pct = candle.open > 0 ? ((diff / candle.open) * 100).toFixed(2) : '0.00';
+            const diffSign = diff > 0 ? '+' : '';
+            const diffClass = diff > 0 ? 'val-up' : (diff < 0 ? 'val-down' : 'val-flat');
+
+            let html = `
+                <span class="hud-item hud-time">[${timeStr}]</span>
+                <span class="hud-item">O <b class="hud-num">${candle.open}</b></span>
+                <span class="hud-item">H <b class="hud-num">${candle.high}</b></span>
+                <span class="hud-item">L <b class="hud-num">${candle.low}</b></span>
+                <span class="hud-item">C <b class="hud-num ${diffClass}">${candle.close}</b></span>
+                <span class="hud-item ${diffClass}">(${diffSign}${diff.toFixed(1)}, ${diffSign}${pct}%)</span>
+                <span class="hud-item">VOL <b class="hud-num hud-vol">${candle.volume !== undefined ? Number(candle.volume).toLocaleString() : 0}</b></span>
+            `;
+
+            if (key === '1k' && orbData && orbData.high > 0 && orbData.low > 0) {
+                const range = (orbData.high - orbData.low).toFixed(1);
+                html += `
+                    <span class="hud-item hud-orb-h">ORB-H <b class="hud-num">${orbData.high}</b></span>
+                    <span class="hud-item hud-orb-l">ORB-L <b class="hud-num">${orbData.low}</b></span>
+                    <span class="hud-item hud-orb-r">區間 <b class="hud-num">${range}點</b></span>
+                `;
+            }
+
+            el.innerHTML = html;
+        }
+
+        // 將所有圖表頂部數值列更新至最新一根 K 棒
+        function updateAllHeadersToLatest() {
+            chartKeys.forEach(key => {
+                const cache = candleDataCache[key];
+                const latestCandle = cache && cache.length > 0 ? cache[cache.length - 1] : null;
+                const orbData = key === '1k' ? getLatestOrb() : null;
+                updateHeaderDisplay(key, latestCandle, orbData);
+            });
         }
 
         // Setup WebSocket connection
@@ -1278,13 +1535,16 @@
         // Load preloaded history candles & markers
         function loadHistoryData(historyMap, orbHistory) {
             appendAlert("⚙️ 開始載入與預算多時區歷史 ORB 區間與 K 線...", "info");
+            latestOrbHistory = orbHistory || {};
             
-            // 1. 載入基本 K 線資料
+            // 1. 載入基本 K 線資料與成交量柱狀圖
             chartKeys.forEach(key => {
                 const list = historyMap[key];
                 if (!list || list.length === 0) return;
                 
                 const uniqueMap = new Map();
+                const volList = [];
+                
                 list.forEach(c => {
                     const timeUnix = getCorrectedUnixTimestamp(c.time);
                     if (!isNaN(timeUnix) && timeUnix > 0) {
@@ -1296,23 +1556,31 @@
                             close: c.close,
                             volume: c.volume
                         });
+
+                        volList.push({
+                            time: timeUnix,
+                            value: c.volume,
+                            color: c.close >= c.open ? 'rgba(34, 211, 238, 0.45)' : 'rgba(244, 63, 94, 0.45)'
+                        });
                     }
                 });
                 
                 const candles = Array.from(uniqueMap.values()).sort((a, b) => a.time - b.time);
+                volList.sort((a, b) => a.time - b.time);
                 
                 try {
                     seriesList[key].setData(candles);
+                    if (volumeSeriesList[key]) {
+                        volumeSeriesList[key].setData(volList);
+                    }
                 } catch (err) {
                     console.warn(`[setData History Error] ${key}:`, err.message);
                 }
                 candleDataCache[key] = candles;
-                
-                // 更新 Header 價格
-                const lastRawC = list[list.length - 1];
-                document.getElementById(`price-lbl-${key}`).textContent = 
-                    `O: ${lastRawC.open} | H: ${lastRawC.high} | L: ${lastRawC.low} | C: ${lastRawC.close} | VOL: ${lastRawC.volume}`;
             });
+
+            // 更新所有圖表 Header 數值
+            updateAllHeadersToLatest();
 
             // 2. 繪製歷史的 ORB 區間水平線
             if (orbHistory && Object.keys(orbHistory).length > 0) {
@@ -1406,11 +1674,26 @@
                 const lastCandleInCache = cache.length > 0 ? cache[cache.length - 1] : null;
                 const isLatest = lastCandleInCache && newCandle.time >= lastCandleInCache.time;
 
+                const volItem = {
+                    time: timeUnix,
+                    value: c.volume,
+                    color: c.close >= c.open ? 'rgba(34, 211, 238, 0.45)' : 'rgba(244, 63, 94, 0.45)'
+                };
+
                 try {
                     if (isLatest || cache.length <= 1) {
                         seriesList[key].update(newCandle);
+                        if (volumeSeriesList[key]) volumeSeriesList[key].update(volItem);
                     } else {
                         seriesList[key].setData(cache);
+                        if (volumeSeriesList[key]) {
+                            const volCache = cache.map(item => ({
+                                time: item.time,
+                                value: item.volume,
+                                color: item.close >= item.open ? 'rgba(34, 211, 238, 0.45)' : 'rgba(244, 63, 94, 0.45)'
+                            }));
+                            volumeSeriesList[key].setData(volCache);
+                        }
                     }
                 } catch (err) {
                     // Fallback to setData on update failure
@@ -1420,11 +1703,15 @@
                         console.warn(`[Chart Update Warning] ${key} update bypassed (${fallbackErr.message})`);
                     }
                 }
-                
-                // Update header price
-                document.getElementById(`price-lbl-${key}`).textContent = 
-                    `O: ${c.open} | H: ${c.high} | L: ${c.low} | C: ${c.close} | VOL: ${c.volume}`;
             });
+
+            // 快取最新 ORB
+            latestCurrentOrb = orb;
+
+            // 非懸停時即時更新頂部數值 HUD
+            if (!isCrosshairHovering) {
+                updateAllHeadersToLatest();
+            }
 
             // 處理 1K ORB 行情倒數與動態劃線
             if (orb && candles['1k']) {
@@ -1808,12 +2095,18 @@
             chartKeys.forEach(key => {
                 candleDataCache[key] = [];
                 seriesList[key].setData([]);
-                document.getElementById(`price-lbl-${key}`).textContent = '--';
+                if (volumeSeriesList[key]) {
+                    volumeSeriesList[key].setData([]);
+                }
             });
             orbHighSeries.setData([]);
             orbLowSeries.setData([]);
             orbHighDataCache = [];
             orbLowDataCache = [];
+            latestOrbHistory = {};
+            latestCurrentOrb = null;
+            isCrosshairHovering = false;
+            updateAllHeadersToLatest();
             
             // 清理可能殘留的部位線
             const series = seriesList['1k'];
