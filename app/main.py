@@ -574,11 +574,13 @@ class RealTimeQuoteStreamer:
     Shioaji 實盤行情串流管理器。
     採用多執行緒安全 asyncio.Queue，並與 SQLite 歷史 1K K線數據拼接，
     實時計算 1K/5K/15K/60K SMC 指標並向前端廣播。
+    內建三重守護 Tick / K 棒缺漏自動回補系統 (Gap Recovery & Forward-Fill)。
     """
     def __init__(self):
         self.api = None
         self.queue = asyncio.Queue()
         self.worker_task = None
+        self.heartbeat_task = None
         self.df_1k_real = pd.DataFrame()
         self.subscribed_contract = None
         self.is_active = False
@@ -626,9 +628,10 @@ class RealTimeQuoteStreamer:
             logger.exception("RealTimeQuoteStreamer: Preload history failed")
             return False
 
-        # 2. 啟動背景協程處理器
+        # 2. 啟動背景協程處理器與心跳監控
         self.queue = asyncio.Queue()
         self.worker_task = asyncio.create_task(self._process_ticks_worker())
+        self.heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
         
         # 3. 訂閱 Shioaji 台指期連續近月合約
         try:
@@ -644,6 +647,8 @@ class RealTimeQuoteStreamer:
             logger.error(f"RealTimeQuoteStreamer: Contract TXFR1 lookup failed: {e}")
             if self.worker_task:
                  self.worker_task.cancel()
+            if self.heartbeat_task:
+                 self.heartbeat_task.cancel()
             return False
                 
         self.subscribed_contract = contract
@@ -659,6 +664,8 @@ class RealTimeQuoteStreamer:
             logger.error(f"RealTimeQuoteStreamer: Shioaji subscribe failed: {e}")
             if self.worker_task:
                 self.worker_task.cancel()
+            if self.heartbeat_task:
+                self.heartbeat_task.cancel()
             return False
 
     def on_tick(self, exchange, tick):
@@ -682,6 +689,145 @@ class RealTimeQuoteStreamer:
         except Exception as e:
             logger.error(f"RealTimeQuoteStreamer Callback Error: {e}")
 
+    async def _recover_kbars_gap(self, start_dt: datetime, end_dt: datetime) -> int:
+        """
+        向 Shioaji 伺服器查詢遺漏的 1K K棒數據並補齊記憶體與 SQLite。
+        若查詢時段無成交 (或 API 回傳空)，則自動執行 forward-fill (補 0 量平價棒)。
+        """
+        if not self.api or not self.subscribed_contract or start_dt >= end_dt:
+            return 0
+
+        try:
+            start_str = start_dt.strftime('%Y-%m-%d')
+            end_str = end_dt.strftime('%Y-%m-%d')
+            contract = self.subscribed_contract
+            
+            logger.info(f"🔍 [Gap Recovery] 向 Shioaji 查詢 K 棒數據 ({start_str} ~ {end_str}) 補齊中...")
+            kbars = await asyncio.to_thread(self.api.kbars, contract=contract, start=start_str, end=end_str)
+            
+            df_new_bars = pd.DataFrame()
+            if kbars and hasattr(kbars, 'ts') and len(kbars.ts) > 0:
+                df_api = pd.DataFrame({
+                    'ts': kbars.ts,
+                    'open': kbars.Open,
+                    'high': kbars.High,
+                    'low': kbars.Low,
+                    'close': kbars.Close,
+                    'volume': kbars.Volume
+                })
+                df_api['datetime'] = pd.to_datetime(df_api['ts'], unit='ns')
+                df_api['session'] = df_api['datetime'].apply(get_session)
+                df_api['code'] = contract.code
+                
+                # 過濾出 > start_dt 且 <= end_dt 的區間
+                df_filtered = df_api[(df_api['datetime'] > start_dt) & (df_api['datetime'] <= end_dt)].copy()
+                if not df_filtered.empty:
+                    df_new_bars = df_filtered
+
+            # 檢查並補足零成交量等價棒 (Forward-fill missing minutes)
+            curr_last_dt = start_dt
+            missing_fill_rows = []
+            ref_close = float(self.df_1k_real['close'].iloc[-1]) if not self.df_1k_real.empty else 0.0
+            
+            if not df_new_bars.empty:
+                for _, row in df_new_bars.iterrows():
+                    bar_dt = row['datetime']
+                    mins_diff = int((bar_dt - curr_last_dt).total_seconds() // 60)
+                    if mins_diff > 1:
+                        for m in range(1, mins_diff):
+                            fill_dt = curr_last_dt + timedelta(minutes=m)
+                            missing_fill_rows.append({
+                                'open': ref_close,
+                                'high': ref_close,
+                                'low': ref_close,
+                                'close': ref_close,
+                                'volume': 0,
+                                'datetime': fill_dt,
+                                'session': get_session(fill_dt),
+                                'code': contract.code
+                            })
+                    ref_close = float(row['close'])
+                    curr_last_dt = bar_dt
+            else:
+                mins_diff = int((end_dt - start_dt).total_seconds() // 60)
+                if mins_diff > 0:
+                    for m in range(1, mins_diff + 1):
+                        fill_dt = start_dt + timedelta(minutes=m)
+                        missing_fill_rows.append({
+                            'open': ref_close,
+                            'high': ref_close,
+                            'low': ref_close,
+                            'close': ref_close,
+                            'volume': 0,
+                            'datetime': fill_dt,
+                            'session': get_session(fill_dt),
+                            'code': contract.code
+                        })
+
+            if missing_fill_rows:
+                df_fills = pd.DataFrame(missing_fill_rows)
+                df_combined = pd.concat([df_new_bars, df_fills]).sort_values(by='datetime').drop_duplicates(subset=['datetime']).reset_index(drop=True)
+            else:
+                df_combined = df_new_bars
+                
+            if not df_combined.empty:
+                df_combined_clean = df_combined[['open', 'high', 'low', 'close', 'volume', 'datetime', 'session']]
+                self.df_1k_real = pd.concat([self.df_1k_real, df_combined_clean]).drop_duplicates(subset=['datetime']).sort_values(by='datetime').reset_index(drop=True)
+                
+                if len(self.df_1k_real) > 3000:
+                    self.df_1k_real = self.df_1k_real.iloc[-2500:].reset_index(drop=True)
+                    
+                df_db_save = df_combined.copy()
+                df_db_save['ts'] = df_db_save['datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                df_db_save['code'] = contract.code
+                await asyncio.to_thread(dfd.save_to_db, df_db_save, "futures1k")
+                
+                logger.info(f"🔄 [Gap Recovery] 成功回補 {len(df_combined)} 根 1K K線 (範圍: {start_dt} ~ {end_dt})")
+                await manager.broadcast({
+                    "type": "status",
+                    "message": f"🔄 偵測到行情中斷，已向 Shioaji 伺服器補齊 {len(df_combined)} 根缺失 K 棒，數據已同步！"
+                })
+                return len(df_combined)
+                
+            return 0
+        except Exception as e:
+            logger.error(f"RealTimeQuoteStreamer: _recover_kbars_gap error: {e}")
+            return 0
+
+    async def _heartbeat_monitor(self):
+        """
+        心跳與斷線重連校準背景協程：
+        每 30 秒檢查最後 Tick 時間，若在台指期交易時段內超過 60 秒無任何 Tick，
+        主動向 Shioaji 伺服器發起 K 棒查詢與校對。
+        """
+        logger.info("RealTimeQuoteStreamer: Heartbeat monitor started.")
+        try:
+            while self.is_active:
+                await asyncio.sleep(30)
+                if not self.is_active or self.df_1k_real.empty:
+                    continue
+                    
+                now = datetime.now()
+                t = now.time()
+                is_trading_hour = (
+                    (t >= datetime.strptime("08:45", "%H:%M").time() and t <= datetime.strptime("13:45", "%H:%M").time()) or
+                    (t >= datetime.strptime("15:00", "%H:%M").time() or t <= datetime.strptime("05:00", "%H:%M").time())
+                )
+                
+                if is_trading_hour:
+                    last_bar_dt = self.df_1k_real['datetime'].iloc[-1]
+                    seconds_gap = (now - last_bar_dt).total_seconds()
+                    if seconds_gap > 60:
+                        logger.info(f"⚠️ [Heartbeat Monitor] 超過 60 秒未更新 (距離上一棒 {int(seconds_gap)} 秒)，執行 API 校準回補...")
+                        recovered = await self._recover_kbars_gap(last_bar_dt, now)
+                        if recovered > 0:
+                            history_payload = await get_history_init_payload(self.df_1k_real, **self.orb_params)
+                            await manager.broadcast(history_payload)
+        except asyncio.CancelledError:
+            logger.info("RealTimeQuoteStreamer: Heartbeat monitor cancelled.")
+        except Exception as e:
+            logger.exception(f"RealTimeQuoteStreamer: Heartbeat monitor crash: {e}")
+
     async def _process_ticks_worker(self):
         """
         消費協程：處理 Tick、拼接歷史 1K K線、聚合多週期並計算 SMC，最後廣播。
@@ -698,11 +844,19 @@ class RealTimeQuoteStreamer:
                     last_idx = len(self.df_1k_real) - 1
                     last_bar_dt = self.df_1k_real.loc[last_idx, 'datetime']
                     
-                    # 跨分鐘換棒與同分鐘更新邏輯
+                    # 跨分鐘換棒與中斷檢測邏輯
                     tick_minute = tick_dt.replace(second=0, microsecond=0)
                     last_bar_minute = last_bar_dt.replace(second=0, microsecond=0)
                     
                     if tick_minute != last_bar_minute and tick_dt > last_bar_dt:
+                        gap_seconds = (tick_minute - last_bar_minute).total_seconds()
+                        if gap_seconds > 60:
+                            logger.warning(f"⚠️ [Tick Gap Detected] 偵測到時間跨度中斷: {last_bar_minute} -> {tick_minute} ({int(gap_seconds)}秒)，啟動自動回補...")
+                            await self._recover_kbars_gap(last_bar_minute, tick_minute - timedelta(minutes=1))
+                            last_idx = len(self.df_1k_real) - 1
+                            last_bar_dt = self.df_1k_real.loc[last_idx, 'datetime']
+                            last_bar_minute = last_bar_dt.replace(second=0, microsecond=0)
+
                         # 新建一根 1K 蠟燭棒
                         new_row = pd.DataFrame([{
                             'open': tick_close,
@@ -864,6 +1018,10 @@ class RealTimeQuoteStreamer:
         if self.worker_task:
             self.worker_task.cancel()
             self.worker_task = None
+            
+        if self.heartbeat_task:
+            self.heartbeat_task.cancel()
+            self.heartbeat_task = None
             
         self.is_active = False
         logger.info("RealTimeQuoteStreamer: Stream stopped successfully.")
@@ -1468,15 +1626,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 success = real_time_streamer.start_stream(app.state.api)
                 if success:
-                     # --- [新增] 真實實盤串流預載 150 根歷史數據 ---
+                     # --- 啟動實盤時自動校準對齊最新 K 棒並推送歷史 ---
                      try:
                           if not real_time_streamer.df_1k_real.empty:
-                              history_payload = await get_history_init_payload(real_time_streamer.df_1k_real, **real_time_streamer.orb_params)
-                              await websocket.send_json(history_payload)
-                              logger.info("Sent history_init payload to real live terminal successfully.")
+                               last_db_dt = real_time_streamer.df_1k_real['datetime'].iloc[-1]
+                               now_dt = datetime.now()
+                               if (now_dt - last_db_dt).total_seconds() > 60:
+                                   await real_time_streamer._recover_kbars_gap(last_db_dt, now_dt)
+                               history_payload = await get_history_init_payload(real_time_streamer.df_1k_real, **real_time_streamer.orb_params)
+                               await websocket.send_json(history_payload)
+                               logger.info("Sent history_init payload to real live terminal successfully.")
                      except Exception as e:
-                         logger.exception("Error sending history init for start_real_live")
-                         
+                          logger.exception("Error sending history init for start_real_live")
+                          
                      await websocket.send_json({
                           "type": "status",
                           "message": "🟢 成功串接 Shioaji 台指期 (TXFR1) 實時串流行情！等待 Tick 推送中..."
