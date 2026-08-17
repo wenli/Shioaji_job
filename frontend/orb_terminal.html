@@ -262,6 +262,13 @@
             display: flex;
             flex-direction: column;
             gap: 0.8rem;
+            min-height: 0;
+        }
+
+        .layout-right .chart-card {
+            flex: 1;
+            min-height: 0;
+            height: auto;
         }
 
         .chart-card {
@@ -298,8 +305,11 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             padding-bottom: 0.35rem;
             z-index: 10;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 0.4rem;
+            min-height: 28px;
+            max-height: 28px;
+            overflow: hidden;
         }
 
         .chart-title {
@@ -310,6 +320,8 @@
             display: flex;
             align-items: center;
             gap: 0.4rem;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .chart-timeframe-tag {
@@ -330,7 +342,10 @@
             gap: 0.45rem;
             font-family: var(--font-mono);
             font-size: 0.72rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             background: rgba(0, 0, 0, 0.35);
             padding: 0.15rem 0.5rem;
             border-radius: 6px;
@@ -405,8 +420,10 @@
         .chart-canvas-container {
             flex: 1;
             width: 100%;
-            min-height: 180px;
+            min-height: 0;
+            min-width: 0;
             position: relative;
+            overflow: hidden;
         }
 
         /* Countdown & Status Banner on 1K Chart */
@@ -432,12 +449,12 @@
             font-weight: bold;
         }
 
-        /* Trade Dashboard Area */
+        /* Trade Dashboard & Real-Time Ticks Area */
         .bottom-layout {
             display: grid;
-            grid-template-columns: 7fr 3fr;
+            grid-template-columns: 4.2fr 3.3fr 2.5fr;
             gap: 0.8rem;
-            min-height: 180px;
+            min-height: 190px;
         }
 
         .trade-panel {
@@ -576,6 +593,192 @@
         .alert-msg.danger { color: var(--neon-pink); text-shadow: 0 0 5px rgba(244,63,94,0.2); }
         .alert-msg.gold { color: var(--neon-gold); text-shadow: 0 0 5px rgba(251,191,36,0.2); }
 
+        /* Real-Time Ticks Stream Panel */
+        .tick-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.6rem 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tick-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .tick-filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding: 0.1rem;
+        }
+
+        .tick-filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.15rem 0.45rem;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: var(--font-mono);
+        }
+
+        .tick-filter-btn:hover {
+            color: #fff;
+        }
+
+        .tick-filter-btn.active {
+            background: rgba(34, 211, 238, 0.18);
+            color: var(--neon-cyan);
+            font-weight: 700;
+        }
+
+        .tick-rate-badge {
+            background: rgba(192, 132, 252, 0.08);
+            border: 1px solid rgba(192, 132, 252, 0.2);
+            color: var(--neon-purple);
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+
+        .tick-table-container {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 120px;
+            position: relative;
+        }
+
+        .tick-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            text-align: left;
+            font-family: var(--font-mono);
+        }
+
+        .tick-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.25rem 0.35rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(14, 9, 26, 0.95);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .tick-table td {
+            padding: 0.25rem 0.35rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            white-space: nowrap;
+        }
+
+        .tick-row {
+            transition: background 0.3s ease;
+        }
+
+        .tick-row.flash-buy {
+            animation: flashCyan 0.8s ease-out;
+        }
+
+        .tick-row.flash-sell {
+            animation: flashPink 0.8s ease-out;
+        }
+
+        .tick-row.large-order {
+            background: rgba(251, 191, 36, 0.09) !important;
+            border-left: 2px solid var(--neon-gold);
+        }
+
+        @keyframes flashCyan {
+            0% { background: rgba(34, 211, 238, 0.35); }
+            100% { background: transparent; }
+        }
+
+        @keyframes flashPink {
+            0% { background: rgba(244, 63, 94, 0.35); }
+            100% { background: transparent; }
+        }
+
+        .tick-type-tag {
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 0.05rem 0.25rem;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .tick-type-tag.buy {
+            background: rgba(34, 211, 238, 0.15);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            color: var(--neon-cyan);
+        }
+
+        .tick-type-tag.sell {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: var(--neon-pink);
+        }
+
+        .tick-type-tag.neutral {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .vol-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .vol-bar-bg {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            overflow: hidden;
+            max-width: 35px;
+        }
+
+        .vol-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .vol-bar-fill.buy { background: var(--neon-cyan); }
+        .vol-bar-fill.sell { background: var(--neon-pink); }
+        .vol-bar-fill.gold { background: var(--neon-gold); }
+
+        .large-badge {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: var(--neon-gold);
+            font-size: 0.58rem;
+            padding: 0 0.2rem;
+            border-radius: 2px;
+            font-weight: 700;
+            margin-left: 0.2rem;
+        }
+
         /* Floating Alert Dialog */
         .floating-dialog {
             position: fixed;
@@ -694,6 +897,12 @@
             color: var(--neon-purple);
         }
 
+        @media (max-width: 1200px) {
+            .bottom-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 1024px) {
             .terminal-layout {
                 flex-direction: column;
@@ -704,9 +913,6 @@
             }
             .layout-right {
                 height: 450px;
-            }
-            .bottom-layout {
-                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -841,9 +1047,9 @@
             </div>
         </div>
 
-        <!-- Bottom Layout: Trading Panel & Alert Wall -->
+        <!-- Bottom Layout: Trading Panel, Real-time Ticks & Alert Wall -->
         <div class="bottom-layout">
-            <!-- Left: Paper Trading Dashboard -->
+            <!-- Left: Paper Trading Dashboard (4.2fr) -->
             <div class="trade-panel">
                 <div class="panel-header">
                     <span class="panel-title">📊 模擬交易 (Paper Trading) 管理中心</span>
@@ -903,7 +1109,44 @@
                 </div>
             </div>
 
-            <!-- Right: Alert Wall -->
+            <!-- Middle: Real-time Ticks Stream Panel (3.3fr) -->
+            <div class="tick-panel">
+                <div class="panel-header">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <span class="panel-title" style="color: var(--neon-gold);">⚡ 即時逐筆成交 (Time & Sales)</span>
+                        <span class="tick-rate-badge" id="tick-rate-lbl">0 T/s</span>
+                    </div>
+                    <div class="tick-toolbar">
+                        <div class="tick-filter-group">
+                            <button class="tick-filter-btn active" id="filter-tick-all" onclick="setTickFilter(0)">全部</button>
+                            <button class="tick-filter-btn" id="filter-tick-5" onclick="setTickFilter(5)">≥5口</button>
+                            <button class="tick-filter-btn" id="filter-tick-10" onclick="setTickFilter(10)">≥10口大單</button>
+                        </div>
+                        <button class="tick-filter-btn" id="btn-tick-scroll" onclick="toggleTickAutoScroll()" title="切換自動滾動">📜 滾動</button>
+                        <button class="tick-filter-btn" onclick="clearTickTable()" title="清空逐筆明細">🗑️</button>
+                    </div>
+                </div>
+
+                <!-- Tick Table Stream -->
+                <div class="tick-table-container" id="tick-table-box">
+                    <table class="tick-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 22%;">時間</th>
+                                <th style="width: 22%;">成交價</th>
+                                <th style="width: 18%;">點差</th>
+                                <th style="width: 23%;">單量</th>
+                                <th style="width: 15%;">盤別</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tick-table-body">
+                            <!-- Dynamic Tick Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right: Alert Wall (2.5fr) -->
             <div class="alert-section">
                 <div class="panel-header">
                     <span class="panel-title" style="color: var(--neon-purple);">💻 實時信號通知牆</span>
@@ -1099,6 +1342,153 @@
         let isSimulating = false;
         let isRealStreaming = false;
 
+        // Real-Time Ticks Stream State
+        let rawTicksHistory = [];
+        let tickFilterMinVol = 0;
+        let isTickAutoScroll = true;
+        let prevTickPrice = null;
+        let tickRateCount = 0;
+        let tickRatePerSec = 0;
+
+        // Ticks per second rate monitor
+        setInterval(() => {
+            tickRatePerSec = tickRateCount;
+            tickRateCount = 0;
+            const rateEl = document.getElementById('tick-rate-lbl');
+            if (rateEl) {
+                rateEl.textContent = `${tickRatePerSec} T/s`;
+            }
+        }, 1000);
+
+        window.setTickFilter = function(minVol) {
+            tickFilterMinVol = minVol;
+            const bAll = document.getElementById('filter-tick-all');
+            const b5 = document.getElementById('filter-tick-5');
+            const b10 = document.getElementById('filter-tick-10');
+            if (bAll) bAll.classList.toggle('active', minVol === 0);
+            if (b5) b5.classList.toggle('active', minVol === 5);
+            if (b10) b10.classList.toggle('active', minVol === 10);
+            renderTickTable();
+        };
+
+        window.toggleTickAutoScroll = function() {
+            isTickAutoScroll = !isTickAutoScroll;
+            const btn = document.getElementById('btn-tick-scroll');
+            if (btn) {
+                btn.classList.toggle('active', isTickAutoScroll);
+                btn.textContent = isTickAutoScroll ? '📜 滾動' : '⏸️ 暫停';
+            }
+        };
+
+        window.clearTickTable = function() {
+            rawTicksHistory = [];
+            const tbody = document.getElementById('tick-table-body');
+            if (tbody) tbody.innerHTML = '';
+        };
+
+        function renderTick(tick) {
+            if (!tick) return;
+            tickRateCount++;
+
+            const price = parseFloat(tick.price);
+            const volume = parseInt(tick.volume);
+            const rawTime = tick.time || (tick.datetime ? tick.datetime.split(' ')[1] : '--');
+
+            let diff = 0.0;
+            if (prevTickPrice !== null) {
+                diff = price - prevTickPrice;
+            }
+            prevTickPrice = price;
+
+            // 判斷盤別 (1: 外盤/買進, 2: 內盤/賣出, 0: 平盤)
+            let tickType = tick.tick_type !== undefined ? tick.tick_type : 0;
+            if (tickType === 0) {
+                if (diff > 0) tickType = 1;
+                else if (diff < 0) tickType = 2;
+            }
+
+            const tickObj = {
+                time: rawTime,
+                price: price,
+                diff: diff,
+                volume: volume,
+                tickType: tickType,
+                isLarge: volume >= 10
+            };
+
+            rawTicksHistory.push(tickObj);
+            if (rawTicksHistory.length > 150) {
+                rawTicksHistory.shift();
+            }
+
+            // 若符合當前大單過濾條件，插入單筆 Row
+            if (tickFilterMinVol === 0 || volume >= tickFilterMinVol) {
+                appendTickRow(tickObj);
+            }
+        }
+
+        function appendTickRow(tickObj) {
+            const tbody = document.getElementById('tick-table-body');
+            if (!tbody) return;
+
+            const isBuy = tickObj.tickType === 1;
+            const isSell = tickObj.tickType === 2;
+            const diffClass = tickObj.diff > 0 ? 'val-up' : (tickObj.diff < 0 ? 'val-down' : 'val-flat');
+            const diffSign = tickObj.diff > 0 ? '+' : '';
+            const flashClass = isBuy ? 'flash-buy' : (isSell ? 'flash-sell' : '');
+            const largeClass = tickObj.isLarge ? 'large-order' : '';
+            const volBarColor = tickObj.isLarge ? 'gold' : (isBuy ? 'buy' : (isSell ? 'sell' : ''));
+            const volWidthPct = Math.min(100, Math.max(10, tickObj.volume * 5));
+
+            let typeBadgeHtml = '';
+            if (isBuy) {
+                typeBadgeHtml = '<span class="tick-type-tag buy">外盤</span>';
+            } else if (isSell) {
+                typeBadgeHtml = '<span class="tick-type-tag sell">內盤</span>';
+            } else {
+                typeBadgeHtml = '<span class="tick-type-tag neutral">平盤</span>';
+            }
+
+            const row = document.createElement('tr');
+            row.className = `tick-row ${flashClass} ${largeClass}`;
+            row.innerHTML = `
+                <td style="color: var(--text-secondary);">${tickObj.time}</td>
+                <td style="font-weight: 700;" class="${diffClass}">${tickObj.price}</td>
+                <td class="${diffClass}">${diffSign}${tickObj.diff.toFixed(1)}</td>
+                <td>
+                    <div class="vol-cell">
+                        <span style="font-weight: 700; color: ${tickObj.isLarge ? 'var(--neon-gold)' : '#fff'};">${tickObj.volume}</span>
+                        ${tickObj.isLarge ? '<span class="large-badge">大單</span>' : ''}
+                        <div class="vol-bar-bg">
+                            <div class="vol-bar-fill ${volBarColor}" style="width: ${volWidthPct}%;"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>${typeBadgeHtml}</td>
+            `;
+
+            tbody.appendChild(row);
+
+            // 限制最多顯示 100 筆
+            if (tbody.children.length > 100) {
+                tbody.removeChild(tbody.firstElementChild);
+            }
+
+            if (isTickAutoScroll) {
+                const box = document.getElementById('tick-table-box');
+                if (box) box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        function renderTickTable() {
+            const tbody = document.getElementById('tick-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const filtered = rawTicksHistory.filter(t => tickFilterMinVol === 0 || t.volume >= tickFilterMinVol);
+            filtered.forEach(t => appendTickRow(t));
+        }
+
         // Trade Position State
         let currentPosition = {
             active: false,
@@ -1137,7 +1527,7 @@
         // Global cache for ORB historical sessions & latest active ORB
         let latestOrbHistory = {};
         let latestCurrentOrb = null;
-        let isCrosshairHovering = false;
+        let hoveredChartKey = null;
 
         // [標準轉換] 將台北 Naive 時間字串，轉換為該時刻在台北 (UTC+8) 的標準 Unix 時間戳（秒）
         function getCorrectedUnixTimestamp(timeStr) {
@@ -1282,11 +1672,16 @@
                 seriesList[key] = series;
                 volumeSeriesList[key] = volumeSeries;
                 
-                // Add resize listener
+                // Add resize listener with rAF debounce
+                let resizeRaf = null;
                 new ResizeObserver(entries => {
                     if (entries.length === 0 || !entries[0].contentRect) return;
                     const { width, height } = entries[0].contentRect;
-                    chart.resize(width, height);
+                    if (width <= 0 || height <= 0) return;
+                    cancelAnimationFrame(resizeRaf);
+                    resizeRaf = requestAnimationFrame(() => {
+                        chart.resize(Math.floor(width), Math.floor(height));
+                    });
                 }).observe(container);
             });
 
@@ -1310,34 +1705,27 @@
                 title: 'ORB LOW'
             });
 
-            // 十字游標連動游標同步 (Crosshair Sync) 與 頂部動態數值 (HUD Legend) 更新
-            chartKeys.forEach(sourceKey => {
-                const sourceChart = charts[sourceKey];
-                sourceChart.subscribeCrosshairMove(param => {
+            // 各圖表獨立十字游標與頂部動態數值 (HUD Legend) 懸停更新 (解耦互不干擾)
+            chartKeys.forEach(key => {
+                const chart = charts[key];
+                chart.subscribeCrosshairMove(param => {
                     if (!param || !param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
-                        // 滑鼠離開圖表區域，恢復顯示最新 K 棒數據
-                        if (isCrosshairHovering) {
-                            isCrosshairHovering = false;
-                            updateAllHeadersToLatest();
+                        // 滑鼠離開該圖表區域，恢復顯示該圖表最新 K 棒數據
+                        if (hoveredChartKey === key) {
+                            hoveredChartKey = null;
                         }
+                        const cache = candleDataCache[key];
+                        const latestCandle = cache && cache.length > 0 ? cache[cache.length - 1] : null;
+                        const orbData = key === '1k' ? getLatestOrb() : null;
+                        updateHeaderDisplay(key, latestCandle, orbData);
                         return;
                     }
                     
-                    isCrosshairHovering = true;
+                    hoveredChartKey = key;
                     const hoveredTime = param.time;
-
-                    chartKeys.forEach(targetKey => {
-                        // 同步其他圖表的十字線
-                        if (targetKey !== sourceKey) {
-                            const targetChart = charts[targetKey];
-                            targetChart.setCrosshairPosition(param.point, hoveredTime);
-                        }
-                        
-                        // 聯動更新各圖表頂部的數值列
-                        const candle = findCandleAtOrBefore(targetKey, hoveredTime);
-                        const orbData = targetKey === '1k' ? getOrbForTime(hoveredTime) : null;
-                        updateHeaderDisplay(targetKey, candle, orbData);
-                    });
+                    const candle = findCandleAtOrBefore(key, hoveredTime);
+                    const orbData = key === '1k' ? getOrbForTime(hoveredTime) : null;
+                    updateHeaderDisplay(key, candle, orbData);
                 });
             });
             
@@ -1453,6 +1841,17 @@
             const diffSign = diff > 0 ? '+' : '';
             const diffClass = diff > 0 ? 'val-up' : (diff < 0 ? 'val-down' : 'val-flat');
 
+            // 5K 與 15K 採用單行精簡版 HUD，防止窄欄折行
+            if (key === '5k' || key === '15k') {
+                el.innerHTML = `
+                    <span class="hud-item hud-time">[${timeStr}]</span>
+                    <span class="hud-item">收 <b class="hud-num ${diffClass}">${candle.close}</b></span>
+                    <span class="hud-item ${diffClass}">(${diffSign}${diff.toFixed(1)})</span>
+                    <span class="hud-item">量 <b class="hud-num hud-vol">${candle.volume !== undefined ? Number(candle.volume).toLocaleString() : 0}</b></span>
+                `;
+                return;
+            }
+
             let html = `
                 <span class="hud-item hud-time">[${timeStr}]</span>
                 <span class="hud-item">O <b class="hud-num">${candle.open}</b></span>
@@ -1475,9 +1874,10 @@
             el.innerHTML = html;
         }
 
-        // 將所有圖表頂部數值列更新至最新一根 K 棒
+        // 將所有未被滑鼠懸停的圖表頂部數值列更新至最新一根 K 棒
         function updateAllHeadersToLatest() {
             chartKeys.forEach(key => {
+                if (hoveredChartKey === key) return;
                 const cache = candleDataCache[key];
                 const latestCandle = cache && cache.length > 0 ? cache[cache.length - 1] : null;
                 const orbData = key === '1k' ? getLatestOrb() : null;
@@ -1641,6 +2041,9 @@
 
         // Process incoming candle and ORB data
         function processTickData(data) {
+            if (data.tick) {
+                renderTick(data.tick);
+            }
             const candles = data.candles;
             const orb = data.orb;
             
@@ -1660,7 +2063,7 @@
                     volume: c.volume
                 };
                 
-                // Manage local cache
+                // Manage local cache (維持充足歷史深度，防止縮水)
                 let cache = candleDataCache[key];
                 const lastIdx = cache.findIndex(item => item.time === timeUnix);
                 if (lastIdx !== -1) {
@@ -1669,7 +2072,7 @@
                     cache.push(newCandle);
                     cache.sort((a, b) => a.time - b.time);
                 }
-                if (cache.length > 500) cache.shift();
+                if (cache.length > 3000) cache.shift();
 
                 const lastCandleInCache = cache.length > 0 ? cache[cache.length - 1] : null;
                 const isLatest = lastCandleInCache && newCandle.time >= lastCandleInCache.time;
@@ -1708,10 +2111,8 @@
             // 快取最新 ORB
             latestCurrentOrb = orb;
 
-            // 非懸停時即時更新頂部數值 HUD
-            if (!isCrosshairHovering) {
-                updateAllHeadersToLatest();
-            }
+            // 即時更新未被懸停的圖表頂部數值 HUD
+            updateAllHeadersToLatest();
 
             // 處理 1K ORB 行情倒數與動態劃線
             if (orb && candles['1k']) {
@@ -2092,6 +2493,8 @@
 
         // Clear all charts and reset lists
         function clearCharts() {
+            clearTickTable();
+            prevTickPrice = null;
             chartKeys.forEach(key => {
                 candleDataCache[key] = [];
                 seriesList[key].setData([]);
