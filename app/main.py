@@ -677,12 +677,16 @@ class RealTimeQuoteStreamer:
             return
             
         try:
-            # 包裝 Tick 數據
+            # 包裝 Tick 數據 (含完整量價與盤別屬性)
             tick_data = {
-                "code": tick.code,
+                "code": str(getattr(tick, 'code', 'TXFR1')),
                 "datetime": tick.datetime,
                 "close": float(tick.close),
                 "volume": int(tick.volume),
+                "total_volume": int(getattr(tick, 'total_volume', 0)),
+                "tick_type": int(getattr(tick, 'tick_type', 0)),
+                "bid_total": int(getattr(tick, 'bid_side_total_vol', 0)),
+                "ask_total": int(getattr(tick, 'ask_side_total_vol', 0)),
             }
             # 線程安全遞送
             self.loop.call_soon_threadsafe(self.queue.put_nowait, tick_data)
@@ -951,6 +955,17 @@ class RealTimeQuoteStreamer:
                     
                     payload = {
                         "type": "live_tick",
+                        "tick": {
+                            "time": tick_dt.strftime('%H:%M:%S'),
+                            "datetime": str(tick_dt.strftime('%Y-%m-%d %H:%M:%S')),
+                            "code": tick.get("code", "TXFR1"),
+                            "price": tick_close,
+                            "volume": tick_vol,
+                            "total_volume": tick.get("total_volume", 0),
+                            "tick_type": tick.get("tick_type", 0),
+                            "bid_total": tick.get("bid_total", 0),
+                            "ask_total": tick.get("ask_total", 0)
+                        },
                         "candles": {
                             "1k": {
                                 "time": str(self.df_1k_real.loc[last_idx, 'datetime'].strftime('%Y-%m-%d %H:%M:%S')),
@@ -1281,10 +1296,24 @@ async def replay_simulator_worker(date_str: str, speed_seconds: float):
             # 計算重播時的實時 ORB 狀態
             orb_status = tb.calculate_realtime_orb_status(df_1k_curr, **real_time_streamer.orb_params)
             
+            prev_close = df_1k_all.iloc[k-2]['close'] if k >= 2 else float(latest_1k_bar['open'])
+            tick_type = 1 if float(latest_1k_bar['close']) >= prev_close else 2
+            
             payload = {
                 "type": "replay_tick",
                 "index": k,
                 "total": len(df_1k_all),
+                "tick": {
+                    "time": pd.to_datetime(latest_1k_bar['ts']).strftime('%H:%M:%S'),
+                    "datetime": str(latest_1k_bar['ts']),
+                    "code": "TXFR1",
+                    "price": float(latest_1k_bar['close']),
+                    "volume": int(latest_1k_bar['volume']),
+                    "total_volume": int(df_1k_curr['volume'].sum()),
+                    "tick_type": tick_type,
+                    "bid_total": 0,
+                    "ask_total": 0
+                },
                 "candles": {
                     "1k": {
                         "time": str(latest_1k_bar['ts']),
@@ -1465,8 +1494,22 @@ async def simulated_live_ticks_worker():
             # 計算模擬實時時的 ORB 狀態
             orb_status = tb.calculate_realtime_orb_status(df_1k_recent, **real_time_streamer.orb_params)
             
+            tick_vol_sim = random.randint(1, 15)
+            tick_type_sim = 1 if change >= 0 else 2
+            
             payload = {
                 "type": "live_tick",
+                "tick": {
+                    "time": now_dt.strftime('%H:%M:%S'),
+                    "datetime": now_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                    "code": "TXFR1",
+                    "price": float(new_close),
+                    "volume": tick_vol_sim,
+                    "total_volume": int(df_1k_recent['volume'].sum()),
+                    "tick_type": tick_type_sim,
+                    "bid_total": 0,
+                    "ask_total": 0
+                },
                 "candles": {
                     "1k": {
                         "time": str(df_1k_recent.loc[last_idx, 'datetime'].strftime('%Y-%m-%d %H:%M:%S')),
