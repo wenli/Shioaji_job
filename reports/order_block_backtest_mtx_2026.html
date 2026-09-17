@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMC 機構訂單塊 (Order Block) 回測報告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #090d16;
+            --card-bg: #111827;
+            --border: #1f293d;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #8b5cf6;
+            --green: #10b981;
+            --red: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            padding: 2.5rem;
+            line-height: 1.5;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+        }
+        .header h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #a78bfa, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header .meta { color: var(--text-muted); font-size: 0.95rem; }
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #8b5cf6, transparent);
+        }
+        .card .title { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .card .value { font-size: 1.8rem; font-weight: 700; font-family: 'JetBrains Mono'; }
+        .card .sub { font-size: 0.85rem; margin-top: 0.25rem; }
+        .val-profit { color: var(--green); }
+        .val-loss { color: var(--red); }
+        .chart-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            height: 480px;
+        }
+        .table-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+        .table-box h2 { font-size: 1.25rem; margin-bottom: 1rem; color: #a78bfa; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left; }
+        th { color: var(--text-muted); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-weight: 600; }
+        td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-buy { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+        .badge-sell { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+        .stage-tag { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+        .reason-tag { color: var(--text-muted); font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>台指期 SMC 機構訂單塊 (Order Block) 回測報告</h1>
+                <div class="meta">標的: MTX | 區間: 2024-01-02 ~ 2026-09-16 | 回測引擎: SMC OrderBlockEngine</div>
+            </div>
+            <div style="text-align: right;">
+                <span style="background: rgba(139,92,246,0.2); color: #c4b5fd; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; border: 1px solid rgba(139,92,246,0.4);">
+                    5K BOS + FVG Mitigation
+                </span>
+            </div>
+        </div>
+
+        <div class="grid-stats">
+            <div class="card">
+                <div class="title">淨損益 (Net Profit)</div>
+                <div class="value val-profit">NT$ +37,365</div>
+                <div class="sub" style="color: var(--green);">報酬率: +3.74%</div>
+            </div>
+            <div class="card">
+                <div class="title">獲利因子 (Profit Factor)</div>
+                <div class="value" style="color: #c4b5fd;">1.08</div>
+                <div class="sub" style="color: var(--text-muted);">勝率: 49.5% (95勝/97負)</div>
+            </div>
+            <div class="card">
+                <div class="title">最大回撤 (Max Drawdown)</div>
+                <div class="value val-loss">9.53%</div>
+                <div class="sub" style="color: var(--text-muted);">保本出場: 15 筆</div>
+            </div>
+            <div class="card">
+                <div class="title">分批目標達成</div>
+                <div class="value" style="color: #60a5fa;">50 / 24</div>
+                <div class="sub" style="color: var(--text-muted);">TP1(前高破位) / TP2(對側池)</div>
+            </div>
+            <div class="card">
+                <div class="title">平均盈虧 (Avg Win / Loss)</div>
+                <div class="value" style="font-size: 1.4rem;">5,246 / 4,752</div>
+                <div class="sub" style="color: var(--text-muted);">盈虧比: 1.10</div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="equityChart"></canvas>
+        </div>
+
+        <div class="table-box">
+            <h2>最近交易明細 (最新 40 筆)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>序號</th>
+                        <th>階段</th>
+                        <th>方向</th>
+                        <th>進場時間</th>
+                        <th>進場價</th>
+                        <th>出場時間</th>
+                        <th>出場價</th>
+                        <th>出場原因</th>
+                        <th>口數</th>
+                        <th>點數</th>
+                        <th>淨損益 (NTD)</th>
+                        <th>回踩訂單塊 (Mitigated OB)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td>#153</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-04-30 20:46</td>
+            <td>39838.0</td>
+            <td>2026-04-30 21:32</td>
+            <td>39782.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-56.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-5,840</td>
+            <td>OB#1426: [39785~39821] (FVG: 23.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#154</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-05-08 10:07</td>
+            <td>42038.0</td>
+            <td>2026-05-08 10:13</td>
+            <td>41915.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-123.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-12,548</td>
+            <td>OB#1443: [41918~41969] (FVG: 14.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#155</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-05-22 11:33</td>
+            <td>42095.0</td>
+            <td>2026-05-22 11:35</td>
+            <td>42152.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-57.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-5,948</td>
+            <td>OB#1479: [42080~42149] (FVG: 15.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#156</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-05-27 11:34</td>
+            <td>45036.0</td>
+            <td>2026-05-27 11:50</td>
+            <td>44980.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-56.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-5,860</td>
+            <td>OB#1490: [44983~45051] (FVG: 36.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#157</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-06-18 10:30</td>
+            <td>46495.0</td>
+            <td>2026-06-18 11:37</td>
+            <td>46315.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-180.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-18,266</td>
+            <td>OB#1553: [46318~46488] (FVG: 62.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#158</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-06-22 20:55</td>
+            <td>49074.0</td>
+            <td>2026-06-22 21:01</td>
+            <td>49146.6</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+72.6</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+3,492</td>
+            <td>OB#1561: [49044~49074] (FVG: 15.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#159</td>
+            <td><span class='stage-tag'>FINAL_BE</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-06-22 20:55</td>
+            <td>49074.0</td>
+            <td>2026-06-22 21:31</td>
+            <td>49074.0</td>
+            <td><span class='reason-tag'>BE (保本出場)</span></td>
+            <td>1口</td>
+            <td>+0.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-138</td>
+            <td>OB#1561: [49044~49074] (FVG: 15.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#160</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-06-23 10:01</td>
+            <td>48181.0</td>
+            <td>2026-06-23 11:39</td>
+            <td>47670.6</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+510.4</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+25,384</td>
+            <td>OB#1565: [48159~48410] (FVG: 132.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#161</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-06-23 10:01</td>
+            <td>48181.0</td>
+            <td>2026-06-23 15:01</td>
+            <td>47436.0</td>
+            <td><span class='reason-tag'>EOD (收盤強平)</span></td>
+            <td>1口</td>
+            <td>+745.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+37,115</td>
+            <td>OB#1565: [48159~48410] (FVG: 132.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#162</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-06-24 11:30</td>
+            <td>46255.0</td>
+            <td>2026-06-24 12:43</td>
+            <td>46534.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-279.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-28,166</td>
+            <td>OB#1569: [46255~46531] (FVG: 27.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#163</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-06-26 20:40</td>
+            <td>44356.0</td>
+            <td>2026-06-26 21:19</td>
+            <td>44205.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-151.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-15,357</td>
+            <td>OB#1578: [44208~44340] (FVG: 46.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#164</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-06-29 10:08</td>
+            <td>45276.0</td>
+            <td>2026-06-29 10:10</td>
+            <td>45232.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-44.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-4,661</td>
+            <td>OB#1580: [45235~45248] (FVG: 244.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#165</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-07-06 10:14</td>
+            <td>47022.0</td>
+            <td>2026-07-06 10:18</td>
+            <td>46956.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-66.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-6,868</td>
+            <td>OB#1606: [46959~46990] (FVG: 153.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#166</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-15 20:31</td>
+            <td>46027.0</td>
+            <td>2026-07-15 20:49</td>
+            <td>46081.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-54.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-5,664</td>
+            <td>OB#1634: [46053~46078] (FVG: 30.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#167</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-17 11:07</td>
+            <td>43991.0</td>
+            <td>2026-07-17 11:38</td>
+            <td>43788.6</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+202.4</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+9,992</td>
+            <td>OB#1645: [44004~44080] (FVG: 18.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#168</td>
+            <td><span class='stage-tag'>TP2</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-17 11:07</td>
+            <td>43991.0</td>
+            <td>2026-07-17 11:50</td>
+            <td>43641.4</td>
+            <td><span class='reason-tag'>TP2 (目標全平)</span></td>
+            <td>1口</td>
+            <td>+349.6</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+17,352</td>
+            <td>OB#1645: [44004~44080] (FVG: 18.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#169</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-22 10:11</td>
+            <td>44940.0</td>
+            <td>2026-07-22 15:01</td>
+            <td>44631.0</td>
+            <td><span class='reason-tag'>EOD (收盤強平)</span></td>
+            <td>2口</td>
+            <td>+309.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+30,641</td>
+            <td>OB#1657: [44963~45121] (FVG: 8.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#170</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-27 11:21</td>
+            <td>43502.0</td>
+            <td>2026-07-27 13:11</td>
+            <td>43753.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-251.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-25,355</td>
+            <td>OB#1671: [43505~43750] (FVG: 22.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#171</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-27 20:00</td>
+            <td>44147.0</td>
+            <td>2026-07-27 20:01</td>
+            <td>44172.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-25.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-2,756</td>
+            <td>OB#1674: [44127~44158] (FVG: 10.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#172</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-28 10:18</td>
+            <td>42057.0</td>
+            <td>2026-07-28 10:19</td>
+            <td>42002.0</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+55.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+2,626</td>
+            <td>OB#1676: [42061~42071] (FVG: 62.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#173</td>
+            <td><span class='stage-tag'>FINAL_BE</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-28 10:18</td>
+            <td>42057.0</td>
+            <td>2026-07-28 10:20</td>
+            <td>42057.0</td>
+            <td><span class='reason-tag'>BE (保本出場)</span></td>
+            <td>1口</td>
+            <td>-0.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-124</td>
+            <td>OB#1676: [42061~42071] (FVG: 62.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#174</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-30 11:48</td>
+            <td>40526.0</td>
+            <td>2026-07-30 12:56</td>
+            <td>40079.4</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+446.6</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+22,209</td>
+            <td>OB#1684: [40573~40726] (FVG: 85.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#175</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-07-30 11:48</td>
+            <td>40526.0</td>
+            <td>2026-07-30 15:01</td>
+            <td>40270.0</td>
+            <td><span class='reason-tag'>EOD (收盤強平)</span></td>
+            <td>1口</td>
+            <td>+256.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+12,679</td>
+            <td>OB#1684: [40573~40726] (FVG: 85.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#176</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-14 11:30</td>
+            <td>46139.0</td>
+            <td>2026-08-14 11:34</td>
+            <td>46084.0</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+55.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+2,618</td>
+            <td>OB#1726: [46084~46154] (FVG: 27.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#177</td>
+            <td><span class='stage-tag'>TP2</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-14 11:30</td>
+            <td>46139.0</td>
+            <td>2026-08-14 11:49</td>
+            <td>46044.0</td>
+            <td><span class='reason-tag'>TP2 (目標全平)</span></td>
+            <td>1口</td>
+            <td>+95.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+4,618</td>
+            <td>OB#1726: [46084~46154] (FVG: 27.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#178</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-14 20:34</td>
+            <td>45940.0</td>
+            <td>2026-08-14 20:40</td>
+            <td>45885.0</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+55.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+2,618</td>
+            <td>OB#1727: [45910~45951] (FVG: 22.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#179</td>
+            <td><span class='stage-tag'>TP2</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-14 20:34</td>
+            <td>45940.0</td>
+            <td>2026-08-14 21:31</td>
+            <td>45845.0</td>
+            <td><span class='reason-tag'>TP2 (目標全平)</span></td>
+            <td>1口</td>
+            <td>+95.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+4,618</td>
+            <td>OB#1727: [45910~45951] (FVG: 22.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#180</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-19 20:33</td>
+            <td>44889.0</td>
+            <td>2026-08-19 20:38</td>
+            <td>45027.6</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+138.6</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+6,800</td>
+            <td>OB#1735: [44829~44857] (FVG: 11.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#181</td>
+            <td><span class='stage-tag'>TP2</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-19 20:33</td>
+            <td>44889.0</td>
+            <td>2026-08-19 20:52</td>
+            <td>45128.4</td>
+            <td><span class='reason-tag'>TP2 (目標全平)</span></td>
+            <td>1口</td>
+            <td>+239.4</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+11,840</td>
+            <td>OB#1735: [44829~44857] (FVG: 11.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#182</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-20 11:01</td>
+            <td>44645.0</td>
+            <td>2026-08-20 12:13</td>
+            <td>44745.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-100.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-10,258</td>
+            <td>OB#1739: [44623~44742] (FVG: 42.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#183</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-21 10:00</td>
+            <td>44992.0</td>
+            <td>2026-08-21 10:34</td>
+            <td>45223.0</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+231.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+11,420</td>
+            <td>OB#1745: [44890~44966] (FVG: 6.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#184</td>
+            <td><span class='stage-tag'>FINAL_BE</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-21 10:00</td>
+            <td>44992.0</td>
+            <td>2026-08-21 11:53</td>
+            <td>44992.0</td>
+            <td><span class='reason-tag'>BE (保本出場)</span></td>
+            <td>1口</td>
+            <td>+0.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-130</td>
+            <td>OB#1745: [44890~44966] (FVG: 6.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#185</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-24 20:34</td>
+            <td>44840.0</td>
+            <td>2026-08-24 21:08</td>
+            <td>44783.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-57.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-5,960</td>
+            <td>OB#1750: [44786~44817] (FVG: 32.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#186</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-25 20:35</td>
+            <td>45248.0</td>
+            <td>2026-08-25 21:28</td>
+            <td>45202.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-46.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-4,860</td>
+            <td>OB#1755: [45205~45242] (FVG: 16.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#187</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-28 10:05</td>
+            <td>46278.0</td>
+            <td>2026-08-28 15:01</td>
+            <td>46357.0</td>
+            <td><span class='reason-tag'>EOD (收盤強平)</span></td>
+            <td>2口</td>
+            <td>-79.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-8,166</td>
+            <td>OB#1762: [46308~46450] (FVG: 16.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#188</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-08-28 20:44</td>
+            <td>46415.0</td>
+            <td>2026-08-28 21:02</td>
+            <td>46449.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-34.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-3,666</td>
+            <td>OB#1764: [46415~46446] (FVG: 16.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#189</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-buy'>BUY</span></td>
+            <td>2026-08-31 20:10</td>
+            <td>46021.0</td>
+            <td>2026-08-31 20:26</td>
+            <td>45965.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-56.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-5,864</td>
+            <td>OB#1770: [45968~45985] (FVG: 25.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#190</td>
+            <td><span class='stage-tag'>FINAL_SL</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-09-11 20:29</td>
+            <td>46364.0</td>
+            <td>2026-09-11 20:30</td>
+            <td>46389.0</td>
+            <td><span class='reason-tag'>SL (止損)</span></td>
+            <td>2口</td>
+            <td>-25.0</td>
+            <td style="color:#ef4444; font-weight:bold; font-family:'JetBrains Mono';">-2,766</td>
+            <td>OB#1804: [46362~46385] (FVG: 6.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#191</td>
+            <td><span class='stage-tag'>TP1</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-09-11 20:30</td>
+            <td>46378.0</td>
+            <td>2026-09-11 20:31</td>
+            <td>46323.0</td>
+            <td><span class='reason-tag'>TP1 (平半倉移保本)</span></td>
+            <td>1口</td>
+            <td>+55.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+2,618</td>
+            <td>OB#1805: [46362~46385] (FVG: 54.0點)</td>
+        </tr>
+        
+        <tr>
+            <td>#192</td>
+            <td><span class='stage-tag'>TP2</span></td>
+            <td><span class='badge badge-sell'>SELL</span></td>
+            <td>2026-09-11 20:30</td>
+            <td>46378.0</td>
+            <td>2026-09-11 20:32</td>
+            <td>46283.0</td>
+            <td><span class='reason-tag'>TP2 (目標全平)</span></td>
+            <td>1口</td>
+            <td>+95.0</td>
+            <td style="color:#10b981; font-weight:bold; font-family:'JetBrains Mono';">+4,618</td>
+            <td>OB#1805: [46362~46385] (FVG: 54.0點)</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        const labels = ["2024-01-02T08:46", "2024-01-09 22:45", "2024-01-10 00:25", "2024-03-19 11:53", "2024-03-27 22:03", "2024-03-28 08:46", "2024-03-28 21:40", "2024-04-10 15:01", "2024-04-18 20:43", "2024-05-06 15:01", "2024-05-07 12:17", "2024-05-08 10:46", "2024-05-08 11:17", "2024-05-31 10:23", "2024-05-31 10:42", "2024-06-19 22:32", "2024-06-20 08:46", "2024-06-27 15:01", "2024-07-05 15:01", "2024-07-29 21:28", "2024-08-19 12:05", "2024-08-23 21:32", "2024-08-23 22:01", "2024-08-28 21:14", "2024-08-28 21:41", "2024-09-04 20:35", "2024-09-05 21:40", "2024-09-13 12:44", "2024-09-27 10:16", "2024-10-14 11:36", "2024-10-14 13:24", "2024-10-17 11:40", "2024-10-18 21:26", "2024-10-18 21:32", "2024-10-23 11:31", "2024-10-23 13:07", "2024-10-25 11:27", "2024-11-18 13:10", "2024-11-25 20:53", "2024-12-05 15:01", "2024-12-12 11:03", "2024-12-13 10:23", "2024-12-13 10:24", "2024-12-16 10:28", "2024-12-20 12:17", "2024-12-20 13:13", "2024-12-30 13:03", "2024-12-30 13:24", "2025-01-03 12:38", "2025-01-07 10:51", "2025-01-13 20:38", "2025-01-22 22:14", "2025-01-22 22:33", "2025-02-05 22:16", "2025-02-05 23:01", "2025-02-10 10:21", "2025-02-13 11:41", "2025-02-21 23:25", "2025-02-21 23:45", "2025-02-26 13:31", "2025-02-26 15:01", "2025-03-05 15:01", "2025-03-06 21:21", "2025-03-11 15:01", "2025-03-11 20:15", "2025-03-11 21:18", "2025-03-17 10:14", "2025-03-19 21:28", "2025-03-20 11:11", "2025-03-20 15:01", "2025-03-20 21:32", "2025-03-20 21:34", "2025-03-25 10:02", "2025-03-26 11:43", "2025-03-26 12:58", "2025-03-28 21:05", "2025-04-02 12:38", "2025-04-02 13:19", "2025-04-09 20:52", "2025-04-10 20:49", "2025-04-11 21:10", "2025-04-15 21:01", "2025-05-09 10:31", "2025-05-27 12:22", "2025-05-27 13:30", "2025-06-05 10:25", "2025-06-06 20:31", "2025-06-06 21:21", "2025-06-09 15:01", "2025-06-12 21:35", "2025-06-26 11:11", "2025-07-07 15:01", "2025-07-25 15:01", "2025-07-29 21:08", "2025-07-31 21:32", "2025-07-31 21:33", "2025-08-01 15:01", "2025-08-05 21:04", "2025-08-25 22:01", "2025-08-28 20:42", "2025-08-28 21:31", "2025-09-16 21:37", "2025-09-16 23:05", "2025-09-19 21:16", "2025-10-09 11:55", "2025-10-09 15:01", "2025-10-14 10:36", "2025-10-16 20:41", "2025-10-30 12:12", "2025-10-30 15:01", "2025-10-31 11:22", "2025-11-10 12:52", "2025-11-10 15:01", "2025-11-11 22:31", "2025-11-11 22:38", "2025-11-17 10:50", "2025-11-21 11:38", "2025-11-21 11:47", "2025-11-22 12:39", "2025-11-27 11:10", "2025-12-02 12:54", "2025-12-02 15:01", "2025-12-02 22:37", "2025-12-02 22:59", "2025-12-09 21:33", "2025-12-18 11:21", "2025-12-19 11:27", "2025-12-19 12:29", "2025-12-22 21:23", "2026-01-13 21:31", "2026-01-13 21:32", "2026-01-16 11:01", "2026-01-22 12:05", "2026-01-23 11:15", "2026-01-26 10:45", "2026-01-26 15:01", "2026-02-05 10:26", "2026-02-05 11:01", "2026-02-05 20:23", "2026-02-10 20:54", "2026-02-26 20:52", "2026-02-26 21:53", "2026-03-17 15:01", "2026-03-25 12:02", "2026-03-25 20:31", "2026-04-01 20:11", "2026-04-01 20:45", "2026-04-01 20:46", "2026-04-08 20:22", "2026-04-13 11:38", "2026-04-17 10:34", "2026-04-20 20:06", "2026-04-22 21:03", "2026-04-30 21:32", "2026-05-08 10:13", "2026-05-22 11:35", "2026-05-27 11:50", "2026-06-18 11:37", "2026-06-22 21:01", "2026-06-22 21:31", "2026-06-23 11:39", "2026-06-23 15:01", "2026-06-24 12:43", "2026-06-26 21:19", "2026-06-29 10:10", "2026-07-06 10:18", "2026-07-15 20:49", "2026-07-17 11:38", "2026-07-17 11:50", "2026-07-22 15:01", "2026-07-27 13:11", "2026-07-27 20:01", "2026-07-28 10:19", "2026-07-28 10:20", "2026-07-30 12:56", "2026-07-30 15:01", "2026-08-14 11:34", "2026-08-14 11:49", "2026-08-14 20:40", "2026-08-14 21:31", "2026-08-19 20:38", "2026-08-19 20:52", "2026-08-20 12:13", "2026-08-21 10:34", "2026-08-21 11:53", "2026-08-24 21:08", "2026-08-25 21:28", "2026-08-28 15:01", "2026-08-28 21:02", "2026-08-31 20:26", "2026-09-11 20:30", "2026-09-11 20:31", "2026-09-11 20:32"];
+        const data = [1000000.0, 1002675.0, 1002599.0, 999939.0, 1002609.0, 1003629.0, 1000969.0, 1002305.0, 996945.0, 994483.0, 991821.0, 994489.0, 999157.0, 1001823.0, 1006490.0, 1009154.0, 1010318.0, 1010446.0, 1016272.0, 1012104.0, 1007634.0, 1010300.0, 1010216.0, 1012882.0, 1017548.0, 1014884.0, 1005519.0, 1000652.0, 997380.0, 1001144.0, 1007708.0, 1002736.0, 1005398.0, 1010060.0, 1013604.0, 1013518.0, 1010544.0, 1004874.0, 1002202.0, 1004728.0, 1001156.0, 1003820.0, 1008484.0, 1005812.0, 1011446.0, 1011360.0, 1014024.0, 1018688.0, 1015016.0, 1011940.0, 1009270.0, 1011932.0, 1011844.0, 1014508.0, 1019172.0, 1016499.0, 1013825.0, 1016487.0, 1021149.0, 1026783.0, 1033147.0, 1034775.0, 1032105.0, 1035637.0, 1038303.0, 1042969.0, 1040301.0, 1037633.0, 1042719.0, 1048235.0, 1050901.0, 1050817.0, 1048147.0, 1050813.0, 1050729.0, 1047263.0, 1051361.0, 1051279.0, 1035130.0, 1028272.0, 1024014.0, 1021354.0, 1014392.0, 1017060.0, 1016978.0, 1014312.0, 1016978.0, 1021644.0, 1019678.0, 1017010.0, 1013442.0, 1013872.0, 1018099.0, 1015427.0, 1018089.0, 1022751.0, 1021177.0, 1018503.0, 1015827.0, 1018489.0, 1023151.0, 1025809.0, 1030467.0, 1027484.0, 1032340.0, 1035596.0, 1032907.0, 1027716.0, 1036420.0, 1039374.0, 1035580.0, 1041534.0, 1048138.0, 1050792.0, 1055446.0, 1051756.0, 1054523.0, 1054429.0, 1034643.0, 1030453.0, 1034097.0, 1037501.0, 1040155.0, 1044809.0, 1042117.0, 1039427.0, 1043731.0, 1043635.0, 1040941.0, 1043589.0, 1048237.0, 1039131.0, 1032223.0, 1026715.0, 1030351.0, 1033547.0, 1039383.0, 1039279.0, 1032571.0, 1029857.0, 1032495.0, 1037133.0, 1038117.0, 1032403.0, 1027689.0, 1022675.0, 1026748.0, 1033861.0, 1027441.0, 1018619.0, 1010990.0, 1006160.0, 1003328.0, 997488.0, 984940.0, 978992.0, 973132.0, 954866.0, 958358.0, 958220.0, 983604.0, 1020719.0, 992553.0, 977196.0, 972535.0, 965667.0, 960003.0, 969995.0, 987347.0, 1017988.0, 992633.0, 989877.0, 992503.0, 992379.0, 1014588.0, 1027267.0, 1029885.0, 1034503.0, 1037121.0, 1041739.0, 1048539.0, 1060379.0, 1050121.0, 1061541.0, 1061411.0, 1055451.0, 1050591.0, 1042425.0, 1038759.0, 1032895.0, 1030129.0, 1032747.0, 1037365.0];
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '權益總額 (NTD)',
+                    data: data,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#111827',
+                        borderColor: '#374151',
+                        borderWidth: 1,
+                        titleColor: '#f3f4f6',
+                        bodyColor: '#a78bfa',
+                        bodyFont: { family: 'JetBrains Mono' }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#9ca3af', maxTicksLimit: 12 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: {
+                            color: '#9ca3af',
+                            callback: v => 'NT$ ' + v.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
