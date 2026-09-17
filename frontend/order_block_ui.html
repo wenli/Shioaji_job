@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMC 機構訂單塊 (Order Block) 量化回測平台</title>
+    <!-- 本地優先與 CDN 備援 -->
+    <script src="/static/chart.js"></script>
+    <script>
+        if (!window.Chart) {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #080c14;
+            --bg-card: rgba(14, 20, 32, 0.85);
+            --bg-card-hover: rgba(22, 31, 49, 0.95);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(139, 92, 246, 0.3);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.25);
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --cyan: #06b6d4;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body {
+            background: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.06) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.04) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .container { max-width: 1560px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .logo-badge {
+            width: 44px; height: 44px; border-radius: 10px;
+            background: linear-gradient(135deg, #6d28d9, #4f46e5);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+        }
+        .title-box h1 { font-size: 22px; font-weight: 700; color: #fff; }
+        .title-box h1 span { color: #c4b5fd; }
+        .title-box p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+        .preset-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .preset-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .panel-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+        }
+        .panel-title { font-size: 15px; font-weight: 700; color: #fff; }
+
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-box, select {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-box:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .btn-run {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: #fff;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px var(--accent-glow);
+            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-run:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+        }
+        .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+        .stat-val { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .stat-sub { font-size: 12px; margin-top: 4px; }
+
+        .val-profit { color: var(--success); }
+        .val-loss { color: var(--danger); }
+
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 24px;
+            height: 420px;
+        }
+
+        .table-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        th { color: var(--text-muted); padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
+        td { padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-family: 'JetBrains Mono', monospace; }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-buy { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+        .badge-sell { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <div class="logo-badge">🏛️</div>
+                <div class="title-box">
+                    <h1>SMC 機構訂單塊 <span>Order Block</span> 量化平台</h1>
+                    <p>5K BOS 結構破壞 + FVG 缺口回踩確認與階梯停利量化回測</p>
+                </div>
+            </div>
+            <div class="preset-bar">
+                <button class="preset-btn" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #6ee7b7; font-weight: 700;" onclick="applyStrategyPreset('optimal_2lots')">👑 2口最佳推薦 (2.0R/3.0R)</button>
+                <button class="preset-btn" style="background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #93c5fd; font-weight: 700;" onclick="applyStrategyPreset('high_winrate_2lots')">🛡️ 2口高勝率 (10-11點)</button>
+                <span style="color: rgba(255,255,255,0.2); margin: 0 4px;">|</span>
+                <button class="preset-btn active" onclick="setPreset('2026')">2026 全年</button>
+                <button class="preset-btn" onclick="setPreset('2025')">2025 全年</button>
+                <button class="preset-btn" onclick="setPreset('2024')">2024 全年</button>
+                <button class="preset-btn" onclick="setPreset('all')">2024-2026 全歷史</button>
+            </div>
+        </header>
+
+        <!-- 參數面板 -->
+        <div class="panel-box">
+            <div class="panel-header">
+                <div class="panel-title">⚙️ 策略參數配置 (Order Block Parameters)</div>
+                <button class="btn-run" id="btnRun" onclick="runBacktest()">⚡ 執行回測分析</button>
+            </div>
+            <div class="params-grid">
+                <div class="field">
+                    <label>合約標的</label>
+                    <select id="contractType">
+                        <option value="MTX" selected>小台指 (MTX - 50元/點)</option>
+                        <option value="TX">大台指 (TX - 200元/點)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>開始日期</label>
+                    <input type="date" id="startDate" class="input-box" value="2024-01-01">
+                </div>
+                <div class="field">
+                    <label>結束日期</label>
+                    <input type="date" id="endDate" class="input-box" value="2026-09-16">
+                </div>
+                <div class="field">
+                    <label>最大口數上限 (Max Lots)</label>
+                    <input type="number" id="maxLots" class="input-box" value="2" min="2" step="2">
+                </div>
+                <div class="field">
+                    <label>交易時段 (Hours)</label>
+                    <input type="text" id="allowedHours" class="input-box" value="10,11,20" placeholder="10,11,20 或 all">
+                </div>
+                <div class="field">
+                    <label>FVG 最小缺口 (點)</label>
+                    <input type="number" id="minFvg" class="input-box" value="6.0" step="1.0">
+                </div>
+                <div class="field">
+                    <label>OB 最大生命週期 (5K根數)</label>
+                    <input type="number" id="maxObAge" class="input-box" value="40" step="5">
+                </div>
+                <div class="field">
+                    <label>保底停損點數</label>
+                    <input type="number" id="minSl" class="input-box" value="25.0" step="5.0">
+                </div>
+                <div class="field">
+                    <label>TP1 停利模式</label>
+                    <select id="tp1Mode">
+                        <option value="fixed_rr" selected>固定 RR (平半倉移保本)</option>
+                        <option value="swing_target">前波波段目標 (Swing High/Low)</option>
+                        <option value="vwap">當日 VWAP 均價</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>TP1 風險報酬比 (R)</label>
+                    <input type="number" id="tp1FixedRr" class="input-box" value="2.0" step="0.1">
+                </div>
+                <div class="field">
+                    <label>TP2 停利模式</label>
+                    <select id="tp2Mode">
+                        <option value="fixed_rr" selected>固定 RR (目標全平)</option>
+                        <option value="opposite_pool">對側流動性池 (PDH/PDL)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>TP2 風險報酬比 (R)</label>
+                    <input type="number" id="tp2FixedRr" class="input-box" value="3.0" step="0.1">
+                </div>
+                <div class="field">
+                    <label>微觀拒絕影線比例</label>
+                    <input type="number" id="minWickRatio" class="input-box" value="0.35" step="0.05">
+                </div>
+                <div class="field">
+                    <label>5K 趨勢濾網</label>
+                    <select id="enableTrendFilter">
+                        <option value="true" selected>啟用 5K EMA 趨勢結構防護</option>
+                        <option value="false">停用趨勢濾網</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 績效指標卡片 -->
+        <div class="grid-stats">
+            <div class="stat-card">
+                <div class="stat-label">淨損益 (Net Profit)</div>
+                <div class="stat-val" id="valNetProfit">--</div>
+                <div class="stat-sub" id="valReturn">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">獲利因子 (Profit Factor)</div>
+                <div class="stat-val" id="valPF" style="color: #c4b5fd;">--</div>
+                <div class="stat-sub" id="valWinRate">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">最大回撤 (Max Drawdown)</div>
+                <div class="stat-val val-loss" id="valMDD">--</div>
+                <div class="stat-sub" id="valTrades">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">階梯目標達成 (TP1 / TP2)</div>
+                <div class="stat-val" id="valTPs" style="color: #60a5fa;">--</div>
+                <div class="stat-sub" id="valBE">--</div>
+            </div>
+        </div>
+
+        <!-- 資金曲線 -->
+        <div class="chart-box">
+            <canvas id="equityChart"></canvas>
+        </div>
+
+        <!-- 交易流水 -->
+        <div class="table-box">
+            <h2 style="font-size: 16px; margin-bottom: 12px; color: #c4b5fd;">📋 交易流水明細</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>階段</th>
+                        <th>方向</th>
+                        <th>進場時間</th>
+                        <th>進場價</th>
+                        <th>出場時間</th>
+                        <th>出場價</th>
+                        <th>出場原因</th>
+                        <th>口數</th>
+                        <th>點數</th>
+                        <th>淨損益 (NTD)</th>
+                        <th>回踩訂單塊 (OB)</th>
+                    </tr>
+                </thead>
+                <tbody id="tradesBody">
+                    <tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 24px;">請點擊「執行回測分析」按鈕以載入回測數據。</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let equityChart = null;
+
+        function applyStrategyPreset(preset) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.getElementById('contractType').value = 'MTX';
+            document.getElementById('maxLots').value = '2';
+            document.getElementById('startDate').value = '2024-01-01';
+            document.getElementById('endDate').value = '2026-09-16';
+            document.getElementById('minFvg').value = '6.0';
+            document.getElementById('maxObAge').value = '40';
+            document.getElementById('minWickRatio').value = '0.35';
+            document.getElementById('minSl').value = '25.0';
+            document.getElementById('enableTrendFilter').value = 'true';
+
+            if (preset === 'optimal_2lots') {
+                document.getElementById('tp1Mode').value = 'fixed_rr';
+                document.getElementById('tp1FixedRr').value = '2.0';
+                document.getElementById('tp2Mode').value = 'fixed_rr';
+                document.getElementById('tp2FixedRr').value = '3.0';
+                document.getElementById('allowedHours').value = '10,11,20';
+            } else if (preset === 'high_winrate_2lots') {
+                document.getElementById('tp1Mode').value = 'fixed_rr';
+                document.getElementById('tp1FixedRr').value = '1.5';
+                document.getElementById('tp2Mode').value = 'fixed_rr';
+                document.getElementById('tp2FixedRr').value = '3.0';
+                document.getElementById('allowedHours').value = '10,11';
+            }
+            runBacktest();
+        }
+
+        function setPreset(p) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            if (p === '2026') {
+                document.getElementById('startDate').value = '2026-01-01';
+                document.getElementById('endDate').value = '2026-09-16';
+            } else if (p === '2025') {
+                document.getElementById('startDate').value = '2025-01-01';
+                document.getElementById('endDate').value = '2025-12-31';
+            } else if (p === '2024') {
+                document.getElementById('startDate').value = '2024-01-01';
+                document.getElementById('endDate').value = '2024-12-31';
+            } else if (p === 'all') {
+                document.getElementById('startDate').value = '2024-01-01';
+                document.getElementById('endDate').value = '2026-09-16';
+            }
+            runBacktest();
+        }
+
+        async function runBacktest() {
+            const btn = document.getElementById('btnRun');
+            btn.innerText = '⏳ 正在計算回測...';
+            btn.disabled = true;
+
+            const hoursVal = document.getElementById('allowedHours').value.trim();
+            const allowedHours = hoursVal.toLowerCase() === 'all' || !hoursVal
+                ? null
+                : hoursVal.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+
+            const payload = {
+                contract_type: document.getElementById('contractType').value,
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                max_lots: parseInt(document.getElementById('maxLots').value, 10) || 2,
+                allowed_hours: allowedHours,
+                min_fvg_points: parseFloat(document.getElementById('minFvg').value),
+                max_ob_age_bars: parseInt(document.getElementById('maxObAge').value),
+                min_wick_ratio: parseFloat(document.getElementById('minWickRatio').value),
+                min_sl_points: parseFloat(document.getElementById('minSl').value),
+                enable_trend_filter: document.getElementById('enableTrendFilter').value === 'true',
+                tp1_mode: document.getElementById('tp1Mode').value,
+                tp1_fixed_rr: parseFloat(document.getElementById('tp1FixedRr').value) || 2.2,
+                tp2_mode: document.getElementById('tp2Mode').value,
+                tp2_fixed_rr: parseFloat(document.getElementById('tp2FixedRr').value) || 3.8
+            };
+
+            try {
+                const res = await fetch('/api/order_block/backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    alert('回測失敗: ' + (data.detail || '未知錯誤'));
+                    return;
+                }
+
+                renderSummary(data.summary);
+                renderChart(data.equity_curve);
+                renderTrades(data.trades);
+            } catch (err) {
+                alert('連線失敗: ' + err.message);
+            } finally {
+                btn.innerText = '⚡ 執行回測分析';
+                btn.disabled = false;
+            }
+        }
+
+        function renderSummary(s) {
+            const profitEl = document.getElementById('valNetProfit');
+            profitEl.innerText = 'NT$ ' + (s.net_profit >= 0 ? '+' : '') + Math.round(s.net_profit).toLocaleString();
+            profitEl.className = 'stat-val ' + (s.net_profit >= 0 ? 'val-profit' : 'val-loss');
+
+            document.getElementById('valReturn').innerText = '總報酬率: ' + (s.total_return_pct >= 0 ? '+' : '') + s.total_return_pct.toFixed(2) + '%';
+            document.getElementById('valPF').innerText = s.profit_factor.toFixed(2);
+            document.getElementById('valWinRate').innerText = `勝率: ${s.win_rate.toFixed(1)}% (${s.winning_trades}勝/${s.losing_trades}負)`;
+            document.getElementById('valMDD').innerText = s.max_drawdown_pct.toFixed(2) + '%';
+            document.getElementById('valTrades').innerText = `總平倉: ${s.total_trades} 筆`;
+            document.getElementById('valTPs').innerText = `${s.tp1_count} / ${s.tp2_count}`;
+            document.getElementById('valBE').innerText = `保本出場: ${s.be_trades} 筆`;
+        }
+
+        function renderChart(curve) {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            const labels = curve.map(p => p.time.slice(0, 16));
+            const data = curve.map(p => p.equity);
+
+            if (equityChart) equityChart.destroy();
+
+            equityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '權益資金曲線 (NTD)',
+                        data: data,
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', maxTicksLimit: 10 } },
+                        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9ca3af', callback: v => 'NT$ ' + v.toLocaleString() } }
+                    }
+                }
+            });
+        }
+
+        function renderTrades(trades) {
+            const tbody = document.getElementById('tradesBody');
+            if (!trades || trades.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 24px;">無符合條件的交易。</td></tr>';
+                return;
+            }
+
+            let rows = '';
+            for (let t of trades.slice(-50)) {
+                const color = t.net_pnl > 0 ? 'var(--success)' : (t.net_pnl < 0 ? 'var(--danger)' : 'var(--text-muted)');
+                const sideBadge = `<span class="badge ${t.side === 'BUY' ? 'badge-buy' : 'badge-sell'}">${t.side}</span>`;
+                const ind = t.indicators || {};
+                const obStr = ind.ob_id ? `OB#${ind.ob_id} [${Math.round(ind.ob_bottom)}~${Math.round(ind.ob_top)}]` : '-';
+
+                rows += `
+                <tr>
+                    <td>#${t.trade_no}</td>
+                    <td><span style="color:#c4b5fd;">${t.stage}</span></td>
+                    <td>${sideBadge}</td>
+                    <td>${t.entry_time.slice(0, 16)}</td>
+                    <td>${t.entry_price.toFixed(1)}</td>
+                    <td>${t.exit_time.slice(0, 16)}</td>
+                    <td>${t.exit_price.toFixed(1)}</td>
+                    <td style="color:var(--text-muted);">${t.exit_reason}</td>
+                    <td>${t.lots}口</td>
+                    <td>${t.pnl_points > 0 ? '+' : ''}${t.pnl_points.toFixed(1)}</td>
+                    <td style="color:${color}; font-weight:bold;">${t.net_pnl > 0 ? '+' : ''}${Math.round(t.net_pnl).toLocaleString()}</td>
+                    <td>${obStr}</td>
+                </tr>
+                `;
+            }
+            tbody.innerHTML = rows;
+        }
+
+        window.onload = () => {
+            runBacktest();
+        };
+    </script>
+</body>
+</html>
