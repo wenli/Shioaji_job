@@ -431,6 +431,355 @@ def run_orb_backtest(req: ORBBacktestRequest):
         logger.exception("ORB 回測執行失敗")
         raise HTTPException(status_code=500, detail=f"回測失敗: {str(e)}")
 
+# ==============================================================================
+# SMC 流動性獵取假突破反轉 (Sweep Fade) Backtest & Chart API
+# ==============================================================================
+class SweepFadeBacktestRequest(BaseModel):
+    contract_type: str = "MTX"
+    start_date: Optional[str] = "2026-05-01"
+    end_date: Optional[str] = "2026-06-01"
+    start_capital: float = 1_000_000.0
+    risk_pct: float = 0.01
+    min_penetration: float = 3.0
+    max_penetration: float = 35.0
+    min_sl_points: float = 30.0
+    min_wick_ratio: float = 0.40
+    require_wick_gte_body: bool = True
+    enable_pdh_pdl: bool = True
+    enable_orb_pools: bool = True
+    enable_htf_swings: bool = False
+    tp1_mode: str = "vwap"
+    tp1_fixed_rr: float = 1.5
+    tp2_mode: str = "opposite_pool"
+    tp2_fixed_rr: float = 3.0
+    allowed_hours: Optional[List[int]] = [10, 11, 15, 19, 20, 21, 4]
+    enable_trend_filter: bool = True
+    ema_fast: int = 9
+    ema_slow: int = 21
+    enable_dynamic_atr: bool = True
+    min_pen_atr_mult: float = 0.08
+    max_pen_atr_mult: float = 0.60
+
+@app.post("/api/sweep_fade/backtest")
+def run_sweep_fade_backtest_api(req: SweepFadeBacktestRequest):
+    try:
+        from app.strategy.sweep_fade import SweepFadeConfig, SweepFadeEngine
+        from scripts.backtest.run_silver_bullet_comparison import get_db_path, load_historical_data
+        import numpy as np
+
+        db_path = get_db_path()
+        df_1k, df_5k = load_historical_data(
+            db_path=db_path,
+            code="TXFR1",
+            start_date=req.start_date,
+            end_date=req.end_date
+        )
+        if df_1k.empty or df_5k.empty:
+            raise HTTPException(status_code=400, detail="所選日期區間無歷史數據，請確認資料庫。")
+
+        cfg = SweepFadeConfig(
+            contract_type=req.contract_type,
+            start_capital=req.start_capital,
+            risk_pct=req.risk_pct,
+            min_penetration=req.min_penetration,
+            max_penetration=req.max_penetration,
+            min_wick_ratio=req.min_wick_ratio,
+            require_wick_gte_body=req.require_wick_gte_body,
+            min_sl_points=req.min_sl_points,
+            enable_pdh_pdl=req.enable_pdh_pdl,
+            enable_orb_pools=req.enable_orb_pools,
+            enable_htf_swings=req.enable_htf_swings,
+            enable_trend_filter=req.enable_trend_filter,
+            ema_fast=req.ema_fast,
+            ema_slow=req.ema_slow,
+            enable_dynamic_atr=req.enable_dynamic_atr,
+            min_pen_atr_mult=req.min_pen_atr_mult,
+            max_pen_atr_mult=req.max_pen_atr_mult,
+            tp1_mode=req.tp1_mode,
+            tp1_fixed_rr=req.tp1_fixed_rr,
+            tp2_mode=req.tp2_mode,
+            tp2_fixed_rr=req.tp2_fixed_rr,
+            allowed_hours=req.allowed_hours
+        )
+
+        engine = SweepFadeEngine(df_1k, df_5k, cfg)
+        summary, trades, eq_curve = engine.run_backtest()
+        df = engine.df
+
+        # 格式化交易流水（確保所有 numpy 形態轉為原生 float/int 以利 JSON 序列化）
+        formatted_trades = []
+        for t in trades:
+            t_copy = dict(t)
+            ind = dict(t.get('indicators', {}))
+            for k, v in ind.items():
+                if isinstance(v, (np.floating, float)):
+                    ind[k] = float(v)
+                elif isinstance(v, (np.integer, int)):
+                    ind[k] = int(v)
+            t_copy['indicators'] = ind
+            formatted_trades.append(t_copy)
+
+        # 資金曲線抽樣
+        if len(eq_curve) > 1200:
+            step = max(1, len(eq_curve) // 1200)
+            sampled_eq = eq_curve[::step]
+            if eq_curve[-1] not in sampled_eq:
+                sampled_eq.append(eq_curve[-1])
+        else:
+            sampled_eq = eq_curve
+
+        # K 線與指標數據裁剪（若總 K 棒超過 15,000 根則預先傳回末尾 3,000 根以保證網頁 60fps 渲染）
+        if len(df) > 15000:
+            df_chart = df.iloc[-3000:].copy()
+        else:
+            df_chart = df
+
+        dt_series = pd.to_datetime(df_chart['datetime'])
+        unix_times = dt_series.dt.tz_localize('Asia/Taipei').astype('int64') // 10**9
+
+        candlesticks = []
+        volumes = []
+        vwap_data = []
+        pdh_data = []
+        pdl_data = []
+        orb_h_data = []
+        orb_l_data = []
+
+        o_vals = df_chart['open'].values
+        h_vals = df_chart['high'].values
+        l_vals = df_chart['low'].values
+        c_vals = df_chart['close'].values
+        v_vals = df_chart['volume'].values
+        vwap_vals = df_chart['vwap'].values
+        pdh_vals = df_chart['pdh'].values
+        pdl_vals = df_chart['pdl'].values
+        orb_h_vals = df_chart['orb_high'].values
+        orb_l_vals = df_chart['orb_low'].values
+        t_vals = unix_times.values
+
+        for idx in range(len(df_chart)):
+            t_sec = int(t_vals[idx])
+            c_val = float(c_vals[idx])
+            o_val = float(o_vals[idx])
+            candlesticks.append({
+                "time": t_sec,
+                "open": o_val,
+                "high": float(h_vals[idx]),
+                "low": float(l_vals[idx]),
+                "close": c_val
+            })
+            volumes.append({
+                "time": t_sec,
+                "value": float(v_vals[idx]),
+                "color": "rgba(16, 185, 129, 0.4)" if c_val >= o_val else "rgba(239, 68, 68, 0.4)"
+            })
+            vw = vwap_vals[idx]
+            if not np.isnan(vw):
+                vwap_data.append({"time": t_sec, "value": round(float(vw), 1)})
+            pdh = pdh_vals[idx]
+            if not np.isnan(pdh):
+                pdh_data.append({"time": t_sec, "value": round(float(pdh), 1)})
+            pdl = pdl_vals[idx]
+            if not np.isnan(pdl):
+                pdl_data.append({"time": t_sec, "value": round(float(pdl), 1)})
+            oh = orb_h_vals[idx]
+            if not np.isnan(oh):
+                orb_h_data.append({"time": t_sec, "value": round(float(oh), 1)})
+            ol = orb_l_vals[idx]
+            if not np.isnan(ol):
+                orb_l_data.append({"time": t_sec, "value": round(float(ol), 1)})
+
+        min_chart_t = t_vals[0] if len(t_vals) > 0 else 0
+        max_chart_t = t_vals[-1] if len(t_vals) > 0 else 0
+
+        markers = []
+        for t in formatted_trades:
+            e_dt = pd.to_datetime(t['entry_time']).tz_localize('Asia/Taipei')
+            e_t = int(e_dt.timestamp())
+            x_dt = pd.to_datetime(t['exit_time']).tz_localize('Asia/Taipei')
+            x_t = int(x_dt.timestamp())
+
+            if min_chart_t <= e_t <= max_chart_t:
+                is_buy = (t['side'] == 'BUY')
+                markers.append({
+                    "time": e_t,
+                    "position": "belowBar" if is_buy else "aboveBar",
+                    "color": "#10b981" if is_buy else "#ef4444",
+                    "shape": "arrowUp" if is_buy else "arrowDown",
+                    "text": f"#{t['trade_no']} {t['side']} {t['lots']}口 @{t['entry_price']:.0f}"
+                })
+
+            if min_chart_t <= x_t <= max_chart_t:
+                is_tp = t['pnl_points'] > 0
+                is_be = "BE" in t['exit_reason']
+                col = "#10b981" if (t['stage'] in ['TP1', 'TP2'] and is_tp) else ("#f59e0b" if is_be else "#ef4444")
+                markers.append({
+                    "time": x_t,
+                    "position": "aboveBar" if t['side'] == 'BUY' else "belowBar",
+                    "color": col,
+                    "shape": "circle",
+                    "text": f"{t['stage']}: {t['exit_reason']} ({t['pnl_points']:+.1f}點)"
+                })
+
+        # 快取至 app.state
+        app.state.latest_sweep_fade_cache = {
+            "df": df,
+            "trades": formatted_trades,
+            "contract": req.contract_type
+        }
+
+        return {
+            "success": True,
+            "summary": summary,
+            "equity_curve": sampled_eq,
+            "trades": formatted_trades,
+            "chart_data": {
+                "candlesticks": candlesticks,
+                "volumes": volumes,
+                "vwap": vwap_data,
+                "pdh": pdh_data,
+                "pdl": pdl_data,
+                "orb_high": orb_h_data,
+                "orb_low": orb_l_data,
+                "markers": markers,
+                "loaded_bars": len(candlesticks),
+                "total_bars": len(df)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("SMC Sweep Fade 回測執行失敗")
+        raise HTTPException(status_code=500, detail=f"回測失敗: {str(e)}")
+
+@app.get("/api/sweep_fade/trade_chart")
+def get_sweep_fade_trade_chart(trade_no: int, pre_bars: int = 150, post_bars: int = 150):
+    cache = getattr(app.state, 'latest_sweep_fade_cache', None)
+    if not cache or "df" not in cache:
+        raise HTTPException(status_code=404, detail="尚無回測快取資料，請先執行一次回測。")
+
+    trades = cache["trades"]
+    target_trade = next((t for t in trades if t["trade_no"] == trade_no), None)
+    if not target_trade:
+        raise HTTPException(status_code=404, detail=f"找不到交易編號 #{trade_no}")
+
+    df = cache["df"]
+    import numpy as np
+
+    e_time_str = target_trade["entry_time"]
+    x_time_str = target_trade["exit_time"]
+
+    match_e = df[df['datetime'] == e_time_str]
+    match_x = df[df['datetime'] == x_time_str]
+
+    if match_e.empty:
+        raise HTTPException(status_code=404, detail="無法定位該進場時間點。")
+
+    idx_e = match_e.index[0]
+    idx_x = match_x.index[0] if not match_x.empty else idx_e
+
+    start_idx = max(0, idx_e - pre_bars)
+    end_idx = min(len(df), idx_x + post_bars + 1)
+    df_window = df.iloc[start_idx:end_idx].copy()
+
+    dt_series = pd.to_datetime(df_window['datetime'])
+    unix_times = dt_series.dt.tz_localize('Asia/Taipei').astype('int64') // 10**9
+
+    candlesticks = []
+    volumes = []
+    vwap_data = []
+    pdh_data = []
+    pdl_data = []
+    orb_h_data = []
+    orb_l_data = []
+
+    o_vals = df_window['open'].values
+    h_vals = df_window['high'].values
+    l_vals = df_window['low'].values
+    c_vals = df_window['close'].values
+    v_vals = df_window['volume'].values
+    vwap_vals = df_window['vwap'].values
+    pdh_vals = df_window['pdh'].values
+    pdl_vals = df_window['pdl'].values
+    orb_h_vals = df_window['orb_high'].values
+    orb_l_vals = df_window['orb_low'].values
+    t_vals = unix_times.values
+
+    for idx in range(len(df_window)):
+        t_sec = int(t_vals[idx])
+        c_val = float(c_vals[idx])
+        o_val = float(o_vals[idx])
+        candlesticks.append({
+            "time": t_sec,
+            "open": o_val,
+            "high": float(h_vals[idx]),
+            "low": float(l_vals[idx]),
+            "close": c_val
+        })
+        volumes.append({
+            "time": t_sec,
+            "value": float(v_vals[idx]),
+            "color": "rgba(16, 185, 129, 0.4)" if c_val >= o_val else "rgba(239, 68, 68, 0.4)"
+        })
+        vw = vwap_vals[idx]
+        if not np.isnan(vw):
+            vwap_data.append({"time": t_sec, "value": round(float(vw), 1)})
+        pdh = pdh_vals[idx]
+        if not np.isnan(pdh):
+            pdh_data.append({"time": t_sec, "value": round(float(pdh), 1)})
+        pdl = pdl_vals[idx]
+        if not np.isnan(pdl):
+            pdl_data.append({"time": t_sec, "value": round(float(pdl), 1)})
+        oh = orb_h_vals[idx]
+        if not np.isnan(oh):
+            orb_h_data.append({"time": t_sec, "value": round(float(oh), 1)})
+        ol = orb_l_vals[idx]
+        if not np.isnan(ol):
+            orb_l_data.append({"time": t_sec, "value": round(float(ol), 1)})
+
+    e_t = int(pd.to_datetime(target_trade['entry_time']).tz_localize('Asia/Taipei').timestamp())
+    x_t = int(pd.to_datetime(target_trade['exit_time']).tz_localize('Asia/Taipei').timestamp())
+    is_buy = (target_trade['side'] == 'BUY')
+    is_tp = target_trade['pnl_points'] > 0
+    is_be = "BE" in target_trade['exit_reason']
+    col = "#10b981" if (target_trade['stage'] in ['TP1', 'TP2'] and is_tp) else ("#f59e0b" if is_be else "#ef4444")
+
+    markers = [
+        {
+            "time": e_t,
+            "position": "belowBar" if is_buy else "aboveBar",
+            "color": "#10b981" if is_buy else "#ef4444",
+            "shape": "arrowUp" if is_buy else "arrowDown",
+            "text": f"進場 #{target_trade['trade_no']} {target_trade['side']} @{target_trade['entry_price']:.0f}"
+        },
+        {
+            "time": x_t,
+            "position": "aboveBar" if is_buy else "belowBar",
+            "color": col,
+            "shape": "circle",
+            "text": f"出場: {target_trade['exit_reason']} ({target_trade['pnl_points']:+.1f}點)"
+        }
+    ]
+
+    return {
+        "success": True,
+        "trade": target_trade,
+        "entry_time_sec": e_t,
+        "exit_time_sec": x_t,
+        "chart_data": {
+            "candlesticks": candlesticks,
+            "volumes": volumes,
+            "vwap": vwap_data,
+            "pdh": pdh_data,
+            "pdl": pdl_data,
+            "orb_high": orb_h_data,
+            "orb_low": orb_l_data,
+            "markers": markers,
+            "loaded_bars": len(candlesticks),
+            "total_bars": len(df)
+        }
+    }
+
 @app.get("/api/backtest/trade_chart")
 def get_trade_chart(entry_time: str, exit_time: str, pre_bars: int = 120, post_bars: int = 60):
     import sqlite3
@@ -530,6 +879,128 @@ async def get_orb_terminal():
     if html_file.exists():
         return html_file.read_text(encoding="utf-8")
     return "<h1>ORB Terminal (orb_terminal.html) not found.</h1>"
+
+@app.get("/sweep_fade", response_class=HTMLResponse)
+async def get_sweep_fade_ui():
+    """Serves the SMC Sweep Fade Backtest Web UI HTML."""
+    html_file = frontend_path / "sweep_fade_ui.html"
+    if html_file.exists():
+        return html_file.read_text(encoding="utf-8")
+    return "<h1>SMC Sweep Fade UI (sweep_fade_ui.html) not found.</h1>"
+
+@app.get("/order_block", response_class=HTMLResponse)
+async def get_order_block_ui():
+    """Serves the SMC Order Block Backtest Web UI HTML."""
+    html_file = frontend_path / "order_block_ui.html"
+    if html_file.exists():
+        return html_file.read_text(encoding="utf-8")
+    return "<h1>SMC Order Block UI (order_block_ui.html) not found.</h1>"
+
+
+# ==============================================================================
+# SMC 機構訂單塊 (Order Block) Backtest & Chart API
+# ==============================================================================
+class OrderBlockBacktestRequest(BaseModel):
+    contract_type: str = "MTX"
+    start_date: Optional[str] = "2026-01-01"
+    end_date: Optional[str] = "2026-09-16"
+    start_capital: float = 1_000_000.0
+    risk_pct: float = 0.01
+    max_lots: int = 2
+    swing_window: int = 5
+    min_fvg_points: float = 6.0
+    max_ob_age_bars: int = 40
+    min_wick_ratio: float = 0.35
+    min_sl_points: float = 25.0
+    require_confirmation: bool = True
+    enable_trend_filter: bool = True
+    tp1_mode: str = "fixed_rr"
+    tp1_fixed_rr: float = 2.0
+    tp2_mode: str = "fixed_rr"
+    tp2_fixed_rr: float = 3.0
+    allowed_hours: Optional[List[int]] = [10, 11, 20]
+
+@app.post("/api/order_block/backtest")
+def run_order_block_backtest_api(req: OrderBlockBacktestRequest):
+    try:
+        from app.strategy.order_block import OrderBlockConfig, OrderBlockEngine
+        from scripts.backtest.run_silver_bullet_comparison import get_db_path, load_historical_data
+        import numpy as np
+
+        db_path = get_db_path()
+        df_1k, df_5k = load_historical_data(
+            db_path=db_path,
+            code="TXFR1",
+            start_date=req.start_date,
+            end_date=req.end_date
+        )
+        if df_1k.empty or df_5k.empty:
+            raise HTTPException(status_code=400, detail="所選日期區間無歷史數據，請確認資料庫。")
+
+        cfg = OrderBlockConfig(
+            contract_type=req.contract_type,
+            start_capital=req.start_capital,
+            risk_pct=req.risk_pct,
+            max_lots=req.max_lots,
+            swing_window=req.swing_window,
+            min_fvg_points=req.min_fvg_points,
+            max_ob_age_bars=req.max_ob_age_bars,
+            min_wick_ratio=req.min_wick_ratio,
+            min_sl_points=req.min_sl_points,
+            require_confirmation=req.require_confirmation,
+            enable_trend_filter=req.enable_trend_filter,
+            tp1_mode=req.tp1_mode,
+            tp1_fixed_rr=req.tp1_fixed_rr,
+            tp2_mode=req.tp2_mode,
+            tp2_fixed_rr=req.tp2_fixed_rr,
+            allowed_hours=req.allowed_hours
+        )
+
+        engine = OrderBlockEngine(df_1k, df_5k, cfg)
+        summary, trades, eq_curve = engine.run_backtest()
+        df = engine.df
+
+        formatted_trades = []
+        for t in trades:
+            t_copy = dict(t)
+            ind = dict(t.get('indicators', {}))
+            for k, v in ind.items():
+                if isinstance(v, (np.floating, float)):
+                    ind[k] = float(v)
+                elif isinstance(v, (np.integer, int)):
+                    ind[k] = int(v)
+            t_copy['indicators'] = ind
+            formatted_trades.append(t_copy)
+
+        def sample_curve(curve, max_points=1200):
+            if len(curve) <= max_points:
+                return curve
+            step = max(1, len(curve) // max_points)
+            sampled = curve[::step]
+            if curve[-1] not in sampled:
+                sampled.append(curve[-1])
+            return sampled
+
+        sampled_eq = sample_curve(eq_curve)
+
+        app.state.latest_order_block_cache = {
+            "df": df,
+            "trades": formatted_trades,
+            "contract": req.contract_type
+        }
+
+        return {
+            "success": True,
+            "summary": summary,
+            "equity_curve": sampled_eq,
+            "trades": formatted_trades
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("SMC Order Block 回測執行失敗")
+        raise HTTPException(status_code=500, detail=f"回測失敗: {str(e)}")
+
 
 # ==============================================================================
 # WebSocket Real-Time Pushing & Replay Simulator Engine
