@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【純日盤 10:00-11:59】5K OB + 1K FVG 超窄停損狙擊回測報告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #080c14;
+            --bg-card: rgba(14, 20, 32, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-base); color: var(--text-main); padding: 32px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { margin-bottom: 28px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h1 { font-size: 26px; font-weight: 700; color: #fff; }
+        h1 span { color: #10b981; }
+        p.sub { color: var(--text-muted); font-size: 14px; margin-top: 6px; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; margin-top: 12px; }
+        th { color: var(--text-muted); padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; background: rgba(255,255,255,0.02); }
+        td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-family: 'JetBrains Mono', monospace; }
+        .val-profit { color: var(--success); }
+        .val-loss { color: var(--danger); }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .highlight-row { background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>☀️ 5K OB + 1K FVG <span>【純日盤黃金窗口超窄狙擊】量化回測報告</span></h1>
+            <p class="sub">合約標的: 小台指 (MTX) | 歷史區間: 2024-01-01 ~ 2026-09-16 (全歷史 742k 根 1K) | 嚴格 2 口限制、2.0R / 3.0R 階梯停利</p>
+        </header>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 16px;">📊 策略對比矩陣 (純日盤 10:00 - 11:59)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>策略架構方案</th>
+                        <th>核心機制與停損特性</th>
+                        <th>總交易次數</th>
+                        <th>勝率 (%)</th>
+                        <th>獲利因子 (PF)</th>
+                        <th>最大回撤 (MDD)</th>
+                        <th>總淨損益 (NTD)</th>
+                        <th>2024 年</th>
+                        <th>2025 年</th>
+                        <th>2026 年</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr class="highlight-row">
+                        <td style="font-weight: 700; color: #fff;">⚡ 【純 1K 銀色子彈】</td>
+                        <td style="color: var(--text-muted); font-size: 12px;">純 1K FVG + 趨勢突破 (10:00-11:59)</td>
+                        <td>1817 筆</td>
+                        <td>46.9%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">1.1</td>
+                        <td class="val-profit">16.89%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +421,613.0</td>
+                        <td class="val-profit">NT$ 21,528.0</td>
+                        <td class="val-profit">NT$ 120,399.0</td>
+                        <td class="val-profit">NT$ 279,686.0</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">🛡️ 【5K OB + 1K FVG 穩健防守】</td>
+                        <td style="color: var(--text-muted); font-size: 12px;">5K OB 區域回踩 + 1K FVG 觸發 + 5K OB 外圍停損 (25-35pts)</td>
+                        <td>20 筆</td>
+                        <td>90.0%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">8.6</td>
+                        <td class="val-profit">1.11%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +123,513.0</td>
+                        <td class="val-profit">NT$ 25,582.0</td>
+                        <td class="val-profit">NT$ 5,302.0</td>
+                        <td class="val-profit">NT$ 92,629.0</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">🥇 【純 5K 訂單塊基準】</td>
+                        <td style="color: var(--text-muted); font-size: 12px;">純 5K OB 回踩進場 (標準機構訂單塊)</td>
+                        <td>108 筆</td>
+                        <td>53.7%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">1.32</td>
+                        <td class="val-profit">6.82%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +88,238.0</td>
+                        <td class="val-profit">NT$ 12,520.0</td>
+                        <td class="val-profit">NT$ 39,083.0</td>
+                        <td class="val-profit">NT$ 36,635.0</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">🏆 【5K OB + 1K FVG 超窄停損狙擊】</td>
+                        <td style="color: var(--text-muted); font-size: 12px;">5K OB 區域回踩 + 1K FVG 觸發 + 1K Swing 超窄停損 (15-20pts)</td>
+                        <td>20 筆</td>
+                        <td>70.0%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">2.6</td>
+                        <td class="val-profit">1.32%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +27,714.0</td>
+                        <td class="val-profit">NT$ 24,182.0</td>
+                        <td class="val-profit">NT$ 2,454.0</td>
+                        <td class="val-profit">NT$ 1,078.0</td>
+                    </tr>
+        
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 16px;">📈 全歷史資金權益曲線 (Equity Curves)</h2>
+            <div style="height: 440px;">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 16px;">📋 冠軍策略最新交易流水明細 (Top 100 Exits)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>階段</th>
+                        <th>方向</th>
+                        <th>進場時間</th>
+                        <th>進場價</th>
+                        <th>出場時間</th>
+                        <th>出場價</th>
+                        <th>平倉口數</th>
+                        <th>點數損益</th>
+                        <th>淨利 (NTD)</th>
+                        <th>出場原因</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr>
+                        <td>1817</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-16 11:14</td>
+                        <td>45857.0</td>
+                        <td>09-16 11:23</td>
+                        <td>45998.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+141.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +6,918.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1816</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-16 11:14</td>
+                        <td>45857.0</td>
+                        <td>09-16 11:19</td>
+                        <td>45951.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+94.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +4,568.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1815</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-16 10:02</td>
+                        <td>45652.0</td>
+                        <td>09-16 11:14</td>
+                        <td>45856.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+204.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +10,068.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1814</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-16 10:02</td>
+                        <td>45652.0</td>
+                        <td>09-16 10:33</td>
+                        <td>45788.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+136.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +6,668.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1813</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-15 11:50</td>
+                        <td>45740.0</td>
+                        <td>09-15 12:07</td>
+                        <td>45740.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -132.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1812</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-15 11:50</td>
+                        <td>45740.0</td>
+                        <td>09-15 12:00</td>
+                        <td>45652.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+88.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +4,268.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1811</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-15 11:38</td>
+                        <td>45719.0</td>
+                        <td>09-15 11:46</td>
+                        <td>45775.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-56.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -5,863.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1810</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-15 10:03</td>
+                        <td>45809.0</td>
+                        <td>09-15 11:17</td>
+                        <td>45730.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-79.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -8,163.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1809</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-14 11:24</td>
+                        <td>45879.0</td>
+                        <td>09-14 13:10</td>
+                        <td>45879.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -132.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1808</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-14 11:24</td>
+                        <td>45879.0</td>
+                        <td>09-14 12:41</td>
+                        <td>45987.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+108.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,268.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1807</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-14 10:59</td>
+                        <td>45903.0</td>
+                        <td>09-14 11:15</td>
+                        <td>45869.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-34.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -3,664.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1806</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-11 11:54</td>
+                        <td>46085.0</td>
+                        <td>09-11 13:30</td>
+                        <td>46085.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -132.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1805</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-11 11:54</td>
+                        <td>46085.0</td>
+                        <td>09-11 12:15</td>
+                        <td>46267.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+182.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +8,968.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1804</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-11 11:06</td>
+                        <td>45885.0</td>
+                        <td>09-11 11:17</td>
+                        <td>45885.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -132.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1803</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-11 11:06</td>
+                        <td>45885.0</td>
+                        <td>09-11 11:13</td>
+                        <td>45781.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+104.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,068.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1802</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-11 10:23</td>
+                        <td>46029.0</td>
+                        <td>09-11 10:56</td>
+                        <td>45828.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+201.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +9,918.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1801</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-11 10:23</td>
+                        <td>46029.0</td>
+                        <td>09-11 10:44</td>
+                        <td>45895.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+134.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +6,568.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1800</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-10 10:09</td>
+                        <td>46668.0</td>
+                        <td>09-10 10:36</td>
+                        <td>46752.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-84.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -8,667.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1799</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-10 10:04</td>
+                        <td>46676.0</td>
+                        <td>09-10 10:06</td>
+                        <td>46722.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-46.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -4,866.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1798</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-09 11:52</td>
+                        <td>47260.0</td>
+                        <td>09-09 15:01</td>
+                        <td>47187.0</td>
+                        <td>2 口</td>
+                        <td class="val-profit">+73.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +7,031.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">EOD (日盤收盤強平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1797</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-09 11:17</td>
+                        <td>47413.0</td>
+                        <td>09-09 11:50</td>
+                        <td>47303.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-110.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,270.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1796</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-09 10:05</td>
+                        <td>47522.0</td>
+                        <td>09-09 11:06</td>
+                        <td>47385.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-137.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -13,970.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1795</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-08 11:23</td>
+                        <td>47333.0</td>
+                        <td>09-08 11:30</td>
+                        <td>47377.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-44.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -4,670.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1794</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-08 10:55</td>
+                        <td>47288.0</td>
+                        <td>09-08 11:19</td>
+                        <td>47374.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-86.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -8,870.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1793</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-08 10:02</td>
+                        <td>47496.0</td>
+                        <td>09-08 10:35</td>
+                        <td>47383.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-113.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,570.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1792</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-07 11:10</td>
+                        <td>47412.0</td>
+                        <td>09-07 15:01</td>
+                        <td>47470.0</td>
+                        <td>2 口</td>
+                        <td class="val-profit">+58.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,530.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">EOD (日盤收盤強平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1791</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-07 10:10</td>
+                        <td>47467.0</td>
+                        <td>09-07 11:06</td>
+                        <td>47354.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-113.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,570.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1790</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-04 11:38</td>
+                        <td>46280.0</td>
+                        <td>09-04 12:09</td>
+                        <td>46421.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+141.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +6,918.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1789</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-04 11:38</td>
+                        <td>46280.0</td>
+                        <td>09-04 12:08</td>
+                        <td>46374.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+94.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +4,568.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1788</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-04 11:19</td>
+                        <td>46312.0</td>
+                        <td>09-04 11:36</td>
+                        <td>46243.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-69.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -7,165.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1787</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-04 10:33</td>
+                        <td>46225.0</td>
+                        <td>09-04 10:50</td>
+                        <td>46263.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-38.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -4,065.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1786</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-04 10:02</td>
+                        <td>46107.0</td>
+                        <td>09-04 10:11</td>
+                        <td>46226.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-119.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -12,164.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1785</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-03 11:50</td>
+                        <td>46352.0</td>
+                        <td>09-03 11:52</td>
+                        <td>46317.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-35.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -3,766.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1784</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-03 11:12</td>
+                        <td>46322.0</td>
+                        <td>09-03 11:48</td>
+                        <td>46322.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -132.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1783</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-03 11:12</td>
+                        <td>46322.0</td>
+                        <td>09-03 11:20</td>
+                        <td>46440.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+118.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,768.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1782</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-03 10:36</td>
+                        <td>46187.0</td>
+                        <td>09-03 11:02</td>
+                        <td>46242.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-55.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -5,764.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1781</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-02 10:32</td>
+                        <td>46277.0</td>
+                        <td>09-02 15:01</td>
+                        <td>46189.0</td>
+                        <td>2 口</td>
+                        <td class="val-profit">+88.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +8,535.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">EOD (日盤收盤強平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1780</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>09-02 10:04</td>
+                        <td>46264.0</td>
+                        <td>09-02 10:30</td>
+                        <td>46371.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-107.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -10,966.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1779</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-01 10:45</td>
+                        <td>46781.0</td>
+                        <td>09-01 13:44</td>
+                        <td>47180.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+399.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +19,816.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1778</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-01 10:45</td>
+                        <td>46781.0</td>
+                        <td>09-01 11:53</td>
+                        <td>47047.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+266.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +13,166.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1777</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>09-01 10:05</td>
+                        <td>46875.0</td>
+                        <td>09-01 10:39</td>
+                        <td>46761.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-114.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,668.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1776</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-31 11:57</td>
+                        <td>45695.0</td>
+                        <td>08-31 12:04</td>
+                        <td>45666.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-29.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -3,162.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1775</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-31 10:16</td>
+                        <td>45674.0</td>
+                        <td>08-31 11:00</td>
+                        <td>45674.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -132.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1774</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-31 10:16</td>
+                        <td>45674.0</td>
+                        <td>08-31 10:26</td>
+                        <td>45480.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+194.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +9,569.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1773</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-28 10:22</td>
+                        <td>46364.0</td>
+                        <td>08-28 15:01</td>
+                        <td>46357.0</td>
+                        <td>2 口</td>
+                        <td class="val-profit">+7.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +434.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">EOD (日盤收盤強平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1772</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-27 11:57</td>
+                        <td>46376.0</td>
+                        <td>08-27 12:12</td>
+                        <td>46294.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-82.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -8,466.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1771</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-27 10:02</td>
+                        <td>46396.0</td>
+                        <td>08-27 11:53</td>
+                        <td>46316.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-80.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -8,266.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1770</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-26 11:53</td>
+                        <td>45949.0</td>
+                        <td>08-26 12:02</td>
+                        <td>45887.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-62.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -6,464.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1769</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-26 10:32</td>
+                        <td>45656.0</td>
+                        <td>08-26 11:53</td>
+                        <td>45944.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+288.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +14,268.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1768</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-26 10:32</td>
+                        <td>45656.0</td>
+                        <td>08-26 10:46</td>
+                        <td>45848.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+192.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +9,468.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1767</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-26 10:04</td>
+                        <td>45316.0</td>
+                        <td>08-26 10:17</td>
+                        <td>45422.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-106.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -10,862.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1766</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-25 11:30</td>
+                        <td>44494.0</td>
+                        <td>08-25 13:03</td>
+                        <td>44902.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+408.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +20,271.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1765</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-25 11:30</td>
+                        <td>44494.0</td>
+                        <td>08-25 12:35</td>
+                        <td>44766.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+272.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +13,471.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1764</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-25 10:28</td>
+                        <td>44324.0</td>
+                        <td>08-25 10:33</td>
+                        <td>44426.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-102.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -10,458.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1763</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-25 10:07</td>
+                        <td>44273.0</td>
+                        <td>08-25 10:20</td>
+                        <td>44384.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-111.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,358.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1762</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-24 10:46</td>
+                        <td>45081.0</td>
+                        <td>08-24 11:01</td>
+                        <td>45081.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -130.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1761</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-24 10:46</td>
+                        <td>45081.0</td>
+                        <td>08-24 10:54</td>
+                        <td>45017.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+64.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +3,070.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1760</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-24 10:20</td>
+                        <td>45001.0</td>
+                        <td>08-24 10:37</td>
+                        <td>45077.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-76.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -7,860.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1759</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-24 10:07</td>
+                        <td>44941.0</td>
+                        <td>08-24 10:08</td>
+                        <td>44873.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-68.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -7,060.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1758</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-21 10:09</td>
+                        <td>45055.0</td>
+                        <td>08-21 11:56</td>
+                        <td>44933.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-122.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -12,460.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1757</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-20 10:47</td>
+                        <td>44664.0</td>
+                        <td>08-20 10:54</td>
+                        <td>44457.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+207.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +10,221.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1756</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-20 10:47</td>
+                        <td>44664.0</td>
+                        <td>08-20 10:53</td>
+                        <td>44526.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+138.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +6,770.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1755</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-20 10:12</td>
+                        <td>44761.0</td>
+                        <td>08-20 10:35</td>
+                        <td>44761.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -130.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1754</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-20 10:12</td>
+                        <td>44761.0</td>
+                        <td>08-20 10:21</td>
+                        <td>44603.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+158.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +7,770.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1753</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-19 10:47</td>
+                        <td>44666.0</td>
+                        <td>08-19 12:12</td>
+                        <td>44666.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -130.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1752</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-19 10:47</td>
+                        <td>44666.0</td>
+                        <td>08-19 11:54</td>
+                        <td>44864.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+198.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +9,770.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1751</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-19 10:17</td>
+                        <td>44593.0</td>
+                        <td>08-19 10:43</td>
+                        <td>44593.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -130.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1750</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-19 10:17</td>
+                        <td>44593.0</td>
+                        <td>08-19 10:25</td>
+                        <td>44715.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+122.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,970.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1749</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-18 10:13</td>
+                        <td>45464.0</td>
+                        <td>08-18 13:31</td>
+                        <td>45137.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+327.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +16,220.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1748</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-18 10:13</td>
+                        <td>45464.0</td>
+                        <td>08-18 11:32</td>
+                        <td>45246.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+218.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +10,770.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1747</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-17 10:28</td>
+                        <td>46017.0</td>
+                        <td>08-17 10:35</td>
+                        <td>45973.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-44.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -4,664.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1746</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-17 10:15</td>
+                        <td>45914.0</td>
+                        <td>08-17 10:27</td>
+                        <td>46019.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+105.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,118.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1745</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-17 10:15</td>
+                        <td>45914.0</td>
+                        <td>08-17 10:24</td>
+                        <td>45984.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+70.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +3,368.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1744</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-14 11:05</td>
+                        <td>45961.0</td>
+                        <td>08-14 11:17</td>
+                        <td>46058.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-97.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -9,964.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1743</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-14 10:14</td>
+                        <td>46157.0</td>
+                        <td>08-14 11:04</td>
+                        <td>45998.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+159.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +7,818.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1742</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-14 10:14</td>
+                        <td>46157.0</td>
+                        <td>08-14 10:56</td>
+                        <td>46051.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+106.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,168.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1741</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-13 10:46</td>
+                        <td>45983.0</td>
+                        <td>08-13 10:53</td>
+                        <td>46022.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-39.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -4,164.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1740</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-13 10:22</td>
+                        <td>46059.0</td>
+                        <td>08-13 10:34</td>
+                        <td>45876.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+183.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +9,018.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1739</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-13 10:22</td>
+                        <td>46059.0</td>
+                        <td>08-13 10:30</td>
+                        <td>45937.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+122.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,968.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1738</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-12 10:27</td>
+                        <td>45307.0</td>
+                        <td>08-12 10:49</td>
+                        <td>45484.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+177.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +8,720.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1737</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-12 10:27</td>
+                        <td>45307.0</td>
+                        <td>08-12 10:32</td>
+                        <td>45425.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+118.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +5,770.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1736</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-12 10:19</td>
+                        <td>45305.0</td>
+                        <td>08-12 10:26</td>
+                        <td>45250.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-55.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -5,762.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1735</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-11 11:01</td>
+                        <td>44827.0</td>
+                        <td>08-11 11:26</td>
+                        <td>45067.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+240.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +11,870.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1734</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-11 11:01</td>
+                        <td>44827.0</td>
+                        <td>08-11 11:25</td>
+                        <td>44987.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+160.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +7,870.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1733</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-11 10:35</td>
+                        <td>44896.0</td>
+                        <td>08-11 10:58</td>
+                        <td>44799.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-97.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -9,960.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1732</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-11 10:27</td>
+                        <td>44751.0</td>
+                        <td>08-11 10:29</td>
+                        <td>44816.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-65.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -6,760.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1731</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-11 10:08</td>
+                        <td>44680.0</td>
+                        <td>08-11 10:24</td>
+                        <td>44767.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-87.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -8,959.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1730</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-10 11:28</td>
+                        <td>44932.0</td>
+                        <td>08-10 13:17</td>
+                        <td>45042.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-110.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,260.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1729</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-10 10:47</td>
+                        <td>45080.0</td>
+                        <td>08-10 11:00</td>
+                        <td>45080.0</td>
+                        <td>1 口</td>
+                        <td class="val-loss">0.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -130.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">BE (保本出場)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1728</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-10 10:47</td>
+                        <td>45080.0</td>
+                        <td>08-10 10:54</td>
+                        <td>45164.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+84.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +4,070.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1727</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-07 11:07</td>
+                        <td>44419.0</td>
+                        <td>08-07 11:12</td>
+                        <td>44487.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-68.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -7,058.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1726</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-07 10:23</td>
+                        <td>44349.0</td>
+                        <td>08-07 11:02</td>
+                        <td>44445.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-96.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -9,858.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1725</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-06 10:35</td>
+                        <td>44276.0</td>
+                        <td>08-06 15:01</td>
+                        <td>44280.0</td>
+                        <td>2 口</td>
+                        <td class="val-profit">+4.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +142.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">EOD (日盤收盤強平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1724</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-06 10:14</td>
+                        <td>44033.0</td>
+                        <td>08-06 10:24</td>
+                        <td>44124.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-91.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -9,356.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1723</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-06 10:04</td>
+                        <td>44009.0</td>
+                        <td>08-06 10:06</td>
+                        <td>44084.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-75.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -7,756.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1722</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-05 11:49</td>
+                        <td>44614.0</td>
+                        <td>08-05 15:01</td>
+                        <td>44514.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+100.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +4,870.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">EOD (日盤收盤強平)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1721</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP1_HALF</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-05 11:49</td>
+                        <td>44614.0</td>
+                        <td>08-05 12:30</td>
+                        <td>44358.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+256.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +12,671.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP1 (2.0R 鎖利移保本)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1720</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-05 10:45</td>
+                        <td>44825.0</td>
+                        <td>08-05 11:27</td>
+                        <td>44715.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-110.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -11,259.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1719</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">FULL</span></td>
+                        <td><span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">BUY</span></td>
+                        <td>08-05 10:02</td>
+                        <td>44849.0</td>
+                        <td>08-05 10:41</td>
+                        <td>44729.0</td>
+                        <td>2 口</td>
+                        <td class="val-loss">-120.0 點</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -12,259.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">SL (止損)</td>
+                    </tr>
+        
+                    <tr>
+                        <td>1718</td>
+                        <td><span style="font-size: 11px; color: #94a3b8;">TP2_RUNNER</span></td>
+                        <td><span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444;">SELL</span></td>
+                        <td>08-04 11:36</td>
+                        <td>43219.0</td>
+                        <td>08-04 12:06</td>
+                        <td>43000.0</td>
+                        <td>1 口</td>
+                        <td class="val-profit">+219.0 點</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +10,824.0</td>
+                        <td style="color: #cbd5e1; font-size: 12px;">TP2 (3.0R 目標全平)</td>
+                    </tr>
+        
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ["01-02 08:46", "01-02 22:24", "01-03 15:47", "01-04 04:11", "01-04 21:33", "01-05 13:41", "01-06 03:19", "01-08 20:41", "01-09 12:48", "01-10 02:25", "01-10 20:00", "01-11 12:08", "01-12 01:45", "01-12 19:07", "01-15 11:14", "01-16 00:57", "01-16 18:40", "01-17 10:48", "01-18 00:26", "01-18 17:48", "01-19 09:55", "01-19 23:32", "01-22 16:54", "01-23 09:07", "01-23 22:44", "01-24 16:06", "01-25 04:29", "01-25 21:51", "01-26 15:15", "01-27 03:38", "01-29 21:00", "01-30 13:08", "01-31 02:47", "01-31 20:11", "02-01 12:18", "02-02 01:57", "02-02 19:19", "02-05 11:27", "02-06 01:09", "02-15 18:33", "02-16 10:45", "02-17 00:25", "02-19 17:52", "02-20 10:51", "02-21 00:30", "02-21 17:54", "02-22 10:10", "02-22 23:48", "02-23 17:10", "02-26 09:26", "02-26 23:09", "02-27 16:43", "02-29 08:55", "02-29 22:32", "03-01 15:57", "03-02 04:22", "03-04 21:44", "03-05 15:06", "03-06 03:28", "03-06 20:50", "03-07 12:57", "03-08 02:34", "03-08 19:56", "03-11 12:03", "03-12 01:40", "03-12 19:07", "03-13 11:16", "03-14 00:59", "03-14 18:27", "03-15 10:40", "03-16 00:17", "03-18 17:42", "03-19 09:56", "03-19 23:38", "03-20 17:08", "03-21 09:18", "03-21 22:55", "03-22 16:20", "03-23 04:46", "03-25 22:11", "03-26 15:38", "03-27 04:04", "03-27 21:26", "03-28 13:36", "03-29 03:14", "03-29 20:38", "04-01 12:52", "04-02 02:36", "04-02 20:00", "04-03 12:10", "04-04 01:47", "04-08 19:12", "04-09 11:34", "04-10 01:11", "04-10 18:36", "04-11 10:48", "04-12 00:25", "04-12 17:47", "04-15 09:54", "04-15 23:31", "04-16 16:53", "04-17 09:04", "04-17 22:41", "04-18 16:03", "04-19 04:25", "04-19 21:47", "04-22 15:09", "04-23 03:31", "04-23 20:53", "04-24 13:01", "04-25 02:38", "04-25 20:00", "04-26 12:07", "04-27 01:44", "04-29 19:07", "04-30 11:16", "05-01 00:53", "05-02 18:15", "05-03 10:24", "05-04 00:01", "05-06 17:25", "05-07 09:37", "05-07 23:14", "05-08 16:44", "05-09 08:56", "05-09 22:33", "05-10 15:58", "05-11 04:24", "05-13 21:49", "05-14 15:40", "05-15 04:08", "05-15 21:30", "05-16 13:39", "05-17 03:18", "05-17 20:42", "05-20 12:57", "05-21 02:40", "05-21 20:11", "05-22 12:35", "05-23 02:13", "05-23 19:35", "05-24 11:43", "05-25 01:21", "05-27 18:47", "05-28 11:26", "05-29 01:05", "05-29 18:29", "05-30 10:38", "05-31 00:15", "05-31 17:39", "06-03 09:46", "06-03 23:23", "06-04 16:47", "06-05 08:55", "06-05 22:32", "06-06 15:55", "06-07 04:17", "06-07 21:44", "06-11 15:09", "06-12 03:31", "06-12 20:54", "06-13 13:01", "06-14 02:38", "06-14 20:01", "06-17 12:12", "06-18 01:49", "06-18 19:13", "06-19 11:34", "06-20 01:11", "06-20 18:41", "06-21 10:48", "06-22 00:25", "06-24 17:47", "06-25 09:55", "06-25 23:32", "06-26 16:57", "06-27 09:05", "06-27 22:42", "06-28 16:10", "06-29 04:33", "07-01 21:57", "07-02 15:19", "07-03 03:42", "07-03 21:04", "07-04 13:23", "07-05 03:01", "07-05 20:31", "07-08 12:42", "07-09 02:19", "07-09 19:43", "07-10 11:53", "07-11 01:30", "07-11 18:54", "07-12 11:03", "07-13 00:40", "07-15 18:02", "07-16 10:11", "07-16 23:48", "07-17 17:16", "07-18 09:23", "07-18 23:00", "07-19 16:22", "07-20 04:44", "07-22 22:06", "07-23 15:28", "07-24 03:51", "07-26 21:13", "07-29 13:22", "07-30 02:59", "07-30 20:23", "07-31 12:30", "08-01 02:07", "08-01 19:29", "08-02 11:36", "08-03 01:13", "08-05 18:35", "08-06 10:44", "08-07 00:21", "08-07 17:43", "08-08 09:50", "08-08 23:27", "08-09 16:49", "08-12 08:56", "08-12 22:33", "08-13 15:55", "08-14 04:17", "08-14 21:39", "08-15 15:01", "08-16 03:23", "08-16 20:46", "08-19 12:59", "08-20 02:36", "08-20 20:00", "08-21 12:14", "08-22 01:51", "08-22 19:15", "08-23 11:22", "08-24 00:59", "08-26 18:26", "08-27 10:33", "08-28 00:10", "08-28 17:38", "08-29 09:45", "08-29 23:22", "08-30 16:44", "09-02 08:51", "09-02 22:29", "09-03 16:05", "09-04 04:27", "09-04 21:49", "09-05 15:13", "09-06 03:35", "09-06 20:59", "09-09 13:06", "09-10 02:43", "09-10 20:07", "09-11 12:16", "09-12 01:53", "09-12 19:15", "09-13 11:22", "09-14 01:00", "09-16 18:26", "09-18 10:39", "09-19 00:17", "09-19 17:40", "09-20 09:50", "09-20 23:27", "09-23 16:49", "09-24 09:04", "09-24 22:41", "09-25 16:05", "09-26 04:27", "09-26 21:50", "09-27 15:16", "09-28 03:38", "09-30 21:00", "10-01 13:07", "10-02 02:44", "10-04 20:08", "10-07 12:15", "10-08 01:52", "10-08 19:14", "10-09 11:25", "10-10 01:02", "10-11 18:25", "10-14 10:34", "10-15 00:11", "10-15 17:40", "10-16 09:50", "10-16 23:28", "10-17 17:09", "10-18 09:16", "10-18 22:53", "10-21 16:15", "10-22 04:40", "10-22 22:02", "10-23 15:30", "10-24 03:52", "10-24 21:15", "10-25 13:25", "10-26 03:02", "10-28 20:26", "10-29 12:40", "10-30 02:17", "10-30 19:39", "11-01 11:46", "11-02 01:23", "11-04 18:49", "11-05 10:59", "11-06 00:39", "11-06 18:01", "11-07 10:08", "11-07 23:50", "11-08 17:12", "11-11 09:20", "11-11 22:58", "11-12 16:20", "11-13 04:44", "11-13 22:06", "11-14 15:28", "11-15 03:51", "11-15 21:13", "11-18 13:20", "11-19 02:58", "11-19 20:21", "11-20 12:31", "11-21 02:08", "11-21 19:33", "11-22 11:40", "11-23 01:17", "11-25 18:40", "11-26 10:47", "11-27 00:24", "11-27 17:47", "11-28 09:56", "11-28 23:35", "11-29 17:15", "12-02 09:28", "12-02 23:05", "12-03 16:31", "12-04 04:57", "12-04 22:20", "12-05 15:44", "12-06 04:11", "12-06 21:33", "12-09 13:45", "12-10 03:23", "12-10 20:45", "12-11 12:53", "12-12 02:30", "12-12 19:56", "12-13 12:05", "12-14 01:44", "12-16 19:06", "12-17 11:15", "12-18 00:53", "12-18 18:18", "12-19 10:27", "12-20 00:04", "12-20 17:26", "12-23 09:33", "12-23 23:10", "12-24 16:32", "12-25 08:53", "12-25 23:26", "12-26 18:44", "12-27 11:08", "12-28 00:46", "12-30 18:08", "12-31 10:16", "12-31 23:54", "01-02 17:16", "01-03 09:24", "01-03 23:03", "01-06 16:26", "01-07 04:49", "01-07 22:12", "01-08 15:36", "01-09 03:58", "01-09 21:22", "01-10 16:20", "01-11 04:42", "01-13 22:04", "01-14 15:34", "01-15 03:59", "01-15 21:21", "01-16 13:30", "01-17 03:07", "01-17 20:33", "01-20 12:43", "01-21 02:26", "01-21 20:03", "01-22 12:12", "01-23 01:52", "02-04 13:01", "02-05 02:40", "02-05 20:06", "02-06 12:17", "02-07 01:56", "02-07 19:39", "02-10 11:48", "02-11 01:28", "02-11 19:06", "02-12 11:19", "02-13 00:58", "02-13 18:24", "02-14 10:31", "02-15 00:08", "02-17 17:34", "02-18 10:40", "02-19 00:21", "02-19 17:50", "02-20 10:03", "02-20 23:41", "02-21 17:05", "02-24 09:12", "02-24 22:55", "02-25 16:19", "02-26 04:41", "02-26 22:03", "02-27 15:25", "02-28 03:47", "03-03 21:09", "03-04 13:16", "03-05 02:53", "03-05 20:15", "03-06 12:22", "03-07 01:59", "03-07 19:22", "03-10 11:29", "03-11 01:06", "03-11 18:28", "03-12 10:36", "03-13 00:13", "03-13 17:37", "03-14 09:46", "03-14 23:23", "03-17 16:49", "03-18 08:58", "03-18 22:35", "03-19 16:05", "03-20 04:28", "03-20 21:51", "03-21 15:20", "03-22 03:43", "03-24 21:06", "03-25 13:23", "03-26 03:01", "03-26 20:30", "03-27 12:37", "03-28 02:14", "03-28 19:38", "03-31 11:45", "04-01 01:22", "04-01 18:46", "04-02 10:53", "04-03 00:30", "04-07 21:09", "04-08 13:16", "04-09 02:53", "04-09 20:15", "04-10 17:59", "04-11 10:06", "04-11 23:43", "04-14 17:05", "04-15 09:13", "04-15 22:51", "04-16 16:17", "04-17 04:39", "04-17 22:02", "04-18 15:24", "04-21 09:58", "04-21 23:36", "04-22 17:00", "04-23 09:08", "04-23 22:45", "04-24 16:08", "04-25 04:31", "04-25 21:54", "04-28 15:16", "04-29 03:40", "04-29 21:04", "04-30 13:12", "05-01 02:49", "05-02 20:11", "05-05 12:18", "05-06 01:55", "05-06 19:18", "05-07 11:26", "05-08 01:03", "05-08 18:25", "05-09 10:34", "05-10 00:11", "05-12 17:38", "05-13 09:46", "05-13 23:23", "05-14 16:45", "05-15 08:56", "05-15 22:33", "05-16 16:03", "05-17 04:27", "05-19 21:51", "05-20 15:15", "05-21 03:41", "05-21 21:07", "05-22 13:14", "05-23 02:54", "05-23 20:22", "05-26 12:29", "05-27 02:20", "05-27 20:21", "05-28 12:31", "05-29 02:09", "05-29 19:31", "06-02 11:38", "06-03 01:18", "06-03 18:43", "06-04 10:58", "06-05 00:35", "06-05 18:09", "06-06 10:18", "06-07 00:01", "06-09 17:31", "06-10 09:59", "06-10 23:36", "06-11 17:01", "06-12 09:16", "06-12 22:53", "06-13 16:22", "06-14 04:46", "06-16 22:08", "06-17 15:32", "06-18 03:57", "06-18 21:27", "06-19 13:40", "06-20 03:25", "06-20 20:50", "06-23 12:57", "06-24 02:34", "06-24 19:58", "06-25 12:11", "06-26 01:49", "06-26 19:20", "06-27 11:36", "06-28 01:14", "06-30 18:42", "07-01 11:16", "07-02 00:54", "07-02 18:25", "07-03 10:36", "07-04 00:17", "07-04 18:08", "07-07 10:34", "07-08 00:14", "07-08 17:36", "07-09 10:02", "07-09 23:40", "07-10 17:18", "07-11 09:37", "07-11 23:14", "07-14 16:45", "07-15 09:28", "07-15 23:08", "07-16 16:47", "07-17 09:08", "07-17 22:45", "07-18 16:13", "07-19 04:51", "07-21 22:24", "07-22 15:55", "07-23 04:28", "07-23 21:59", "07-24 15:27", "07-25 04:03", "07-25 21:43", "07-28 15:16", "07-29 03:52", "07-29 21:23", "07-30 13:35", "07-31 03:17", "07-31 20:39", "08-01 12:48", "08-02 02:25", "08-04 19:58", "08-05 12:13", "08-06 01:55", "08-06 19:21", "08-07 11:32", "08-08 01:09", "08-08 18:36", "08-11 10:55", "08-12 00:38", "08-12 18:18", "08-13 10:43", "08-14 00:26", "08-14 18:08", "08-15 10:27", "08-16 00:05", "08-18 17:39", "08-19 10:19", "08-20 00:25", "08-20 17:54", "08-21 10:07", "08-21 23:45", "08-22 17:23", "08-25 09:33", "08-25 23:14", "08-26 16:58", "08-27 09:13", "08-27 22:50", "08-28 16:13", "08-29 04:38", "08-29 22:02", "09-01 15:26", "09-02 04:44", "09-02 22:06", "09-03 15:30", "09-04 03:52", "09-04 21:22", "09-05 13:33", "09-06 03:12", "09-08 20:38", "09-09 12:50", "09-10 02:32", "09-10 19:54", "09-11 12:07", "09-12 01:44", "09-12 19:08", "09-15 11:23", "09-16 01:01", "09-16 18:47", "09-17 11:02", "09-18 00:39", "09-18 18:02", "09-19 10:13", "09-19 23:54", "09-22 17:24", "09-23 09:38", "09-23 23:15", "09-24 16:45", "09-25 08:57", "09-25 22:34", "09-26 16:00", "09-27 04:26", "09-30 21:55", "10-01 15:21", "10-02 03:43", "10-02 21:05", "10-03 13:17", "10-04 02:54", "10-07 20:19", "10-08 12:30", "10-09 02:08", "10-09 19:35", "10-13 11:47", "10-14 01:24", "10-14 18:58", "10-15 11:08", "10-16 00:45", "10-16 18:10", "10-17 10:19", "10-17 23:56", "10-20 17:19", "10-21 09:30", "10-21 23:07", "10-22 16:33", "10-23 04:55", "10-23 22:17", "10-27 15:39", "10-28 04:03", "10-28 21:28", "10-29 13:35", "10-30 03:12", "10-30 20:34", "10-31 12:42", "11-01 02:19", "11-03 19:43", "11-04 11:52", "11-05 01:29", "11-05 18:51", "11-06 10:58", "11-07 00:35", "11-07 17:57", "11-10 10:04", "11-10 23:43", "11-11 17:05", "11-12 09:12", "11-12 22:49", "11-13 16:11", "11-14 04:33", "11-14 21:55", "11-17 15:17", "11-18 03:39", "11-18 21:01", "11-19 13:09", "11-20 02:46", "11-20 20:08", "11-21 12:15", "11-22 01:52", "11-24 19:05", "11-25 11:12", "11-26 00:49", "11-26 18:11", "11-27 10:24", "11-28 00:14", "11-28 18:27", "12-01 10:46", "12-02 00:23", "12-02 17:46", "12-03 09:54", "12-03 23:34", "12-04 16:58", "12-05 09:14", "12-05 22:54", "12-08 13:39", "12-09 03:23", "12-09 20:49", "12-10 12:59", "12-11 02:42", "12-11 20:04", "12-12 12:11", "12-13 01:49", "12-15 19:11", "12-16 11:22", "12-17 01:02", "12-17 18:26", "12-18 10:32", "12-19 00:10", "12-19 17:32", "12-22 09:43", "12-22 23:25", "12-23 17:05", "12-24 09:22", "12-24 23:16", "12-26 16:51", "12-29 09:16", "12-29 22:53", "12-30 16:24", "12-31 08:50", "12-31 22:33", "01-02 15:56", "01-03 04:18", "01-05 21:41", "01-06 15:14", "01-07 03:39", "01-07 21:07", "01-08 13:28", "01-09 03:08", "01-09 20:43", "01-12 12:50", "01-13 02:29", "01-13 19:55", "01-14 12:08", "01-15 01:46", "01-15 19:08", "01-16 11:16", "01-17 00:53", "01-19 18:19", "01-20 11:44", "01-21 01:23", "01-21 18:45", "01-22 10:52", "01-23 00:32", "01-23 17:56", "01-26 10:04", "01-26 23:42", "01-27 17:09", "01-28 09:19", "01-28 22:56", "01-29 16:18", "01-30 04:41", "01-30 22:03", "02-02 15:25", "02-03 03:49", "02-03 21:11", "02-04 13:18", "02-05 02:55", "02-05 20:17", "02-06 12:24", "02-07 02:01", "02-09 19:23", "02-10 11:35", "02-11 01:14", "02-11 18:39", "02-23 10:50", "02-24 00:30", "02-24 17:52", "02-25 09:59", "02-25 23:36", "02-26 16:58", "03-02 09:05", "03-02 22:42", "03-03 16:04", "03-04 04:26", "03-04 21:48", "03-05 15:11", "03-06 03:33", "03-06 20:55", "03-09 13:02", "03-10 02:39", "03-10 20:01", "03-11 12:08", "03-12 01:45", "03-12 19:09", "03-13 11:15", "03-14 00:52", "03-16 18:15", "03-17 10:23", "03-18 00:00", "03-18 17:43", "03-19 09:50", "03-19 23:27", "03-20 16:49", "03-23 08:56", "03-23 22:33", "03-24 15:56", "03-25 04:18", "03-25 21:40", "03-26 15:06", "03-27 03:28", "03-27 20:50", "03-30 12:58", "03-31 02:35", "03-31 19:58", "04-01 12:05", "04-02 01:42", "04-02 19:05", "04-07 11:12", "04-08 00:49", "04-08 18:13", "04-09 10:24", "04-10 00:01", "04-10 17:28", "04-13 09:38", "04-13 23:22", "04-14 16:47", "04-15 09:03", "04-15 22:42", "04-16 16:12", "04-17 04:39", "04-17 22:02", "04-20 15:27", "04-21 03:57", "04-21 21:26", "04-22 13:36", "04-23 03:13", "04-23 20:35", "04-24 12:47", "04-25 02:24", "04-27 19:49", "04-28 12:01", "04-29 01:38", "04-29 19:04", "04-30 11:11", "05-01 00:49", "05-04 18:11", "05-05 10:31", "05-06 00:11", "05-06 17:39", "05-07 09:49", "05-07 23:26", "05-08 16:51", "05-11 09:07", "05-11 22:44", "05-12 16:16", "05-13 04:39", "05-13 22:01", "05-14 15:32", "05-15 03:54", "05-15 21:19", "05-18 13:27", "05-19 03:05", "05-19 20:36", "05-20 12:48", "05-21 02:27", "05-21 19:57", "05-22 12:07", "05-23 01:44", "05-25 19:14", "05-26 12:13", "05-27 01:51", "05-27 19:19", "05-28 11:27", "05-29 01:04", "05-29 18:30", "06-01 10:38", "06-02 00:16", "06-02 17:38", "06-03 09:52", "06-03 23:30", "06-04 16:52", "06-05 08:59", "06-05 22:36", "06-08 15:58", "06-09 04:20", "06-09 21:42", "06-10 15:04", "06-11 03:26", "06-11 20:48", "06-12 12:55", "06-13 02:32", "06-15 20:01", "06-16 12:18", "06-17 01:57", "06-17 19:22", "06-18 11:29", "06-19 01:06", "06-22 18:30", "06-23 10:46", "06-24 00:23", "06-24 17:45", "06-25 09:52", "06-25 23:29", "06-26 16:53", "06-29 09:00", "06-29 22:37", "06-30 16:06", "07-01 04:29", "07-01 21:51", "07-02 15:15", "07-03 03:37", "07-03 21:06", "07-06 13:41", "07-07 03:21", "07-07 20:46", "07-08 12:56", "07-09 02:33", "07-09 19:55", "07-13 12:04", "07-14 01:41", "07-14 19:05", "07-15 11:35", "07-16 01:12", "07-16 18:45", "07-17 10:54", "07-18 00:31", "07-20 17:57", "07-21 10:10", "07-21 23:48", "07-22 17:16", "07-23 09:27", "07-23 23:04", "07-24 16:28", "07-25 04:52", "07-27 22:16", "07-28 15:40", "07-29 04:02", "07-29 21:24", "07-30 13:31", "07-31 03:08", "07-31 20:30", "08-03 12:37", "08-04 02:14", "08-04 19:37", "08-05 11:47", "08-06 01:24", "08-06 18:56", "08-07 11:08", "08-08 00:46", "08-10 18:16", "08-11 10:36", "08-12 00:14", "08-12 17:37", "08-13 09:54", "08-13 23:34", "08-14 17:10", "08-17 09:42", "08-17 22:11", "08-18 15:40", "08-19 04:03", "08-19 21:32", "08-20 13:45", "08-21 03:25", "08-21 20:57", "08-24 13:18", "08-25 03:02", "08-25 20:35", "08-26 13:04", "08-27 02:45", "08-27 20:11", "08-28 12:28", "08-29 02:13", "08-31 19:44", "09-01 12:04", "09-02 01:41", "09-02 19:07", "09-03 11:29", "09-04 01:07", "09-04 18:36", "09-07 11:03", "09-08 01:01", "09-08 19:32", "09-09 11:57", "09-10 01:34", "09-10 19:17", "09-11 11:41", "09-12 01:20", "09-14 19:11", "09-15 11:34", "09-16 01:15", "09-16 19:24"],
+                datasets: [{"label": "\u26a1 \u3010\u7d14 1K \u9280\u8272\u5b50\u5f48\u3011", "borderColor": "#10b981", "backgroundColor": "transparent", "data": [1000000.0, 1001548.0, 1006596.0, 1006596.0, 1003646.0, 1003646.0, 1003496.0, 1002794.0, 1007266.0, 1009290.0, 1005390.0, 1010886.0, 1010886.0, 1012234.0, 1015832.0, 1010682.0, 1004732.0, 1006258.0, 1012686.0, 1008987.0, 1008987.0, 1013835.0, 1008679.0, 1008679.0, 1005275.0, 1001671.0, 1001671.0, 1003617.0, 1001765.0, 1001765.0, 1004413.0, 1002661.0, 1001009.0, 999705.0, 997853.0, 995301.0, 995297.0, 996821.0, 999145.0, 1004385.0, 1006307.0, 1004575.0, 998813.0, 998813.0, 1000157.0, 995195.0, 995195.0, 999289.0, 997121.0, 997121.0, 993809.0, 997947.0, 997947.0, 993935.0, 992279.0, 992279.0, 986863.0, 987799.0, 987799.0, 996237.0, 1002859.0, 1002859.0, 1002380.0, 994462.0, 994462.0, 1003642.0, 997882.0, 991662.0, 990482.0, 994072.0, 991712.0, 994392.0, 994392.0, 996672.0, 991952.0, 991952.0, 1005032.0, 1007572.0, 1007572.0, 1009101.0, 1013081.0, 1013081.0, 1019171.0, 1014251.0, 1014251.0, 1010227.0, 1010227.0, 1011665.0, 1015754.0, 1014212.0, 1014132.0, 1014209.0, 1021795.0, 1030131.0, 1029103.0, 1025740.0, 1018354.0, 1020077.0, 1020077.0, 1011591.0, 1025471.0, 1025471.0, 1035651.0, 1044129.0, 1044129.0, 1062613.0, 1056438.0, 1056438.0, 1044664.0, 1048184.0, 1050654.0, 1051884.0, 1048723.0, 1053863.0, 1054139.0, 1054139.0, 1050077.0, 1046793.0, 1042531.0, 1049921.0, 1049235.0, 1049235.0, 1050809.0, 1057583.0, 1057583.0, 1055695.0, 1056607.0, 1056607.0, 1060679.0, 1056351.0, 1056351.0, 1044654.0, 1037422.0, 1037422.0, 1032260.0, 1021396.0, 1021396.0, 1014498.0, 1024832.0, 1024832.0, 1023666.0, 1027532.0, 1027532.0, 1022096.0, 1019928.0, 1024660.0, 1026824.0, 1023758.0, 1032594.0, 1042016.0, 1042016.0, 1050048.0, 1063368.0, 1063368.0, 1064938.0, 1067402.0, 1067402.0, 1057798.0, 1050662.0, 1050662.0, 1045326.0, 1038757.0, 1038757.0, 1034217.0, 1030447.0, 1026777.0, 1025534.0, 1035112.0, 1029340.0, 1037196.0, 1040424.0, 1035452.0, 1046758.0, 1046758.0, 1057786.0, 1048042.0, 1048042.0, 1052170.0, 1041726.0, 1041726.0, 1038454.0, 1033810.0, 1033810.0, 1027566.0, 1021318.0, 1021318.0, 1024718.0, 1033542.0, 1029566.0, 1014115.0, 1014115.0, 1020639.0, 1023361.0, 1020685.0, 1030859.0, 1034307.0, 1034307.0, 1035531.0, 1024903.0, 1024903.0, 1015057.0, 1019013.0, 1019013.0, 998174.0, 1003502.0, 1003502.0, 996966.0, 999628.0, 999628.0, 1013306.0, 1024388.0, 1028419.0, 1023408.0, 1030524.0, 1041240.0, 1033720.0, 999600.0, 1012227.0, 1019248.0, 1019248.0, 1011684.0, 1005218.0, 1005218.0, 994883.0, 984449.0, 984449.0, 979113.0, 971177.0, 971177.0, 978509.0, 979770.0, 979770.0, 987600.0, 983060.0, 983060.0, 986792.0, 986792.0, 997874.0, 994147.0, 994147.0, 987775.0, 999353.0, 999353.0, 997349.0, 991911.0, 991911.0, 992543.0, 1004375.0, 1004375.0, 992381.0, 991585.0, 991585.0, 987519.0, 989191.0, 989191.0, 988163.0, 981835.0, 986721.0, 990453.0, 990453.0, 986487.0, 987251.0, 987251.0, 991279.0, 1007693.0, 1007693.0, 1010656.0, 1014586.0, 1014586.0, 1008661.0, 1004689.0, 1004689.0, 997373.0, 1010579.0, 1010579.0, 1031159.0, 1033671.0, 1033671.0, 1028101.0, 1028101.0, 1035429.0, 1026519.0, 1026519.0, 1023148.0, 1022304.0, 1022304.0, 1029532.0, 1023084.0, 1023084.0, 1028790.0, 1038174.0, 1038174.0, 1053498.0, 1055898.0, 1055898.0, 1052575.0, 1052979.0, 1052979.0, 1042483.0, 1036835.0, 1036835.0, 1047091.0, 1042647.0, 1042647.0, 1042031.0, 1038669.0, 1038669.0, 1053997.0, 1053997.0, 1065603.0, 1048358.0, 1048358.0, 1062084.0, 1060860.0, 1060860.0, 1050386.0, 1033398.0, 1033398.0, 1024654.0, 1022762.0, 1022762.0, 1021297.0, 1014157.0, 1014157.0, 1023214.0, 1014698.0, 1014698.0, 1003088.0, 1004330.0, 1009094.0, 1011222.0, 1011222.0, 1024800.0, 1035380.0, 1035380.0, 1013973.0, 1020285.0, 1020285.0, 1026513.0, 1026469.0, 1026469.0, 1033824.0, 1026302.0, 1026302.0, 1028757.0, 1025039.0, 1025039.0, 1017995.0, 1012851.0, 1012851.0, 1004035.0, 1011613.0, 1007741.0, 1012697.0, 1010725.0, 1017603.0, 1007987.0, 1007987.0, 1001843.0, 1007051.0, 1007051.0, 1007457.0, 1017213.0, 1017213.0, 1019941.0, 1015893.0, 1019807.0, 1024321.0, 1018800.0, 1018800.0, 1021528.0, 1027756.0, 1027756.0, 1032784.0, 1044937.0, 1044937.0, 1051159.0, 1047012.0, 1047012.0, 1059668.0, 1052796.0, 1052796.0, 1054754.0, 1058412.0, 1058412.0, 1065070.0, 1068976.0, 1068976.0, 1056160.0, 1058064.0, 1058064.0, 1060268.0, 1056794.0, 1056794.0, 1047106.0, 1047106.0, 1041634.0, 1045039.0, 1045039.0, 1050967.0, 1056795.0, 1053523.0, 1058001.0, 1060655.0, 1060655.0, 1061209.0, 1061209.0, 1061115.0, 1066141.0, 1066141.0, 1073715.0, 1071491.0, 1071491.0, 1068545.0, 1079243.0, 1079243.0, 1081567.0, 1082021.0, 1082021.0, 1085175.0, 1089803.0, 1089803.0, 1080962.0, 1099870.0, 1099870.0, 1092526.0, 1096140.0, 1096054.0, 1095084.0, 1087074.0, 1084504.0, 1092436.0, 1095052.0, 1094348.0, 1112262.0, 1112262.0, 1104558.0, 1096253.0, 1096253.0, 1098485.0, 1111149.0, 1111149.0, 1106511.0, 1103341.0, 1103341.0, 1109755.0, 1113167.0, 1113167.0, 1107327.0, 1107327.0, 1106859.0, 1121024.0, 1140446.0, 1140446.0, 1149532.0, 1149532.0, 1143367.0, 1143367.0, 1141459.0, 1141459.0, 1178504.0, 1178504.0, 1178504.0, 1212396.0, 1210069.0, 1210069.0, 1216999.0, 1233341.0, 1233341.0, 1238923.0, 1242411.0, 1242411.0, 1246999.0, 1252587.0, 1252587.0, 1262680.0, 1255664.0, 1255664.0, 1257944.0, 1257224.0, 1257224.0, 1265754.0, 1258934.0, 1258934.0, 1270456.0, 1261132.0, 1257070.0, 1262548.0, 1255324.0, 1251462.0, 1255436.0, 1248612.0, 1251785.0, 1241593.0, 1241593.0, 1246613.0, 1253127.0, 1253127.0, 1246092.0, 1247524.0, 1247524.0, 1261938.0, 1269302.0, 1269302.0, 1281216.0, 1275184.0, 1275184.0, 1281270.0, 1274338.0, 1271772.0, 1278608.0, 1282726.0, 1288944.0, 1279146.0, 1285482.0, 1282418.0, 1283490.0, 1283490.0, 1286025.0, 1278927.0, 1278927.0, 1272495.0, 1270429.0, 1270429.0, 1274061.0, 1273304.0, 1273304.0, 1271935.0, 1274699.0, 1274699.0, 1273663.0, 1267095.0, 1267095.0, 1260626.0, 1257860.0, 1257860.0, 1250344.0, 1239546.0, 1239546.0, 1243978.0, 1237542.0, 1242774.0, 1235870.0, 1236018.0, 1240134.0, 1235398.0, 1228658.0, 1231190.0, 1236272.0, 1233502.0, 1230332.0, 1238462.0, 1235792.0, 1239024.0, 1225719.0, 1225719.0, 1217179.0, 1220907.0, 1220907.0, 1224765.0, 1226125.0, 1226125.0, 1221181.0, 1223087.0, 1223087.0, 1217871.0, 1219897.0, 1219897.0, 1212381.0, 1225111.0, 1225111.0, 1225267.0, 1217945.0, 1217945.0, 1209449.0, 1210153.0, 1210153.0, 1209081.0, 1214437.0, 1214437.0, 1218589.0, 1211369.0, 1211369.0, 1217947.0, 1212099.0, 1212099.0, 1204577.0, 1204577.0, 1201201.0, 1197749.0, 1199973.0, 1208047.0, 1200819.0, 1203531.0, 1203443.0, 1199665.0, 1196688.0, 1197934.0, 1198230.0, 1194552.0, 1192174.0, 1212322.0, 1212322.0, 1209470.0, 1210192.0, 1210192.0, 1219089.0, 1211961.0, 1211961.0, 1216035.0, 1209579.0, 1209579.0, 1210925.0, 1211049.0, 1211049.0, 1216047.0, 1210795.0, 1210795.0, 1209041.0, 1211165.0, 1211165.0, 1203709.0, 1203749.0, 1203749.0, 1212319.0, 1206355.0, 1206355.0, 1200691.0, 1200691.0, 1190327.0, 1190345.0, 1189680.0, 1189680.0, 1190082.0, 1190082.0, 1183217.0, 1186949.0, 1186949.0, 1188230.0, 1178362.0, 1178362.0, 1165310.0, 1150446.0, 1150446.0, 1146578.0, 1151224.0, 1151224.0, 1143566.0, 1145192.0, 1145192.0, 1149713.0, 1147599.0, 1147599.0, 1152121.0, 1147733.0, 1142045.0, 1156917.0, 1161723.0, 1163691.0, 1179409.0, 1179409.0, 1178449.0, 1169567.0, 1169567.0, 1165391.0, 1159101.0, 1159101.0, 1162111.0, 1168327.0, 1168327.0, 1167843.0, 1172347.0, 1176851.0, 1168769.0, 1159687.0, 1159687.0, 1149107.0, 1160415.0, 1173973.0, 1168102.0, 1163810.0, 1158526.0, 1141763.0, 1141763.0, 1147879.0, 1142603.0, 1142603.0, 1150419.0, 1138443.0, 1138443.0, 1125663.0, 1111693.0, 1111693.0, 1124805.0, 1140273.0, 1145629.0, 1132260.0, 1138937.0, 1138937.0, 1109479.0, 1105491.0, 1111553.0, 1107485.0, 1107485.0, 1102014.0, 1112280.0, 1118088.0, 1129648.0, 1130966.0, 1130966.0, 1126200.0, 1125417.0, 1125417.0, 1137475.0, 1145533.0, 1148639.0, 1142353.0, 1146411.0, 1146411.0, 1169577.0, 1177885.0, 1173893.0, 1166409.0, 1162519.0, 1157429.0, 1147949.0, 1147949.0, 1137369.0, 1121901.0, 1121901.0, 1125865.0, 1125429.0, 1125429.0, 1128093.0, 1130403.0, 1130403.0, 1123611.0, 1132069.0, 1132069.0, 1141927.0, 1161535.0, 1161535.0, 1170933.0, 1163129.0, 1163129.0, 1158769.0, 1147365.0, 1147365.0, 1148862.0, 1132856.0, 1132856.0, 1118149.0, 1102833.0, 1102833.0, 1093025.0, 1096723.0, 1102321.0, 1113659.0, 1117151.0, 1119145.0, 1116929.0, 1122025.0, 1121921.0, 1121105.0, 1121105.0, 1117797.0, 1122578.0, 1122578.0, 1114656.0, 1111733.0, 1111733.0, 1104005.0, 1087493.0, 1087493.0, 1088677.0, 1088677.0, 1092867.0, 1094201.0, 1076987.0, 1076987.0, 1071177.0, 1071177.0, 1085715.0, 1103033.0, 1103033.0, 1106251.0, 1128762.0, 1128762.0, 1155566.0, 1140922.0, 1140922.0, 1131800.0, 1162582.0, 1162582.0, 1199870.0, 1213491.0, 1213491.0, 1220175.0, 1176755.0, 1176755.0, 1185220.0, 1199190.0, 1199190.0, 1209562.0, 1209562.0, 1197449.0, 1201573.0, 1192757.0, 1193775.0, 1202059.0, 1202059.0, 1197611.0, 1187168.0, 1187168.0, 1187546.0, 1156424.0, 1156424.0, 1137782.0, 1142753.0, 1142753.0, 1128829.0, 1128699.0, 1128699.0, 1114465.0, 1110346.0, 1119840.0, 1149279.0, 1149279.0, 1155367.0, 1158147.0, 1158147.0, 1149427.0, 1162383.0, 1162383.0, 1147217.0, 1153068.0, 1153068.0, 1137156.0, 1127572.0, 1127572.0, 1117686.0, 1100696.0, 1100696.0, 1128864.0, 1121931.0, 1121931.0, 1153017.0, 1173199.0, 1203531.0, 1183991.0, 1181631.0, 1181511.0, 1185293.0, 1172254.0, 1158516.0, 1176328.0, 1176328.0, 1176540.0, 1159094.0, 1159094.0, 1141595.0, 1149099.0, 1149099.0, 1140755.0, 1111411.0, 1111411.0, 1088719.0, 1086325.0, 1086325.0, 1122579.0, 1152585.0, 1152585.0, 1150500.0, 1161379.0, 1161379.0, 1160588.0, 1147992.0, 1147992.0, 1127481.0, 1134369.0, 1134369.0, 1166649.0, 1194139.0, 1235131.0, 1246261.0, 1265233.0, 1251269.0, 1256592.0, 1256592.0, 1215325.0, 1191663.0, 1191663.0, 1196679.0, 1211026.0, 1211026.0, 1223461.0, 1197806.0, 1197806.0, 1245354.0, 1221738.0, 1221738.0, 1207914.0, 1186751.0, 1180687.0, 1170363.0, 1171932.0, 1176752.0, 1161780.0, 1152908.0, 1167386.0, 1170826.0, 1170826.0, 1135228.0, 1197708.0, 1197708.0, 1201986.0, 1240220.0, 1240220.0, 1208615.0, 1186682.0, 1186682.0, 1225166.0, 1209797.0, 1219229.0, 1307198.0, 1276774.0, 1276774.0, 1231885.0, 1238490.0, 1266409.0, 1283046.0, 1283046.0, 1328784.0, 1341258.0, 1341258.0, 1377002.0, 1355150.0, 1355150.0, 1380239.0, 1395319.0, 1395319.0, 1411459.0, 1430198.0, 1430198.0, 1368582.0, 1375086.0, 1375086.0, 1411254.0, 1394087.0, 1394087.0, 1409634.0, 1409524.0, 1409524.0, 1407116.0, 1383598.0, 1401139.0, 1384169.0, 1374311.0, 1367253.0, 1359933.0, 1344214.0, 1353994.0, 1362722.0, 1362722.0, 1373544.0, 1376566.0, 1376566.0, 1380388.0, 1407378.0, 1407378.0, 1422858.0, 1447489.0, 1447489.0, 1435029.0, 1423049.0, 1423049.0, 1434975.0, 1441385.0, 1441385.0, 1424653.0, 1424653.0, 1425087.0, 1431362.0, 1432860.0, 1452676.0, 1450245.0, 1450249.0, 1446351.0, 1434443.0, 1434443.0, 1428403.0, 1403293.0, 1378053.0, 1385084.0, 1371551.0, 1392973.0, 1401809.0, 1403281.0, 1395118.0, 1393391.0, 1421613.0], "borderWidth": 3, "pointRadius": 0, "tension": 0.1}, {"label": "\ud83d\udee1\ufe0f \u30105K OB + 1K FVG \u7a69\u5065\u9632\u5b88\u3011", "borderColor": "#3b82f6", "backgroundColor": "transparent", "data": [1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1003340.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1011176.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1019504.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1025582.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1026812.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1034474.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1030884.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1041418.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1103047.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1135737.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123079.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0, 1123513.0], "borderWidth": 1.8, "pointRadius": 0, "tension": 0.1}, {"label": "\ud83e\udd47 \u3010\u7d14 5K \u8a02\u55ae\u584a\u57fa\u6e96\u3011", "borderColor": "#f59e0b", "backgroundColor": "transparent", "data": [1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 997340.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 998676.0, 996214.0, 996214.0, 993552.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 999638.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005721.0, 1005849.0, 1005849.0, 1005849.0, 1005849.0, 1005849.0, 1005849.0, 1005849.0, 1005849.0, 1005849.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1013573.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1009103.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1004236.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1000964.0, 1009542.0, 1009542.0, 1009542.0, 1009542.0, 1004570.0, 1004570.0, 1004570.0, 1004570.0, 1004570.0, 1004570.0, 1007698.0, 1007698.0, 1007698.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 1004724.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 999054.0, 1001580.0, 1001580.0, 1001580.0, 1001580.0, 1001580.0, 1001580.0, 1001580.0, 1001580.0, 998008.0, 1004086.0, 1004086.0, 1001414.0, 1001414.0, 1001414.0, 1001414.0, 1001414.0, 1001414.0, 1006442.0, 1006442.0, 1006442.0, 1006442.0, 1006442.0, 1006442.0, 1006442.0, 1006442.0, 1006442.0, 1012520.0, 1012520.0, 1012520.0, 1012520.0, 1012520.0, 1008848.0, 1008848.0, 1008848.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1005772.0, 1003099.0, 1003099.0, 1003099.0, 1003099.0, 1003099.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1005427.0, 1016905.0, 1016905.0, 1016905.0, 1016905.0, 1016905.0, 1016905.0, 1018533.0, 1018533.0, 1018533.0, 1018533.0, 1018533.0, 1018533.0, 1022065.0, 1022065.0, 1022065.0, 1022065.0, 1022065.0, 1022065.0, 1019397.0, 1019397.0, 1019397.0, 1019397.0, 1019397.0, 1030979.0, 1030979.0, 1030979.0, 1030979.0, 1028309.0, 1028309.0, 1030641.0, 1030641.0, 1030641.0, 1030641.0, 1030641.0, 1030641.0, 1030641.0, 1030641.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1034277.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1027315.0, 1029651.0, 1029651.0, 1029651.0, 1029651.0, 1029651.0, 1029651.0, 1029651.0, 1029651.0, 1029651.0, 1026985.0, 1026985.0, 1026985.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1025019.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021451.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1021881.0, 1026108.0, 1026108.0, 1026108.0, 1026108.0, 1026108.0, 1026108.0, 1026108.0, 1026108.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1024534.0, 1032196.0, 1032196.0, 1032196.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1029507.0, 1049315.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1045521.0, 1057529.0, 1057529.0, 1057529.0, 1057529.0, 1057529.0, 1057529.0, 1057529.0, 1053839.0, 1053839.0, 1053839.0, 1053839.0, 1053839.0, 1053839.0, 1060153.0, 1060153.0, 1040367.0, 1040367.0, 1040367.0, 1040367.0, 1040367.0, 1036177.0, 1036177.0, 1036177.0, 1036177.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1044485.0, 1041795.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1051603.0, 1042497.0, 1042497.0, 1042497.0, 1042497.0, 1042497.0, 1042497.0, 1042497.0, 1035589.0, 1030081.0, 1030081.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1038373.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1051665.0, 1052649.0, 1052649.0, 1052649.0, 1052649.0, 1052649.0, 1052649.0, 1052649.0, 1052649.0, 1052649.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1046935.0, 1038113.0, 1038113.0, 1038113.0, 1038113.0, 1038113.0, 1038113.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1030484.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1017936.0, 1011988.0, 1011988.0, 1011988.0, 1011988.0, 1011988.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 1006128.0, 987862.0, 987862.0, 987862.0, 1045591.0, 1017425.0, 1017425.0, 1017425.0, 1017425.0, 1017425.0, 1012764.0, 1012764.0, 1012764.0, 1012764.0, 1012764.0, 1012764.0, 1012764.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1005896.0, 1028640.0, 1028640.0, 1028640.0, 1028640.0, 1059281.0, 1059281.0, 1059281.0, 1059281.0, 1059281.0, 1033926.0, 1039928.0, 1039928.0, 1039928.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1090436.0, 1096422.0, 1096422.0, 1096422.0, 1096422.0, 1096422.0, 1096422.0, 1086164.0, 1086164.0, 1096404.0, 1096404.0, 1096404.0, 1096404.0, 1096404.0, 1096404.0, 1096404.0, 1096404.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0, 1088238.0], "borderWidth": 1.8, "pointRadius": 0, "tension": 0.1}, {"label": "\ud83c\udfc6 \u30105K OB + 1K FVG \u8d85\u7a84\u505c\u640d\u72d9\u64ca\u3011", "borderColor": "#ec4899", "backgroundColor": "transparent", "data": [1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1002940.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1007026.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1016604.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1024182.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1027414.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1030026.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1026636.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1035670.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1040898.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1035438.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027280.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0, 1027714.0], "borderWidth": 1.8, "pointRadius": 0, "tension": 0.1}]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 12 } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                },
+                plugins: {
+                    legend: { position: 'top', labels: { color: '#fff', font: { family: 'Outfit', size: 12 } } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
