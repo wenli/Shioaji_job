@@ -2,6 +2,10 @@
 
 自動化下載 Shioaji 歷史期貨 K 棒資料，自動排程對齊聚合為多週期結構，提供磨砂玻璃 (Glassmorphic) 風格的一站式 Web 控制面盤，整合 **SMC 實時看盤終端**、**ORB 多時區實時交易終端**、**SMC 機構訂單塊 (Order Block) 回測平台** 與 **SMC 假突破獵殺 (Sweep Fade) 專屬平台**，支援高精度雙時區 (MTF) SMC 策略回測、開盤區間突破 (ORB) 策略回測、多進程參數最佳化掃描、**ORB 突破過濾管道 (Filter Pipeline)**、**持倉口數風控限制 (Max Lots)** 與零風險模擬交易 (Paper Trading)。
 
+> [!WARNING]
+> **免責聲明 (Disclaimer)**：本軟體僅供教育和研究用途。期貨/股票交易具有高度風險，可能導致重大損失。歷史績效（含回測）不代表未來表現。使用風險自負，作者不承擔任何財務損失責任。  
+> *This software is for educational and research purposes only. Futures and stock trading involve substantial risk of loss. Past performance (including backtesting results) does not guarantee future performance. Use at your own risk; the author assumes no responsibility for any financial loss.*
+
 > [!IMPORTANT]
 > 📖 **[最新！系統使用與操作手冊 (user_guide.md)](docs/user_guide.md)** 已正式發布！手冊內嵌了自動化瀏覽器擷取的系統實時運行畫面截圖，並詳細解說了策略配置與關鍵優化風控參數，建議優先點擊閱讀。
 
@@ -176,3 +180,12 @@ python tx_backtest.py
 | `POST` | `/api/backtest/orb/optimize` | 執行並行多進程 ORB 網格最佳化優化 |
 | `WS` | `/api/live/ws` | **實時看盤 WebSocket 管道**，支援行情重播、模擬實時、Filter Pipeline 參數動態套用與 Shioaji 實時行情廣播 |
 | `GET` | `/api/logs` | 讀取日誌端點 |
+
+---
+
+## ⚠️ 免責聲明 (Disclaimer)
+
+* **繁體中文**：  
+  本軟體僅供教育和研究用途。期貨/股票交易具有高度風險，可能導致重大損失。歷史績效（含回測）不代表未來表現。使用風險自負，作者不承擔任何財務損失責任。任何基於本專案或其衍生策略所進行之實際交易操作，盈虧由使用者自行承擔。
+* **English**：  
+  This software is provided for educational and research purposes only. Trading futures and equities involves substantial financial risk and can result in significant losses. Past performance, including historical backtests, is not indicative of future results. Use at your own risk; the author assumes no liability or responsibility for any financial losses or damages incurred.
