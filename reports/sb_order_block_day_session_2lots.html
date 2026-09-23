@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMC 台指【純日盤專屬】銀色子彈 vs 訂單塊 回測評比報告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #080c14;
+            --bg-card: rgba(14, 20, 32, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-base); color: var(--text-main); padding: 32px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { margin-bottom: 28px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h1 { font-size: 26px; font-weight: 700; color: #fff; }
+        h1 span { color: #60a5fa; }
+        p.sub { color: var(--text-muted); font-size: 14px; margin-top: 6px; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; margin-top: 12px; }
+        th { color: var(--text-muted); padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
+        td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-family: 'JetBrains Mono', monospace; }
+        .val-profit { color: var(--success); }
+        .val-loss { color: var(--danger); }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-buy { background: rgba(16,185,129,0.15); color: var(--success); }
+        .badge-sell { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .highlight-row { background: rgba(16, 185, 129, 0.06); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>☀️ SMC 台指期 <span>【純日盤專屬】量化回測報告</span></h1>
+            <p class="sub">合約標的: 小台指 (MTX) | 歷史區間: 2024-01-01 ~ 2026-09-16 | 嚴格 2 口限制、2.0R/3.0R 階梯停利 (TP1平1口移保本/TP2全平)</p>
+        </header>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 16px;">📊 日盤各細分時段績效矩陣</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>策略時段方案</th>
+                        <th>交易時段窗口 (Window)</th>
+                        <th>總交易次數</th>
+                        <th>勝率 (%)</th>
+                        <th>獲利因子 (PF)</th>
+                        <th>最大回撤 (MDD)</th>
+                        <th>總淨損益 (NTD)</th>
+                        <th>2024 年</th>
+                        <th>2025 年</th>
+                        <th>2026 年</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr class="highlight-row">
+                        <td style="font-weight: 700; color: #fff;">🏆 【日盤黃金窗口】訂單塊純順勢 (首選)</td>
+                        <td style="color: var(--text-muted);">10:00 - 11:59 (避開開盤噪聲，現貨主力趨勢明朗)</td>
+                        <td>108 筆</td>
+                        <td>53.7%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">1.32</td>
+                        <td class="val-profit">6.8%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +88,238</td>
+                        <td class="val-profit">NT$ +12,520</td>
+                        <td class="val-profit">NT$ +39,083</td>
+                        <td class="val-profit">NT$ +36,635</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">【日盤銀色子彈】開盤爆發 Killzone</td>
+                        <td style="color: var(--text-muted);">09:00 - 10:00 (台股現貨剛開盤時段)</td>
+                        <td>204 筆</td>
+                        <td>38.7%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">0.95</td>
+                        <td class="val-loss">9.4%</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -26,639</td>
+                        <td class="val-loss">NT$ -28,847</td>
+                        <td class="val-loss">NT$ -44,978</td>
+                        <td class="val-profit">NT$ +47,186</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">【日盤早盤整合】銀彈開盤 + 訂單塊</td>
+                        <td style="color: var(--text-muted);">09:00 - 11:59 (現貨開盤 + 盤中前半場)</td>
+                        <td>289 筆</td>
+                        <td>43.2%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">1.03</td>
+                        <td class="val-loss">9.5%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +23,272</td>
+                        <td class="val-loss">NT$ -9,899</td>
+                        <td class="val-loss">NT$ -16,202</td>
+                        <td class="val-profit">NT$ +49,373</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">【日盤盤中波段】10點後持續至尾盤</td>
+                        <td style="color: var(--text-muted);">10:00 - 13:30 (趨勢確立後一路做到尾盤)</td>
+                        <td>161 筆</td>
+                        <td>50.3%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">1.07</td>
+                        <td class="val-loss">11.1%</td>
+                        <td class="val-profit" style="font-weight: bold;">NT$ +29,207</td>
+                        <td class="val-profit">NT$ +48,517</td>
+                        <td class="val-profit">NT$ +24,520</td>
+                        <td class="val-loss">NT$ -43,830</td>
+                    </tr>
+        
+                    <tr >
+                        <td style="font-weight: 700; color: #fff;">【日盤全時段開】日盤開盤至收盤</td>
+                        <td style="color: var(--text-muted);">08:45 - 13:45 (整個日盤無時段過濾)</td>
+                        <td>405 筆</td>
+                        <td>40.0%</td>
+                        <td style="color: #60a5fa; font-weight: bold;">0.81</td>
+                        <td class="val-loss">24.1%</td>
+                        <td class="val-loss" style="font-weight: bold;">NT$ -197,844</td>
+                        <td class="val-profit">NT$ +27,041</td>
+                        <td class="val-loss">NT$ -75,533</td>
+                        <td class="val-loss">NT$ -149,352</td>
+                    </tr>
+        
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 16px;">📈 日盤各時段資金走勢曲線 (Equity Curves)</h2>
+            <div style="height: 420px;">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 16px;">📋 最佳日盤策略【【日盤黃金窗口】訂單塊純順勢 (首選)】交易明細流水 (Top 100 Exits)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>階段</th>
+                        <th>方向</th>
+                        <th>進場時間</th>
+                        <th>進場價</th>
+                        <th>出場時間</th>
+                        <th>出場價</th>
+                        <th>出場原因</th>
+                        <th>口數</th>
+                        <th>點數</th>
+                        <th>淨損益 (NTD)</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>1</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-03-19 11:49:00</td>
+                        <td>19857</td>
+                        <td>2024-03-19 11:53:00</td>
+                        <td>19832</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,660</td>
+                    </tr>
+        
+                    <tr>
+                        <td>2</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-04-10 11:39:00</td>
+                        <td>20836</td>
+                        <td>2024-04-10 15:01:00</td>
+                        <td>20851</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+15.0</td>
+                        <td class="val-profit">NT$ +1,336</td>
+                    </tr>
+        
+                    <tr>
+                        <td>3</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-05-06 10:49:00</td>
+                        <td>20625</td>
+                        <td>2024-05-06 15:01:00</td>
+                        <td>20602</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>-23.0</td>
+                        <td class="val-loss">NT$ -2,462</td>
+                    </tr>
+        
+                    <tr>
+                        <td>4</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-05-07 11:32:00</td>
+                        <td>20639</td>
+                        <td>2024-05-07 12:17:00</td>
+                        <td>20664</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,662</td>
+                    </tr>
+        
+                    <tr>
+                        <td>5</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-05-08 10:11:00</td>
+                        <td>20617</td>
+                        <td>2024-05-08 10:46:00</td>
+                        <td>20667</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,418</td>
+                    </tr>
+        
+                    <tr>
+                        <td>6</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-05-08 10:11:00</td>
+                        <td>20617</td>
+                        <td>2024-05-08 10:47:00</td>
+                        <td>20692</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+75.0</td>
+                        <td class="val-profit">NT$ +3,668</td>
+                    </tr>
+        
+                    <tr>
+                        <td>7</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-05-31 10:02:00</td>
+                        <td>21567</td>
+                        <td>2024-05-31 10:17:00</td>
+                        <td>21517</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,416</td>
+                    </tr>
+        
+                    <tr>
+                        <td>8</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-05-31 10:02:00</td>
+                        <td>21567</td>
+                        <td>2024-05-31 10:26:00</td>
+                        <td>21492</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+75.0</td>
+                        <td class="val-profit">NT$ +3,667</td>
+                    </tr>
+        
+                    <tr>
+                        <td>9</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-06-27 11:16:00</td>
+                        <td>22790</td>
+                        <td>2024-06-27 15:01:00</td>
+                        <td>22793</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+3.0</td>
+                        <td class="val-profit">NT$ +128</td>
+                    </tr>
+        
+                    <tr>
+                        <td>10</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-07-05 10:18:00</td>
+                        <td>23630</td>
+                        <td>2024-07-05 13:32:00</td>
+                        <td>23532</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+98.0</td>
+                        <td class="val-profit">NT$ +4,812</td>
+                    </tr>
+        
+                    <tr>
+                        <td>11</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-07-05 10:18:00</td>
+                        <td>23630</td>
+                        <td>2024-07-05 15:01:00</td>
+                        <td>23570</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>1 口</td>
+                        <td>+60.0</td>
+                        <td class="val-profit">NT$ +2,912</td>
+                    </tr>
+        
+                    <tr>
+                        <td>12</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-08-19 11:55:00</td>
+                        <td>22420</td>
+                        <td>2024-08-19 12:05:00</td>
+                        <td>22377</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-43.0</td>
+                        <td class="val-loss">NT$ -4,470</td>
+                    </tr>
+        
+                    <tr>
+                        <td>13</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-09-13 10:10:00</td>
+                        <td>21720</td>
+                        <td>2024-09-13 12:44:00</td>
+                        <td>21767</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-47.0</td>
+                        <td class="val-loss">NT$ -4,867</td>
+                    </tr>
+        
+                    <tr>
+                        <td>14</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-09-27 10:09:00</td>
+                        <td>23118</td>
+                        <td>2024-09-27 10:16:00</td>
+                        <td>23149</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-31.0</td>
+                        <td class="val-loss">NT$ -3,272</td>
+                    </tr>
+        
+                    <tr>
+                        <td>15</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-10-14 11:03:00</td>
+                        <td>22916</td>
+                        <td>2024-10-14 11:30:00</td>
+                        <td>22986</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+70.0</td>
+                        <td class="val-profit">NT$ +3,414</td>
+                    </tr>
+        
+                    <tr>
+                        <td>16</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-10-14 11:03:00</td>
+                        <td>22916</td>
+                        <td>2024-10-14 11:39:00</td>
+                        <td>23021</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+105.0</td>
+                        <td class="val-profit">NT$ +5,164</td>
+                    </tr>
+        
+                    <tr>
+                        <td>17</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-10-17 11:09:00</td>
+                        <td>23129</td>
+                        <td>2024-10-17 11:40:00</td>
+                        <td>23177</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-48.0</td>
+                        <td class="val-loss">NT$ -4,972</td>
+                    </tr>
+        
+                    <tr>
+                        <td>18</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-10-23 10:44:00</td>
+                        <td>23424</td>
+                        <td>2024-10-23 11:31:00</td>
+                        <td>23358</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+66.0</td>
+                        <td class="val-profit">NT$ +3,214</td>
+                    </tr>
+        
+                    <tr>
+                        <td>19</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-10-23 10:44:00</td>
+                        <td>23424</td>
+                        <td>2024-10-23 13:07:00</td>
+                        <td>23424</td>
+                        <td>BE (保本出場)</td>
+                        <td>1 口</td>
+                        <td>-0.0</td>
+                        <td class="val-loss">NT$ -86</td>
+                    </tr>
+        
+                    <tr>
+                        <td>20</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-10-25 10:57:00</td>
+                        <td>23375</td>
+                        <td>2024-10-25 11:27:00</td>
+                        <td>23347</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-28.0</td>
+                        <td class="val-loss">NT$ -2,974</td>
+                    </tr>
+        
+                    <tr>
+                        <td>21</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-11-18 11:16:00</td>
+                        <td>22620</td>
+                        <td>2024-11-18 13:10:00</td>
+                        <td>22565</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-55.0</td>
+                        <td class="val-loss">NT$ -5,670</td>
+                    </tr>
+        
+                    <tr>
+                        <td>22</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-12-05 10:09:00</td>
+                        <td>23278</td>
+                        <td>2024-12-05 15:01:00</td>
+                        <td>23251</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+27.0</td>
+                        <td class="val-profit">NT$ +2,526</td>
+                    </tr>
+        
+                    <tr>
+                        <td>23</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-12-12 11:00:00</td>
+                        <td>23115</td>
+                        <td>2024-12-12 11:03:00</td>
+                        <td>23149</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-34.0</td>
+                        <td class="val-loss">NT$ -3,572</td>
+                    </tr>
+        
+                    <tr>
+                        <td>24</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-12-13 10:12:00</td>
+                        <td>22917</td>
+                        <td>2024-12-13 10:23:00</td>
+                        <td>22967</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,414</td>
+                    </tr>
+        
+                    <tr>
+                        <td>25</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-12-13 10:12:00</td>
+                        <td>22917</td>
+                        <td>2024-12-13 10:24:00</td>
+                        <td>22992</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+75.0</td>
+                        <td class="val-profit">NT$ +3,664</td>
+                    </tr>
+        
+                    <tr>
+                        <td>26</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2024-12-16 10:23:00</td>
+                        <td>23152</td>
+                        <td>2024-12-16 10:28:00</td>
+                        <td>23127</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,672</td>
+                    </tr>
+        
+                    <tr>
+                        <td>27</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-12-20 10:40:00</td>
+                        <td>22739</td>
+                        <td>2024-12-20 11:49:00</td>
+                        <td>22635</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+104.0</td>
+                        <td class="val-profit">NT$ +5,114</td>
+                    </tr>
+        
+                    <tr>
+                        <td>28</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-12-20 10:40:00</td>
+                        <td>22739</td>
+                        <td>2024-12-20 13:13:00</td>
+                        <td>22739</td>
+                        <td>BE (保本出場)</td>
+                        <td>1 口</td>
+                        <td>-0.0</td>
+                        <td class="val-loss">NT$ -86</td>
+                    </tr>
+        
+                    <tr>
+                        <td>29</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-12-30 11:31:00</td>
+                        <td>23270</td>
+                        <td>2024-12-30 13:03:00</td>
+                        <td>23220</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,414</td>
+                    </tr>
+        
+                    <tr>
+                        <td>30</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2024-12-30 11:31:00</td>
+                        <td>23270</td>
+                        <td>2024-12-30 13:23:00</td>
+                        <td>23195</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+75.0</td>
+                        <td class="val-profit">NT$ +3,664</td>
+                    </tr>
+        
+                    <tr>
+                        <td>31</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-01-03 11:33:00</td>
+                        <td>23035</td>
+                        <td>2025-01-03 12:38:00</td>
+                        <td>23000</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-35.0</td>
+                        <td class="val-loss">NT$ -3,672</td>
+                    </tr>
+        
+                    <tr>
+                        <td>32</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-01-07 10:32:00</td>
+                        <td>23868</td>
+                        <td>2025-01-07 10:51:00</td>
+                        <td>23839</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-29.0</td>
+                        <td class="val-loss">NT$ -3,076</td>
+                    </tr>
+        
+                    <tr>
+                        <td>33</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-02-10 10:02:00</td>
+                        <td>23257</td>
+                        <td>2025-02-10 10:21:00</td>
+                        <td>23232</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,673</td>
+                    </tr>
+        
+                    <tr>
+                        <td>34</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-02-13 10:31:00</td>
+                        <td>23380</td>
+                        <td>2025-02-13 10:35:00</td>
+                        <td>23330</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,414</td>
+                    </tr>
+        
+                    <tr>
+                        <td>35</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-02-13 10:31:00</td>
+                        <td>23380</td>
+                        <td>2025-02-13 10:53:00</td>
+                        <td>23380</td>
+                        <td>BE (保本出場)</td>
+                        <td>1 口</td>
+                        <td>-0.0</td>
+                        <td class="val-loss">NT$ -86</td>
+                    </tr>
+        
+                    <tr>
+                        <td>36</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-02-26 11:00:00</td>
+                        <td>23292</td>
+                        <td>2025-02-26 13:10:00</td>
+                        <td>23396</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+104.0</td>
+                        <td class="val-profit">NT$ +5,114</td>
+                    </tr>
+        
+                    <tr>
+                        <td>37</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-02-26 11:00:00</td>
+                        <td>23292</td>
+                        <td>2025-02-26 15:01:00</td>
+                        <td>23421</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>1 口</td>
+                        <td>+129.0</td>
+                        <td class="val-profit">NT$ +6,364</td>
+                    </tr>
+        
+                    <tr>
+                        <td>38</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-03-05 11:34:00</td>
+                        <td>22870</td>
+                        <td>2025-03-05 15:01:00</td>
+                        <td>22888</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+18.0</td>
+                        <td class="val-profit">NT$ +1,628</td>
+                    </tr>
+        
+                    <tr>
+                        <td>39</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-03-11 11:26:00</td>
+                        <td>21994</td>
+                        <td>2025-03-11 15:01:00</td>
+                        <td>22031</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+37.0</td>
+                        <td class="val-profit">NT$ +3,532</td>
+                    </tr>
+        
+                    <tr>
+                        <td>40</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-03-17 10:12:00</td>
+                        <td>22180</td>
+                        <td>2025-03-17 10:14:00</td>
+                        <td>22155</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,668</td>
+                    </tr>
+        
+                    <tr>
+                        <td>41</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-03-20 10:10:00</td>
+                        <td>22253</td>
+                        <td>2025-03-20 11:11:00</td>
+                        <td>22347</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+94.0</td>
+                        <td class="val-profit">NT$ +4,616</td>
+                    </tr>
+        
+                    <tr>
+                        <td>42</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-03-20 10:10:00</td>
+                        <td>22253</td>
+                        <td>2025-03-20 11:18:00</td>
+                        <td>22394</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+141.0</td>
+                        <td class="val-profit">NT$ +6,966</td>
+                    </tr>
+        
+                    <tr>
+                        <td>43</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-03-25 10:00:00</td>
+                        <td>22320</td>
+                        <td>2025-03-25 10:02:00</td>
+                        <td>22295</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,670</td>
+                    </tr>
+        
+                    <tr>
+                        <td>44</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-03-26 11:00:00</td>
+                        <td>22327</td>
+                        <td>2025-03-26 11:43:00</td>
+                        <td>22277</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,416</td>
+                    </tr>
+        
+                    <tr>
+                        <td>45</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-03-26 11:00:00</td>
+                        <td>22327</td>
+                        <td>2025-03-26 12:58:00</td>
+                        <td>22327</td>
+                        <td>BE (保本出場)</td>
+                        <td>1 口</td>
+                        <td>-0.0</td>
+                        <td class="val-loss">NT$ -84</td>
+                    </tr>
+        
+                    <tr>
+                        <td>46</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-04-02 10:28:00</td>
+                        <td>21297</td>
+                        <td>2025-04-02 12:37:00</td>
+                        <td>21221</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+76.0</td>
+                        <td class="val-profit">NT$ +3,718</td>
+                    </tr>
+        
+                    <tr>
+                        <td>47</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-04-02 10:28:00</td>
+                        <td>21297</td>
+                        <td>2025-04-02 13:19:00</td>
+                        <td>21297</td>
+                        <td>BE (保本出場)</td>
+                        <td>1 口</td>
+                        <td>-0.0</td>
+                        <td class="val-loss">NT$ -82</td>
+                    </tr>
+        
+                    <tr>
+                        <td>48</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-05-09 10:01:00</td>
+                        <td>20653</td>
+                        <td>2025-05-09 10:31:00</td>
+                        <td>20721</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-68.0</td>
+                        <td class="val-loss">NT$ -6,962</td>
+                    </tr>
+        
+                    <tr>
+                        <td>49</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-05-27 11:22:00</td>
+                        <td>21204</td>
+                        <td>2025-05-27 12:01:00</td>
+                        <td>21154</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,418</td>
+                    </tr>
+        
+                    <tr>
+                        <td>50</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-05-27 11:22:00</td>
+                        <td>21204</td>
+                        <td>2025-05-27 13:30:00</td>
+                        <td>21204</td>
+                        <td>BE (保本出場)</td>
+                        <td>1 口</td>
+                        <td>-0.0</td>
+                        <td class="val-loss">NT$ -82</td>
+                    </tr>
+        
+                    <tr>
+                        <td>51</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-06-05 10:22:00</td>
+                        <td>21560</td>
+                        <td>2025-06-05 10:25:00</td>
+                        <td>21535</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,666</td>
+                    </tr>
+        
+                    <tr>
+                        <td>52</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-06-09 10:43:00</td>
+                        <td>21709</td>
+                        <td>2025-06-09 15:01:00</td>
+                        <td>21727</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>-18.0</td>
+                        <td class="val-loss">NT$ -1,966</td>
+                    </tr>
+        
+                    <tr>
+                        <td>53</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-06-26 10:40:00</td>
+                        <td>22171</td>
+                        <td>2025-06-26 11:11:00</td>
+                        <td>22137</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-34.0</td>
+                        <td class="val-loss">NT$ -3,568</td>
+                    </tr>
+        
+                    <tr>
+                        <td>54</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-07-07 10:00:00</td>
+                        <td>22342</td>
+                        <td>2025-07-07 15:01:00</td>
+                        <td>22336</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+6.0</td>
+                        <td class="val-profit">NT$ +430</td>
+                    </tr>
+        
+                    <tr>
+                        <td>55</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-07-25 10:13:00</td>
+                        <td>23282</td>
+                        <td>2025-07-25 15:01:00</td>
+                        <td>23238</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+44.0</td>
+                        <td class="val-profit">NT$ +4,227</td>
+                    </tr>
+        
+                    <tr>
+                        <td>56</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-08-01 11:27:00</td>
+                        <td>23358</td>
+                        <td>2025-08-01 15:01:00</td>
+                        <td>23344</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>-14.0</td>
+                        <td class="val-loss">NT$ -1,574</td>
+                    </tr>
+        
+                    <tr>
+                        <td>57</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-10-09 10:00:00</td>
+                        <td>27402</td>
+                        <td>2025-10-09 11:54:00</td>
+                        <td>27312</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+90.0</td>
+                        <td class="val-profit">NT$ +4,406</td>
+                    </tr>
+        
+                    <tr>
+                        <td>58</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-10-09 10:00:00</td>
+                        <td>27402</td>
+                        <td>2025-10-09 15:01:00</td>
+                        <td>27335</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>1 口</td>
+                        <td>+67.0</td>
+                        <td class="val-profit">NT$ +3,256</td>
+                    </tr>
+        
+                    <tr>
+                        <td>59</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-10-14 10:31:00</td>
+                        <td>27254</td>
+                        <td>2025-10-14 10:36:00</td>
+                        <td>27229</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,689</td>
+                    </tr>
+        
+                    <tr>
+                        <td>60</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-10-30 10:12:00</td>
+                        <td>28459</td>
+                        <td>2025-10-30 12:11:00</td>
+                        <td>28299</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+160.0</td>
+                        <td class="val-profit">NT$ +7,904</td>
+                    </tr>
+        
+                    <tr>
+                        <td>61</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-10-30 10:12:00</td>
+                        <td>28459</td>
+                        <td>2025-10-30 12:16:00</td>
+                        <td>28219</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+240.0</td>
+                        <td class="val-profit">NT$ +11,904</td>
+                    </tr>
+        
+                    <tr>
+                        <td>62</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-10-31 10:49:00</td>
+                        <td>28472</td>
+                        <td>2025-10-31 11:22:00</td>
+                        <td>28436</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-36.0</td>
+                        <td class="val-loss">NT$ -3,794</td>
+                    </tr>
+        
+                    <tr>
+                        <td>63</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-11-10 11:01:00</td>
+                        <td>27882</td>
+                        <td>2025-11-10 12:46:00</td>
+                        <td>27992</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+110.0</td>
+                        <td class="val-profit">NT$ +5,404</td>
+                    </tr>
+        
+                    <tr>
+                        <td>64</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-11-10 11:01:00</td>
+                        <td>27882</td>
+                        <td>2025-11-10 15:01:00</td>
+                        <td>28016</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>1 口</td>
+                        <td>+134.0</td>
+                        <td class="val-profit">NT$ +6,604</td>
+                    </tr>
+        
+                    <tr>
+                        <td>65</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-11-17 10:37:00</td>
+                        <td>27565</td>
+                        <td>2025-11-17 10:50:00</td>
+                        <td>27600</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-35.0</td>
+                        <td class="val-loss">NT$ -3,690</td>
+                    </tr>
+        
+                    <tr>
+                        <td>66</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-11-21 11:37:00</td>
+                        <td>26542</td>
+                        <td>2025-11-21 11:38:00</td>
+                        <td>26490</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+52.0</td>
+                        <td class="val-profit">NT$ +2,507</td>
+                    </tr>
+        
+                    <tr>
+                        <td>67</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-11-21 11:37:00</td>
+                        <td>26542</td>
+                        <td>2025-11-21 11:40:00</td>
+                        <td>26464</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+78.0</td>
+                        <td class="val-profit">NT$ +3,807</td>
+                    </tr>
+        
+                    <tr>
+                        <td>68</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-11-22 11:50:00</td>
+                        <td>26480</td>
+                        <td>2025-11-22 12:39:00</td>
+                        <td>26676</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-196.0</td>
+                        <td class="val-loss">NT$ -19,786</td>
+                    </tr>
+        
+                    <tr>
+                        <td>69</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-11-27 11:00:00</td>
+                        <td>27564</td>
+                        <td>2025-11-27 11:10:00</td>
+                        <td>27524</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-40.0</td>
+                        <td class="val-loss">NT$ -4,190</td>
+                    </tr>
+        
+                    <tr>
+                        <td>70</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-12-02 11:57:00</td>
+                        <td>27631</td>
+                        <td>2025-12-02 12:51:00</td>
+                        <td>27563</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+68.0</td>
+                        <td class="val-profit">NT$ +3,304</td>
+                    </tr>
+        
+                    <tr>
+                        <td>71</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2025-12-02 11:57:00</td>
+                        <td>27631</td>
+                        <td>2025-12-02 13:15:00</td>
+                        <td>27529</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+102.0</td>
+                        <td class="val-profit">NT$ +5,004</td>
+                    </tr>
+        
+                    <tr>
+                        <td>72</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-12-18 11:19:00</td>
+                        <td>27508</td>
+                        <td>2025-12-18 11:21:00</td>
+                        <td>27483</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-25.0</td>
+                        <td class="val-loss">NT$ -2,690</td>
+                    </tr>
+        
+                    <tr>
+                        <td>73</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-12-19 10:36:00</td>
+                        <td>27850</td>
+                        <td>2025-12-19 11:27:00</td>
+                        <td>27930</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+80.0</td>
+                        <td class="val-profit">NT$ +3,904</td>
+                    </tr>
+        
+                    <tr>
+                        <td>74</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2025-12-19 10:36:00</td>
+                        <td>27850</td>
+                        <td>2025-12-19 11:28:00</td>
+                        <td>27970</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+120.0</td>
+                        <td class="val-profit">NT$ +5,904</td>
+                    </tr>
+        
+                    <tr>
+                        <td>75</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-01-16 10:19:00</td>
+                        <td>31338</td>
+                        <td>2026-01-16 11:01:00</td>
+                        <td>31427</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-89.0</td>
+                        <td class="val-loss">NT$ -9,106</td>
+                    </tr>
+        
+                    <tr>
+                        <td>76</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-01-22 10:47:00</td>
+                        <td>31952</td>
+                        <td>2026-01-22 12:05:00</td>
+                        <td>31885</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-67.0</td>
+                        <td class="val-loss">NT$ -6,908</td>
+                    </tr>
+        
+                    <tr>
+                        <td>77</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-01-23 10:37:00</td>
+                        <td>32069</td>
+                        <td>2026-01-23 11:15:00</td>
+                        <td>32122</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-53.0</td>
+                        <td class="val-loss">NT$ -5,508</td>
+                    </tr>
+        
+                    <tr>
+                        <td>78</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-01-26 10:24:00</td>
+                        <td>32210</td>
+                        <td>2026-01-26 10:45:00</td>
+                        <td>32142</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+68.0</td>
+                        <td class="val-profit">NT$ +3,296</td>
+                    </tr>
+        
+                    <tr>
+                        <td>79</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-01-26 10:24:00</td>
+                        <td>32210</td>
+                        <td>2026-01-26 12:47:00</td>
+                        <td>32108</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+102.0</td>
+                        <td class="val-profit">NT$ +4,996</td>
+                    </tr>
+        
+                    <tr>
+                        <td>80</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-02-05 10:07:00</td>
+                        <td>31939</td>
+                        <td>2026-02-05 10:26:00</td>
+                        <td>32047</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+108.0</td>
+                        <td class="val-profit">NT$ +5,296</td>
+                    </tr>
+        
+                    <tr>
+                        <td>81</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-02-05 10:07:00</td>
+                        <td>31939</td>
+                        <td>2026-02-05 10:30:00</td>
+                        <td>32101</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+162.0</td>
+                        <td class="val-profit">NT$ +7,996</td>
+                    </tr>
+        
+                    <tr>
+                        <td>82</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-03-17 11:16:00</td>
+                        <td>33807</td>
+                        <td>2026-03-17 15:01:00</td>
+                        <td>33795</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+12.0</td>
+                        <td class="val-profit">NT$ +984</td>
+                    </tr>
+        
+                    <tr>
+                        <td>83</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-03-25 11:52:00</td>
+                        <td>33573</td>
+                        <td>2026-03-25 12:02:00</td>
+                        <td>33628</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-55.0</td>
+                        <td class="val-loss">NT$ -5,714</td>
+                    </tr>
+        
+                    <tr>
+                        <td>84</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-04-13 10:07:00</td>
+                        <td>35544</td>
+                        <td>2026-04-13 11:38:00</td>
+                        <td>35458</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-86.0</td>
+                        <td class="val-loss">NT$ -8,822</td>
+                    </tr>
+        
+                    <tr>
+                        <td>85</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-04-17 10:26:00</td>
+                        <td>37316</td>
+                        <td>2026-04-17 10:34:00</td>
+                        <td>37242</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-74.0</td>
+                        <td class="val-loss">NT$ -7,629</td>
+                    </tr>
+        
+                    <tr>
+                        <td>86</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-05-08 10:07:00</td>
+                        <td>42038</td>
+                        <td>2026-05-08 10:13:00</td>
+                        <td>41915</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-123.0</td>
+                        <td class="val-loss">NT$ -12,548</td>
+                    </tr>
+        
+                    <tr>
+                        <td>87</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-05-22 11:33:00</td>
+                        <td>42095</td>
+                        <td>2026-05-22 11:35:00</td>
+                        <td>42152</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-57.0</td>
+                        <td class="val-loss">NT$ -5,948</td>
+                    </tr>
+        
+                    <tr>
+                        <td>88</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-05-27 11:34:00</td>
+                        <td>45036</td>
+                        <td>2026-05-27 11:50:00</td>
+                        <td>44980</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-56.0</td>
+                        <td class="val-loss">NT$ -5,860</td>
+                    </tr>
+        
+                    <tr>
+                        <td>89</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-06-18 10:30:00</td>
+                        <td>46495</td>
+                        <td>2026-06-18 11:37:00</td>
+                        <td>46315</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-180.0</td>
+                        <td class="val-loss">NT$ -18,266</td>
+                    </tr>
+        
+                    <tr>
+                        <td>90</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-06-23 10:01:00</td>
+                        <td>48181</td>
+                        <td>2026-06-23 11:39:00</td>
+                        <td>47717</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+464.0</td>
+                        <td class="val-profit">NT$ +23,064</td>
+                    </tr>
+        
+                    <tr>
+                        <td>91</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-06-23 10:01:00</td>
+                        <td>48181</td>
+                        <td>2026-06-23 13:32:00</td>
+                        <td>47485</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+696.0</td>
+                        <td class="val-profit">NT$ +34,665</td>
+                    </tr>
+        
+                    <tr>
+                        <td>92</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-06-24 11:30:00</td>
+                        <td>46255</td>
+                        <td>2026-06-24 12:43:00</td>
+                        <td>46534</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-279.0</td>
+                        <td class="val-loss">NT$ -28,166</td>
+                    </tr>
+        
+                    <tr>
+                        <td>93</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-06-29 10:08:00</td>
+                        <td>45276</td>
+                        <td>2026-06-29 10:10:00</td>
+                        <td>45232</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-44.0</td>
+                        <td class="val-loss">NT$ -4,661</td>
+                    </tr>
+        
+                    <tr>
+                        <td>94</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-buy">BUY</span></td>
+                        <td>2026-07-06 10:14:00</td>
+                        <td>47022</td>
+                        <td>2026-07-06 10:18:00</td>
+                        <td>46956</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-66.0</td>
+                        <td class="val-loss">NT$ -6,868</td>
+                    </tr>
+        
+                    <tr>
+                        <td>95</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-07-17 11:07:00</td>
+                        <td>43991</td>
+                        <td>2026-07-17 11:38:00</td>
+                        <td>43807</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+184.0</td>
+                        <td class="val-profit">NT$ +9,072</td>
+                    </tr>
+        
+                    <tr>
+                        <td>96</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-07-17 11:07:00</td>
+                        <td>43991</td>
+                        <td>2026-07-17 11:43:00</td>
+                        <td>43715</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+276.0</td>
+                        <td class="val-profit">NT$ +13,672</td>
+                    </tr>
+        
+                    <tr>
+                        <td>97</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-07-22 10:11:00</td>
+                        <td>44940</td>
+                        <td>2026-07-22 15:01:00</td>
+                        <td>44631</td>
+                        <td>EOD (日盤收盤強平)</td>
+                        <td>2 口</td>
+                        <td>+309.0</td>
+                        <td class="val-profit">NT$ +30,641</td>
+                    </tr>
+        
+                    <tr>
+                        <td>98</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">FULL</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-07-27 11:21:00</td>
+                        <td>43502</td>
+                        <td>2026-07-27 13:11:00</td>
+                        <td>43753</td>
+                        <td>SL (止損)</td>
+                        <td>2 口</td>
+                        <td>-251.0</td>
+                        <td class="val-loss">NT$ -25,355</td>
+                    </tr>
+        
+                    <tr>
+                        <td>99</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP1</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-07-28 10:18:00</td>
+                        <td>42057</td>
+                        <td>2026-07-28 10:19:00</td>
+                        <td>42007</td>
+                        <td>TP1 (2.0R 鎖利移保本)</td>
+                        <td>1 口</td>
+                        <td>+50.0</td>
+                        <td class="val-profit">NT$ +2,376</td>
+                    </tr>
+        
+                    <tr>
+                        <td>100</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color:#93c5fd;">TP2</span></td>
+                        <td><span class="badge badge-sell">SELL</span></td>
+                        <td>2026-07-28 10:18:00</td>
+                        <td>42057</td>
+                        <td>2026-07-28 10:20:00</td>
+                        <td>41982</td>
+                        <td>TP2 (3.0R 目標全平)</td>
+                        <td>1 口</td>
+                        <td>+75.0</td>
+                        <td class="val-profit">NT$ +3,626</td>
+                    </tr>
+        
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        const chartData = [{"label": "\u3010\u65e5\u76e4\u9ec3\u91d1\u7a97\u53e3\u3011\u8a02\u55ae\u584a\u7d14\u9806\u52e2 (\u9996\u9078)", "data": [{"x": "2024-01-02T08:46", "y": 1000000.0}, {"x": "2024-03-19 11:53", "y": 997340.0}, {"x": "2024-04-10 15:01", "y": 998676.0}, {"x": "2024-05-06 15:01", "y": 996214.0}, {"x": "2024-05-07 12:17", "y": 993552.0}, {"x": "2024-05-08 10:46", "y": 995970.0}, {"x": "2024-05-08 10:47", "y": 999638.0}, {"x": "2024-05-31 10:17", "y": 1002054.0}, {"x": "2024-05-31 10:26", "y": 1005721.0}, {"x": "2024-06-27 15:01", "y": 1005849.0}, {"x": "2024-07-05 13:32", "y": 1010661.0}, {"x": "2024-07-05 15:01", "y": 1013573.0}, {"x": "2024-08-19 12:05", "y": 1009103.0}, {"x": "2024-09-13 12:44", "y": 1004236.0}, {"x": "2024-09-27 10:16", "y": 1000964.0}, {"x": "2024-10-14 11:30", "y": 1004378.0}, {"x": "2024-10-14 11:39", "y": 1009542.0}, {"x": "2024-10-17 11:40", "y": 1004570.0}, {"x": "2024-10-23 11:31", "y": 1007784.0}, {"x": "2024-10-23 13:07", "y": 1007698.0}, {"x": "2024-10-25 11:27", "y": 1004724.0}, {"x": "2024-11-18 13:10", "y": 999054.0}, {"x": "2024-12-05 15:01", "y": 1001580.0}, {"x": "2024-12-12 11:03", "y": 998008.0}, {"x": "2024-12-13 10:23", "y": 1000422.0}, {"x": "2024-12-13 10:24", "y": 1004086.0}, {"x": "2024-12-16 10:28", "y": 1001414.0}, {"x": "2024-12-20 11:49", "y": 1006528.0}, {"x": "2024-12-20 13:13", "y": 1006442.0}, {"x": "2024-12-30 13:03", "y": 1008856.0}, {"x": "2024-12-30 13:23", "y": 1012520.0}, {"x": "2025-01-03 12:38", "y": 1008848.0}, {"x": "2025-01-07 10:51", "y": 1005772.0}, {"x": "2025-02-10 10:21", "y": 1003099.0}, {"x": "2025-02-13 10:35", "y": 1005513.0}, {"x": "2025-02-13 10:53", "y": 1005427.0}, {"x": "2025-02-26 13:10", "y": 1010541.0}, {"x": "2025-02-26 15:01", "y": 1016905.0}, {"x": "2025-03-05 15:01", "y": 1018533.0}, {"x": "2025-03-11 15:01", "y": 1022065.0}, {"x": "2025-03-17 10:14", "y": 1019397.0}, {"x": "2025-03-20 11:11", "y": 1024013.0}, {"x": "2025-03-20 11:18", "y": 1030979.0}, {"x": "2025-03-25 10:02", "y": 1028309.0}, {"x": "2025-03-26 11:43", "y": 1030725.0}, {"x": "2025-03-26 12:58", "y": 1030641.0}, {"x": "2025-04-02 12:37", "y": 1034359.0}, {"x": "2025-04-02 13:19", "y": 1034277.0}, {"x": "2025-05-09 10:31", "y": 1027315.0}, {"x": "2025-05-27 12:01", "y": 1029733.0}, {"x": "2025-05-27 13:30", "y": 1029651.0}, {"x": "2025-06-05 10:25", "y": 1026985.0}, {"x": "2025-06-09 15:01", "y": 1025019.0}, {"x": "2025-06-26 11:11", "y": 1021451.0}, {"x": "2025-07-07 15:01", "y": 1021881.0}, {"x": "2025-07-25 15:01", "y": 1026108.0}, {"x": "2025-08-01 15:01", "y": 1024534.0}, {"x": "2025-10-09 11:54", "y": 1028940.0}, {"x": "2025-10-09 15:01", "y": 1032196.0}, {"x": "2025-10-14 10:36", "y": 1029507.0}, {"x": "2025-10-30 12:11", "y": 1037411.0}, {"x": "2025-10-30 12:16", "y": 1049315.0}, {"x": "2025-10-31 11:22", "y": 1045521.0}, {"x": "2025-11-10 12:46", "y": 1050925.0}, {"x": "2025-11-10 15:01", "y": 1057529.0}, {"x": "2025-11-17 10:50", "y": 1053839.0}, {"x": "2025-11-21 11:38", "y": 1056346.0}, {"x": "2025-11-21 11:40", "y": 1060153.0}, {"x": "2025-11-22 12:39", "y": 1040367.0}, {"x": "2025-11-27 11:10", "y": 1036177.0}, {"x": "2025-12-02 12:51", "y": 1039481.0}, {"x": "2025-12-02 13:15", "y": 1044485.0}, {"x": "2025-12-18 11:21", "y": 1041795.0}, {"x": "2025-12-19 11:27", "y": 1045699.0}, {"x": "2025-12-19 11:28", "y": 1051603.0}, {"x": "2026-01-16 11:01", "y": 1042497.0}, {"x": "2026-01-22 12:05", "y": 1035589.0}, {"x": "2026-01-23 11:15", "y": 1030081.0}, {"x": "2026-01-26 10:45", "y": 1033377.0}, {"x": "2026-01-26 12:47", "y": 1038373.0}, {"x": "2026-02-05 10:26", "y": 1043669.0}, {"x": "2026-02-05 10:30", "y": 1051665.0}, {"x": "2026-03-17 15:01", "y": 1052649.0}, {"x": "2026-03-25 12:02", "y": 1046935.0}, {"x": "2026-04-13 11:38", "y": 1038113.0}, {"x": "2026-04-17 10:34", "y": 1030484.0}, {"x": "2026-05-08 10:13", "y": 1017936.0}, {"x": "2026-05-22 11:35", "y": 1011988.0}, {"x": "2026-05-27 11:50", "y": 1006128.0}, {"x": "2026-06-18 11:37", "y": 987862.0}, {"x": "2026-06-23 11:39", "y": 1010926.0}, {"x": "2026-06-23 13:32", "y": 1045591.0}, {"x": "2026-06-24 12:43", "y": 1017425.0}, {"x": "2026-06-29 10:10", "y": 1012764.0}, {"x": "2026-07-06 10:18", "y": 1005896.0}, {"x": "2026-07-17 11:38", "y": 1014968.0}, {"x": "2026-07-17 11:43", "y": 1028640.0}, {"x": "2026-07-22 15:01", "y": 1059281.0}, {"x": "2026-07-27 13:11", "y": 1033926.0}, {"x": "2026-07-28 10:19", "y": 1036302.0}, {"x": "2026-07-28 10:20", "y": 1039928.0}, {"x": "2026-07-30 12:55", "y": 1060107.0}, {"x": "2026-07-30 12:59", "y": 1090436.0}, {"x": "2026-08-14 11:32", "y": 1092804.0}, {"x": "2026-08-14 11:41", "y": 1096422.0}, {"x": "2026-08-20 12:13", "y": 1086164.0}, {"x": "2026-08-21 10:32", "y": 1096534.0}, {"x": "2026-08-21 11:53", "y": 1096404.0}, {"x": "2026-08-28 15:01", "y": 1088238.0}], "borderColor": "#10b981", "borderWidth": 2, "fill": false, "tension": 0.1, "pointRadius": 0}, {"label": "\u3010\u65e5\u76e4\u9280\u8272\u5b50\u5f48\u3011\u958b\u76e4\u7206\u767c Killzone", "data": [{"x": "2024-01-02T08:46", "y": 1000000.0}, {"x": "2024-01-12 09:42", "y": 997350.0}, {"x": "2024-01-12 09:54", "y": 994700.0}, {"x": "2024-02-19 10:35", "y": 992046.0}, {"x": "2024-02-20 09:20", "y": 989392.0}, {"x": "2024-02-26 12:46", "y": 986736.0}, {"x": "2024-03-07 09:32", "y": 984078.0}, {"x": "2024-03-14 09:14", "y": 981418.0}, {"x": "2024-03-14 10:20", "y": 978058.0}, {"x": "2024-03-18 10:03", "y": 980478.0}, {"x": "2024-03-18 10:09", "y": 980398.0}, {"x": "2024-03-20 09:57", "y": 977738.0}, {"x": "2024-03-26 10:12", "y": 980158.0}, {"x": "2024-03-26 10:19", "y": 983828.0}, {"x": "2024-03-29 09:44", "y": 986248.0}, {"x": "2024-03-29 11:02", "y": 989918.0}, {"x": "2024-04-01 09:37", "y": 987256.0}, {"x": "2024-04-08 09:42", "y": 984494.0}, {"x": "2024-04-11 09:24", "y": 986912.0}, {"x": "2024-04-11 09:38", "y": 986830.0}, {"x": "2024-04-22 10:48", "y": 994251.0}, {"x": "2024-04-22 15:01", "y": 1000121.0}, {"x": "2024-04-25 09:24", "y": 1002541.0}, {"x": "2024-04-25 09:27", "y": 1006211.0}, {"x": "2024-05-10 09:14", "y": 1003549.0}, {"x": "2024-05-14 09:06", "y": 1000885.0}, {"x": "2024-05-20 09:01", "y": 998219.0}, {"x": "2024-05-23 09:26", "y": 1000635.0}, {"x": "2024-05-23 09:34", "y": 1004301.0}, {"x": "2024-05-24 09:09", "y": 1007518.0}, {"x": "2024-05-24 09:50", "y": 1012385.0}, {"x": "2024-05-29 09:02", "y": 1009717.0}, {"x": "2024-05-31 10:01", "y": 1007051.0}, {"x": "2024-06-05 09:17", "y": 1004385.0}, {"x": "2024-06-14 09:54", "y": 1006801.0}, {"x": "2024-06-14 10:33", "y": 1010467.0}, {"x": "2024-06-27 09:25", "y": 1012881.0}, {"x": "2024-06-27 09:29", "y": 1012795.0}, {"x": "2024-06-28 09:45", "y": 1009923.0}, {"x": "2024-07-05 09:21", "y": 1007049.0}, {"x": "2024-07-18 09:03", "y": 1004376.0}, {"x": "2024-07-19 09:19", "y": 1001704.0}, {"x": "2024-07-19 10:22", "y": 993932.0}, {"x": "2024-07-22 09:03", "y": 991260.0}, {"x": "2024-07-23 09:01", "y": 988590.0}, {"x": "2024-07-30 09:13", "y": 982022.0}, {"x": "2024-08-06 09:25", "y": 979262.0}, {"x": "2024-08-06 09:33", "y": 970002.0}, {"x": "2024-08-09 09:34", "y": 972420.0}, {"x": "2024-08-09 09:35", "y": 976088.0}, {"x": "2024-08-15 09:28", "y": 973420.0}, {"x": "2024-08-15 09:31", "y": 970752.0}, {"x": "2024-08-19 09:11", "y": 973168.0}, {"x": "2024-08-19 09:24", "y": 973084.0}, {"x": "2024-09-09 15:01", "y": 994020.0}, {"x": "2024-09-10 09:50", "y": 1001238.0}, {"x": "2024-09-10 12:31", "y": 1012106.0}, {"x": "2024-09-12 09:08", "y": 1009440.0}, {"x": "2024-09-13 09:39", "y": 1004573.0}, {"x": "2024-09-26 09:48", "y": 1006987.0}, {"x": "2024-09-26 09:49", "y": 1010651.0}, {"x": "2024-10-08 09:34", "y": 1007981.0}, {"x": "2024-10-15 09:33", "y": 1004709.0}, {"x": "2024-10-17 11:40", "y": 997637.0}, {"x": "2024-10-21 09:39", "y": 994963.0}, {"x": "2024-10-28 09:21", "y": 992289.0}, {"x": "2024-10-30 09:43", "y": 987917.0}, {"x": "2024-11-05 09:04", "y": 984545.0}, {"x": "2024-11-07 09:07", "y": 981871.0}, {"x": "2024-11-08 09:05", "y": 978797.0}, {"x": "2024-11-12 09:30", "y": 976125.0}, {"x": "2024-11-14 09:56", "y": 979339.0}, {"x": "2024-11-14 10:03", "y": 984203.0}, {"x": "2024-11-18 10:11", "y": 981533.0}, {"x": "2024-11-21 09:05", "y": 978663.0}, {"x": "2024-11-27 09:36", "y": 972293.0}, {"x": "2024-12-04 09:20", "y": 969621.0}, {"x": "2024-12-16 09:53", "y": 972035.0}, {"x": "2024-12-16 09:56", "y": 975699.0}, {"x": "2024-12-18 09:10", "y": 978113.0}, {"x": "2024-12-18 09:42", "y": 978027.0}, {"x": "2024-12-27 10:31", "y": 971153.0}, {"x": "2025-01-02 09:04", "y": 966381.0}, {"x": "2025-01-07 09:18", "y": 961505.0}, {"x": "2025-01-15 09:26", "y": 958835.0}, {"x": "2025-02-06 09:05", "y": 955761.0}, {"x": "2025-02-10 10:13", "y": 953088.0}, {"x": "2025-02-26 09:24", "y": 956902.0}, {"x": "2025-02-26 09:29", "y": 962666.0}, {"x": "2025-03-14 09:03", "y": 959998.0}, {"x": "2025-03-14 09:17", "y": 957330.0}, {"x": "2025-03-17 09:45", "y": 954062.0}, {"x": "2025-03-19 10:04", "y": 950794.0}, {"x": "2025-03-20 11:11", "y": 955210.0}, {"x": "2025-03-20 11:17", "y": 961876.0}, {"x": "2025-03-25 09:41", "y": 964292.0}, {"x": "2025-03-25 09:42", "y": 967958.0}, {"x": "2025-03-26 09:12", "y": 970374.0}, {"x": "2025-03-26 09:14", "y": 970290.0}, {"x": "2025-04-01 09:44", "y": 967626.0}, {"x": "2025-04-02 09:36", "y": 964960.0}, {"x": "2025-04-08 09:07", "y": 950406.0}, {"x": "2025-04-11 09:14", "y": 938652.0}, {"x": "2025-04-17 09:51", "y": 935996.0}, {"x": "2025-04-22 09:05", "y": 933340.0}, {"x": "2025-04-25 15:01", "y": 940680.0}, {"x": "2025-04-30 09:38", "y": 938020.0}, {"x": "2025-05-09 10:31", "y": 929558.0}, {"x": "2025-05-22 09:27", "y": 931975.0}, {"x": "2025-05-22 09:48", "y": 931893.0}, {"x": "2025-05-23 09:34", "y": 929227.0}, {"x": "2025-06-06 09:33", "y": 931643.0}, {"x": "2025-06-06 09:42", "y": 935309.0}, {"x": "2025-06-19 09:30", "y": 939625.0}, {"x": "2025-06-19 09:45", "y": 946141.0}, {"x": "2025-06-26 09:07", "y": 948557.0}, {"x": "2025-06-26 09:50", "y": 948473.0}, {"x": "2025-06-30 09:17", "y": 945805.0}, {"x": "2025-07-07 15:01", "y": 947635.0}, {"x": "2025-07-08 09:21", "y": 950051.0}, {"x": "2025-07-08 09:22", "y": 953717.0}, {"x": "2025-07-09 09:39", "y": 951047.0}, {"x": "2025-07-22 09:16", "y": 948373.0}, {"x": "2025-07-24 09:13", "y": 945699.0}, {"x": "2025-08-12 09:53", "y": 948511.0}, {"x": "2025-08-12 10:38", "y": 948423.0}, {"x": "2025-08-19 10:00", "y": 951735.0}, {"x": "2025-08-19 15:01", "y": 955197.0}, {"x": "2025-09-01 09:34", "y": 960909.0}, {"x": "2025-09-01 10:11", "y": 960821.0}, {"x": "2025-09-11 09:14", "y": 963231.0}, {"x": "2025-09-11 09:16", "y": 963141.0}, {"x": "2025-09-11 10:24", "y": 956959.0}, {"x": "2025-09-12 09:20", "y": 959369.0}, {"x": "2025-09-12 09:29", "y": 959279.0}, {"x": "2025-09-12 10:00", "y": 956597.0}, {"x": "2025-09-18 09:39", "y": 953915.0}, {"x": "2025-10-02 09:06", "y": 950929.0}, {"x": "2025-10-03 09:17", "y": 946743.0}, {"x": "2025-10-09 15:01", "y": 950353.0}, {"x": "2025-10-17 09:06", "y": 947663.0}, {"x": "2025-10-23 09:12", "y": 944973.0}, {"x": "2025-10-30 09:28", "y": 939379.0}, {"x": "2025-10-31 11:22", "y": 933385.0}, {"x": "2025-11-04 09:20", "y": 929391.0}, {"x": "2025-11-04 09:50", "y": 921297.0}, {"x": "2025-11-11 09:47", "y": 918605.0}, {"x": "2025-12-17 09:04", "y": 921009.0}, {"x": "2025-12-17 09:05", "y": 924663.0}, {"x": "2025-12-19 10:14", "y": 928967.0}, {"x": "2025-12-19 10:36", "y": 928871.0}, {"x": "2025-12-31 09:45", "y": 926175.0}, {"x": "2026-01-07 09:14", "y": 928573.0}, {"x": "2026-01-07 09:18", "y": 928471.0}, {"x": "2026-01-30 09:38", "y": 922761.0}, {"x": "2026-02-03 09:54", "y": 919852.0}, {"x": "2026-02-26 09:51", "y": 923140.0}, {"x": "2026-02-26 09:54", "y": 928128.0}, {"x": "2026-03-03 09:09", "y": 917708.0}, {"x": "2026-03-04 09:07", "y": 927001.0}, {"x": "2026-03-04 09:15", "y": 940994.0}, {"x": "2026-03-05 09:56", "y": 929679.0}, {"x": "2026-03-12 09:27", "y": 932071.0}, {"x": "2026-03-12 09:29", "y": 931963.0}, {"x": "2026-03-20 10:02", "y": 942555.0}, {"x": "2026-03-20 10:45", "y": 942447.0}, {"x": "2026-03-23 09:40", "y": 944841.0}, {"x": "2026-03-23 09:41", "y": 944735.0}, {"x": "2026-04-13 09:37", "y": 947123.0}, {"x": "2026-04-13 09:41", "y": 950762.0}, {"x": "2026-04-16 09:05", "y": 947834.0}, {"x": "2026-05-06 09:50", "y": 943988.0}, {"x": "2026-05-18 09:01", "y": 940746.0}, {"x": "2026-06-08 10:08", "y": 979520.0}, {"x": "2026-06-08 15:01", "y": 999794.0}, {"x": "2026-06-23 13:32", "y": 1030459.0}, {"x": "2026-06-23 15:01", "y": 1063774.0}, {"x": "2026-06-29 09:01", "y": 1055514.0}, {"x": "2026-06-30 09:09", "y": 1050448.0}, {"x": "2026-07-01 09:09", "y": 1038078.0}, {"x": "2026-07-01 09:10", "y": 1035208.0}, {"x": "2026-07-09 09:04", "y": 1018745.0}, {"x": "2026-07-09 09:58", "y": 1004282.0}, {"x": "2026-07-23 09:07", "y": 997122.0}, {"x": "2026-07-27 09:21", "y": 989668.0}, {"x": "2026-07-27 10:30", "y": 965813.0}, {"x": "2026-07-29 09:07", "y": 977389.0}, {"x": "2026-07-29 09:10", "y": 994816.0}, {"x": "2026-08-04 09:34", "y": 997890.0}, {"x": "2026-08-04 09:35", "y": 997764.0}, {"x": "2026-08-11 09:15", "y": 982604.0}, {"x": "2026-08-12 09:02", "y": 986174.0}, {"x": "2026-08-12 09:03", "y": 991594.0}, {"x": "2026-08-13 09:04", "y": 987730.0}, {"x": "2026-08-20 09:27", "y": 990100.0}, {"x": "2026-08-20 09:28", "y": 989970.0}, {"x": "2026-08-21 09:04", "y": 982710.0}, {"x": "2026-08-21 10:22", "y": 992380.0}, {"x": "2026-08-21 10:52", "y": 1006950.0}, {"x": "2026-08-26 10:21", "y": 998488.0}, {"x": "2026-08-28 15:01", "y": 994322.0}, {"x": "2026-09-03 09:02", "y": 989556.0}, {"x": "2026-09-07 09:08", "y": 986788.0}, {"x": "2026-09-11 09:03", "y": 982524.0}, {"x": "2026-09-15 09:03", "y": 973361.0}], "borderColor": "#3b82f6", "borderWidth": 2, "fill": false, "tension": 0.1, "pointRadius": 0}, {"label": "\u3010\u65e5\u76e4\u65e9\u76e4\u6574\u5408\u3011\u9280\u5f48\u958b\u76e4 + \u8a02\u55ae\u584a", "data": [{"x": "2024-01-02T08:46", "y": 1000000.0}, {"x": "2024-01-12 09:42", "y": 997350.0}, {"x": "2024-01-12 09:54", "y": 994700.0}, {"x": "2024-02-19 10:35", "y": 992046.0}, {"x": "2024-02-20 09:20", "y": 989392.0}, {"x": "2024-02-26 12:46", "y": 986736.0}, {"x": "2024-03-07 09:32", "y": 984078.0}, {"x": "2024-03-14 09:14", "y": 981418.0}, {"x": "2024-03-14 10:20", "y": 978058.0}, {"x": "2024-03-18 10:03", "y": 980478.0}, {"x": "2024-03-18 10:09", "y": 980398.0}, {"x": "2024-03-19 11:53", "y": 977738.0}, {"x": "2024-03-20 09:57", "y": 975078.0}, {"x": "2024-03-26 10:12", "y": 977498.0}, {"x": "2024-03-26 10:19", "y": 981168.0}, {"x": "2024-03-29 09:44", "y": 983588.0}, {"x": "2024-03-29 11:02", "y": 987258.0}, {"x": "2024-04-01 09:37", "y": 984596.0}, {"x": "2024-04-08 09:42", "y": 981834.0}, {"x": "2024-04-10 15:01", "y": 983170.0}, {"x": "2024-04-11 09:24", "y": 985588.0}, {"x": "2024-04-11 09:38", "y": 985506.0}, {"x": "2024-04-22 10:48", "y": 992927.0}, {"x": "2024-04-22 15:01", "y": 998797.0}, {"x": "2024-04-25 09:24", "y": 1001217.0}, {"x": "2024-04-25 09:27", "y": 1004887.0}, {"x": "2024-05-06 15:01", "y": 1002425.0}, {"x": "2024-05-07 12:17", "y": 999763.0}, {"x": "2024-05-08 10:46", "y": 1002181.0}, {"x": "2024-05-08 10:47", "y": 1005849.0}, {"x": "2024-05-10 09:14", "y": 1003187.0}, {"x": "2024-05-14 09:06", "y": 1000523.0}, {"x": "2024-05-20 09:01", "y": 997857.0}, {"x": "2024-05-23 09:26", "y": 1000273.0}, {"x": "2024-05-23 09:34", "y": 1003939.0}, {"x": "2024-05-24 09:09", "y": 1007156.0}, {"x": "2024-05-24 09:50", "y": 1012023.0}, {"x": "2024-05-29 09:02", "y": 1009355.0}, {"x": "2024-05-31 10:01", "y": 1006689.0}, {"x": "2024-06-05 09:17", "y": 1004023.0}, {"x": "2024-06-14 09:54", "y": 1006439.0}, {"x": "2024-06-14 10:33", "y": 1010105.0}, {"x": "2024-06-27 09:25", "y": 1012519.0}, {"x": "2024-06-27 09:29", "y": 1012433.0}, {"x": "2024-06-27 15:01", "y": 1012561.0}, {"x": "2024-06-28 09:45", "y": 1009689.0}, {"x": "2024-07-05 09:21", "y": 1006815.0}, {"x": "2024-07-05 13:32", "y": 1011627.0}, {"x": "2024-07-05 15:01", "y": 1014539.0}, {"x": "2024-07-18 09:03", "y": 1011866.0}, {"x": "2024-07-19 09:19", "y": 1009194.0}, {"x": "2024-07-19 10:22", "y": 1001422.0}, {"x": "2024-07-22 09:03", "y": 998750.0}, {"x": "2024-07-23 09:01", "y": 996080.0}, {"x": "2024-07-30 09:13", "y": 989512.0}, {"x": "2024-08-06 09:25", "y": 986752.0}, {"x": "2024-08-06 09:33", "y": 977492.0}, {"x": "2024-08-09 09:34", "y": 979910.0}, {"x": "2024-08-09 09:35", "y": 983578.0}, {"x": "2024-08-15 09:28", "y": 980910.0}, {"x": "2024-08-15 09:31", "y": 978242.0}, {"x": "2024-08-19 09:11", "y": 980658.0}, {"x": "2024-08-19 09:24", "y": 980574.0}, {"x": "2024-08-19 12:05", "y": 976104.0}, {"x": "2024-09-09 15:01", "y": 997040.0}, {"x": "2024-09-10 09:50", "y": 1004258.0}, {"x": "2024-09-10 12:31", "y": 1015126.0}, {"x": "2024-09-12 09:08", "y": 1012460.0}, {"x": "2024-09-13 09:39", "y": 1007593.0}, {"x": "2024-09-26 09:48", "y": 1010007.0}, {"x": "2024-09-26 09:49", "y": 1013671.0}, {"x": "2024-09-27 10:16", "y": 1010399.0}, {"x": "2024-10-08 09:34", "y": 1007729.0}, {"x": "2024-10-14 11:30", "y": 1011143.0}, {"x": "2024-10-14 11:39", "y": 1016307.0}, {"x": "2024-10-15 09:33", "y": 1013035.0}, {"x": "2024-10-17 11:40", "y": 1005963.0}, {"x": "2024-10-21 09:39", "y": 1003289.0}, {"x": "2024-10-23 11:31", "y": 1006503.0}, {"x": "2024-10-23 13:07", "y": 1006417.0}, {"x": "2024-10-25 11:27", "y": 1003443.0}, {"x": "2024-10-28 09:21", "y": 1000769.0}, {"x": "2024-10-30 09:43", "y": 996397.0}, {"x": "2024-11-05 09:04", "y": 993025.0}, {"x": "2024-11-07 09:07", "y": 990351.0}, {"x": "2024-11-08 09:05", "y": 987277.0}, {"x": "2024-11-12 09:30", "y": 984605.0}, {"x": "2024-11-14 09:56", "y": 987819.0}, {"x": "2024-11-14 10:03", "y": 992683.0}, {"x": "2024-11-18 10:11", "y": 990013.0}, {"x": "2024-11-18 13:10", "y": 984343.0}, {"x": "2024-11-21 09:05", "y": 981473.0}, {"x": "2024-11-27 09:36", "y": 975103.0}, {"x": "2024-12-04 09:20", "y": 972431.0}, {"x": "2024-12-05 15:01", "y": 974957.0}, {"x": "2024-12-12 11:03", "y": 971385.0}, {"x": "2024-12-13 10:23", "y": 973799.0}, {"x": "2024-12-13 10:24", "y": 977463.0}, {"x": "2024-12-16 09:53", "y": 979877.0}, {"x": "2024-12-16 09:56", "y": 983541.0}, {"x": "2024-12-18 09:10", "y": 985955.0}, {"x": "2024-12-18 09:42", "y": 985869.0}, {"x": "2024-12-20 11:49", "y": 990983.0}, {"x": "2024-12-20 13:13", "y": 990897.0}, {"x": "2024-12-27 10:31", "y": 984023.0}, {"x": "2024-12-30 13:03", "y": 986437.0}, {"x": "2024-12-30 13:23", "y": 990101.0}, {"x": "2025-01-02 09:04", "y": 985329.0}, {"x": "2025-01-03 12:38", "y": 981657.0}, {"x": "2025-01-07 09:18", "y": 976781.0}, {"x": "2025-01-15 09:26", "y": 974111.0}, {"x": "2025-02-06 09:05", "y": 971037.0}, {"x": "2025-02-10 10:13", "y": 968364.0}, {"x": "2025-02-13 10:35", "y": 970778.0}, {"x": "2025-02-13 10:53", "y": 970692.0}, {"x": "2025-02-26 09:24", "y": 974506.0}, {"x": "2025-02-26 09:29", "y": 980270.0}, {"x": "2025-02-26 13:10", "y": 985384.0}, {"x": "2025-02-26 15:01", "y": 991748.0}, {"x": "2025-03-05 15:01", "y": 993376.0}, {"x": "2025-03-11 15:01", "y": 996908.0}, {"x": "2025-03-14 09:03", "y": 994240.0}, {"x": "2025-03-14 09:17", "y": 991572.0}, {"x": "2025-03-17 09:45", "y": 988304.0}, {"x": "2025-03-17 10:14", "y": 985636.0}, {"x": "2025-03-19 10:04", "y": 982368.0}, {"x": "2025-03-20 11:11", "y": 986784.0}, {"x": "2025-03-20 11:17", "y": 993450.0}, {"x": "2025-03-25 09:41", "y": 995866.0}, {"x": "2025-03-25 09:42", "y": 999532.0}, {"x": "2025-03-26 09:12", "y": 1001948.0}, {"x": "2025-03-26 09:14", "y": 1001864.0}, {"x": "2025-03-26 11:43", "y": 1004280.0}, {"x": "2025-03-26 12:58", "y": 1004196.0}, {"x": "2025-04-01 09:44", "y": 1001532.0}, {"x": "2025-04-02 09:36", "y": 998866.0}, {"x": "2025-04-02 12:37", "y": 1002584.0}, {"x": "2025-04-02 13:19", "y": 1002502.0}, {"x": "2025-04-08 09:07", "y": 987948.0}, {"x": "2025-04-11 09:14", "y": 976194.0}, {"x": "2025-04-17 09:51", "y": 973538.0}, {"x": "2025-04-22 09:05", "y": 970882.0}, {"x": "2025-04-25 15:01", "y": 978222.0}, {"x": "2025-04-30 09:38", "y": 975562.0}, {"x": "2025-05-09 10:31", "y": 967100.0}, {"x": "2025-05-22 09:27", "y": 969517.0}, {"x": "2025-05-22 09:48", "y": 969435.0}, {"x": "2025-05-23 09:34", "y": 966769.0}, {"x": "2025-05-27 12:01", "y": 969187.0}, {"x": "2025-05-27 13:30", "y": 969105.0}, {"x": "2025-06-05 10:25", "y": 966439.0}, {"x": "2025-06-06 09:33", "y": 968855.0}, {"x": "2025-06-06 09:42", "y": 972521.0}, {"x": "2025-06-09 15:01", "y": 970555.0}, {"x": "2025-06-19 09:30", "y": 974871.0}, {"x": "2025-06-19 09:45", "y": 981387.0}, {"x": "2025-06-26 09:07", "y": 983803.0}, {"x": "2025-06-26 09:50", "y": 983719.0}, {"x": "2025-06-26 11:11", "y": 980151.0}, {"x": "2025-06-30 09:17", "y": 977483.0}, {"x": "2025-07-07 15:01", "y": 979313.0}, {"x": "2025-07-08 09:21", "y": 981729.0}, {"x": "2025-07-08 09:22", "y": 985395.0}, {"x": "2025-07-09 09:39", "y": 982725.0}, {"x": "2025-07-22 09:16", "y": 980051.0}, {"x": "2025-07-24 09:13", "y": 977377.0}, {"x": "2025-07-25 15:01", "y": 981604.0}, {"x": "2025-08-01 15:01", "y": 980030.0}, {"x": "2025-08-12 09:53", "y": 982842.0}, {"x": "2025-08-12 10:38", "y": 982754.0}, {"x": "2025-08-19 10:00", "y": 986066.0}, {"x": "2025-08-19 15:01", "y": 989528.0}, {"x": "2025-09-01 09:34", "y": 995240.0}, {"x": "2025-09-01 10:11", "y": 995152.0}, {"x": "2025-09-11 09:14", "y": 997562.0}, {"x": "2025-09-11 09:16", "y": 997472.0}, {"x": "2025-09-11 10:24", "y": 991290.0}, {"x": "2025-09-12 09:20", "y": 993700.0}, {"x": "2025-09-12 09:29", "y": 993610.0}, {"x": "2025-09-12 10:00", "y": 990928.0}, {"x": "2025-09-18 09:39", "y": 988246.0}, {"x": "2025-10-02 09:06", "y": 985260.0}, {"x": "2025-10-03 09:17", "y": 981074.0}, {"x": "2025-10-09 15:01", "y": 984684.0}, {"x": "2025-10-14 10:36", "y": 981995.0}, {"x": "2025-10-17 09:06", "y": 979305.0}, {"x": "2025-10-23 09:12", "y": 976615.0}, {"x": "2025-10-30 09:28", "y": 971021.0}, {"x": "2025-10-30 12:11", "y": 978925.0}, {"x": "2025-10-30 12:16", "y": 990829.0}, {"x": "2025-10-31 11:22", "y": 984835.0}, {"x": "2025-11-04 09:20", "y": 980841.0}, {"x": "2025-11-04 09:50", "y": 972747.0}, {"x": "2025-11-10 12:46", "y": 978151.0}, {"x": "2025-11-10 15:01", "y": 984755.0}, {"x": "2025-11-11 09:47", "y": 982063.0}, {"x": "2025-11-17 10:50", "y": 978373.0}, {"x": "2025-11-21 11:38", "y": 980880.0}, {"x": "2025-11-21 11:40", "y": 984687.0}, {"x": "2025-11-22 12:39", "y": 964901.0}, {"x": "2025-11-27 11:10", "y": 960711.0}, {"x": "2025-12-02 12:51", "y": 964015.0}, {"x": "2025-12-02 13:15", "y": 969019.0}, {"x": "2025-12-17 09:04", "y": 971423.0}, {"x": "2025-12-17 09:05", "y": 975077.0}, {"x": "2025-12-18 11:21", "y": 972387.0}, {"x": "2025-12-19 10:14", "y": 976691.0}, {"x": "2025-12-19 10:36", "y": 976595.0}, {"x": "2025-12-31 09:45", "y": 973899.0}, {"x": "2026-01-07 09:14", "y": 976297.0}, {"x": "2026-01-07 09:18", "y": 976195.0}, {"x": "2026-01-16 11:01", "y": 967089.0}, {"x": "2026-01-22 12:05", "y": 960181.0}, {"x": "2026-01-23 11:15", "y": 954673.0}, {"x": "2026-01-26 10:45", "y": 957969.0}, {"x": "2026-01-26 12:47", "y": 962965.0}, {"x": "2026-01-30 09:38", "y": 957255.0}, {"x": "2026-02-03 09:54", "y": 954346.0}, {"x": "2026-02-05 10:26", "y": 959642.0}, {"x": "2026-02-05 10:30", "y": 967638.0}, {"x": "2026-02-26 09:51", "y": 970926.0}, {"x": "2026-02-26 09:54", "y": 975914.0}, {"x": "2026-03-03 09:09", "y": 965494.0}, {"x": "2026-03-04 09:07", "y": 974787.0}, {"x": "2026-03-04 09:15", "y": 988780.0}, {"x": "2026-03-05 09:56", "y": 977465.0}, {"x": "2026-03-12 09:27", "y": 979857.0}, {"x": "2026-03-12 09:29", "y": 979749.0}, {"x": "2026-03-17 15:01", "y": 980733.0}, {"x": "2026-03-20 10:02", "y": 991325.0}, {"x": "2026-03-20 10:45", "y": 991217.0}, {"x": "2026-03-23 09:40", "y": 993611.0}, {"x": "2026-03-23 09:41", "y": 993505.0}, {"x": "2026-03-25 12:02", "y": 987791.0}, {"x": "2026-04-13 09:37", "y": 990179.0}, {"x": "2026-04-13 09:41", "y": 993818.0}, {"x": "2026-04-13 11:38", "y": 984996.0}, {"x": "2026-04-16 09:05", "y": 982068.0}, {"x": "2026-04-17 10:34", "y": 974439.0}, {"x": "2026-05-06 09:50", "y": 970593.0}, {"x": "2026-05-08 10:13", "y": 958045.0}, {"x": "2026-05-18 09:01", "y": 954803.0}, {"x": "2026-05-22 11:35", "y": 948855.0}, {"x": "2026-05-27 11:50", "y": 942995.0}, {"x": "2026-06-08 10:08", "y": 981769.0}, {"x": "2026-06-08 15:01", "y": 1002043.0}, {"x": "2026-06-18 11:37", "y": 983777.0}, {"x": "2026-06-23 13:32", "y": 1014442.0}, {"x": "2026-06-23 15:01", "y": 1047757.0}, {"x": "2026-06-24 12:43", "y": 1019591.0}, {"x": "2026-06-29 09:01", "y": 1011331.0}, {"x": "2026-06-29 10:10", "y": 1006670.0}, {"x": "2026-06-30 09:09", "y": 1001604.0}, {"x": "2026-07-01 09:09", "y": 989234.0}, {"x": "2026-07-01 09:10", "y": 986364.0}, {"x": "2026-07-06 10:18", "y": 979496.0}, {"x": "2026-07-09 09:04", "y": 963033.0}, {"x": "2026-07-09 09:58", "y": 948570.0}, {"x": "2026-07-17 11:38", "y": 957642.0}, {"x": "2026-07-17 11:43", "y": 971314.0}, {"x": "2026-07-22 15:01", "y": 1001955.0}, {"x": "2026-07-23 09:07", "y": 994795.0}, {"x": "2026-07-27 09:21", "y": 987341.0}, {"x": "2026-07-27 10:30", "y": 963486.0}, {"x": "2026-07-28 10:19", "y": 965862.0}, {"x": "2026-07-28 10:20", "y": 969488.0}, {"x": "2026-07-29 09:07", "y": 981064.0}, {"x": "2026-07-29 09:10", "y": 998491.0}, {"x": "2026-07-30 12:55", "y": 1018670.0}, {"x": "2026-07-30 12:59", "y": 1048999.0}, {"x": "2026-08-04 09:34", "y": 1052073.0}, {"x": "2026-08-04 09:35", "y": 1051947.0}, {"x": "2026-08-11 09:15", "y": 1036787.0}, {"x": "2026-08-12 09:02", "y": 1040357.0}, {"x": "2026-08-12 09:03", "y": 1045777.0}, {"x": "2026-08-13 09:04", "y": 1041913.0}, {"x": "2026-08-14 11:32", "y": 1044281.0}, {"x": "2026-08-14 11:41", "y": 1047899.0}, {"x": "2026-08-20 09:27", "y": 1050269.0}, {"x": "2026-08-20 09:28", "y": 1050139.0}, {"x": "2026-08-20 12:13", "y": 1039881.0}, {"x": "2026-08-21 09:04", "y": 1032621.0}, {"x": "2026-08-21 10:22", "y": 1042291.0}, {"x": "2026-08-21 10:52", "y": 1056861.0}, {"x": "2026-08-26 10:21", "y": 1048399.0}, {"x": "2026-08-28 15:01", "y": 1044233.0}, {"x": "2026-09-03 09:02", "y": 1039467.0}, {"x": "2026-09-07 09:08", "y": 1036699.0}, {"x": "2026-09-11 09:03", "y": 1032435.0}, {"x": "2026-09-15 09:03", "y": 1023272.0}], "borderColor": "#f59e0b", "borderWidth": 2, "fill": false, "tension": 0.1, "pointRadius": 0}, {"label": "\u3010\u65e5\u76e4\u76e4\u4e2d\u6ce2\u6bb5\u301110\u9ede\u5f8c\u6301\u7e8c\u81f3\u5c3e\u76e4", "data": [{"x": "2024-01-02T08:46", "y": 1000000.0}, {"x": "2024-03-04 15:01", "y": 999442.0}, {"x": "2024-03-19 11:53", "y": 996782.0}, {"x": "2024-04-10 15:01", "y": 998118.0}, {"x": "2024-04-15 15:01", "y": 998056.0}, {"x": "2024-04-22 15:01", "y": 1002798.0}, {"x": "2024-05-06 15:01", "y": 1000336.0}, {"x": "2024-05-07 12:17", "y": 997674.0}, {"x": "2024-05-08 10:46", "y": 1000092.0}, {"x": "2024-05-08 10:47", "y": 1003760.0}, {"x": "2024-05-17 15:01", "y": 1003794.0}, {"x": "2024-05-31 10:17", "y": 1006210.0}, {"x": "2024-05-31 10:26", "y": 1009877.0}, {"x": "2024-06-27 15:01", "y": 1010005.0}, {"x": "2024-07-05 13:32", "y": 1014817.0}, {"x": "2024-07-05 15:01", "y": 1017729.0}, {"x": "2024-08-01 13:42", "y": 1015059.0}, {"x": "2024-08-19 12:05", "y": 1010589.0}, {"x": "2024-09-10 15:01", "y": 1017625.0}, {"x": "2024-09-13 12:44", "y": 1012758.0}, {"x": "2024-09-24 13:06", "y": 1016674.0}, {"x": "2024-09-24 13:12", "y": 1022590.0}, {"x": "2024-09-26 15:01", "y": 1019818.0}, {"x": "2024-09-27 10:16", "y": 1016546.0}, {"x": "2024-10-08 15:01", "y": 1015676.0}, {"x": "2024-10-14 11:30", "y": 1019090.0}, {"x": "2024-10-14 11:39", "y": 1024254.0}, {"x": "2024-10-17 11:40", "y": 1019282.0}, {"x": "2024-10-17 13:00", "y": 1021696.0}, {"x": "2024-10-17 13:07", "y": 1025360.0}, {"x": "2024-10-23 11:31", "y": 1028574.0}, {"x": "2024-10-23 13:07", "y": 1028488.0}, {"x": "2024-10-25 11:27", "y": 1025514.0}, {"x": "2024-11-14 15:01", "y": 1034643.0}, {"x": "2024-11-18 13:10", "y": 1028973.0}, {"x": "2024-12-05 15:01", "y": 1031499.0}, {"x": "2024-12-12 11:03", "y": 1027927.0}, {"x": "2024-12-13 10:23", "y": 1030341.0}, {"x": "2024-12-13 10:24", "y": 1034005.0}, {"x": "2024-12-16 10:28", "y": 1031333.0}, {"x": "2024-12-20 11:49", "y": 1036447.0}, {"x": "2024-12-20 13:13", "y": 1036361.0}, {"x": "2024-12-23 13:43", "y": 1038775.0}, {"x": "2024-12-23 13:45", "y": 1042439.0}, {"x": "2024-12-30 13:03", "y": 1044853.0}, {"x": "2024-12-30 13:23", "y": 1048517.0}, {"x": "2025-01-03 12:38", "y": 1044845.0}, {"x": "2025-01-06 15:01", "y": 1047571.0}, {"x": "2025-01-07 10:51", "y": 1044495.0}, {"x": "2025-01-10 12:56", "y": 1041823.0}, {"x": "2025-02-10 10:21", "y": 1039150.0}, {"x": "2025-02-13 10:35", "y": 1041564.0}, {"x": "2025-02-13 10:53", "y": 1041478.0}, {"x": "2025-02-26 13:10", "y": 1046592.0}, {"x": "2025-02-26 15:01", "y": 1052956.0}, {"x": "2025-03-03 15:01", "y": 1052986.0}, {"x": "2025-03-05 15:01", "y": 1054614.0}, {"x": "2025-03-07 13:14", "y": 1051744.0}, {"x": "2025-03-11 15:01", "y": 1055276.0}, {"x": "2025-03-17 10:14", "y": 1052608.0}, {"x": "2025-03-20 11:11", "y": 1057224.0}, {"x": "2025-03-20 11:18", "y": 1064190.0}, {"x": "2025-03-25 10:02", "y": 1061520.0}, {"x": "2025-03-25 12:38", "y": 1058851.0}, {"x": "2025-03-26 11:43", "y": 1061267.0}, {"x": "2025-03-26 12:58", "y": 1061183.0}, {"x": "2025-03-27 15:01", "y": 1060415.0}, {"x": "2025-04-02 12:37", "y": 1064133.0}, {"x": "2025-04-02 13:19", "y": 1064051.0}, {"x": "2025-04-17 12:37", "y": 1060693.0}, {"x": "2025-04-30 13:06", "y": 1058033.0}, {"x": "2025-05-09 10:31", "y": 1051071.0}, {"x": "2025-05-12 15:01", "y": 1051107.0}, {"x": "2025-05-20 15:01", "y": 1052941.0}, {"x": "2025-05-27 12:01", "y": 1055359.0}, {"x": "2025-05-27 13:30", "y": 1055277.0}, {"x": "2025-06-05 10:25", "y": 1052611.0}, {"x": "2025-06-09 15:01", "y": 1050645.0}, {"x": "2025-06-26 11:11", "y": 1047077.0}, {"x": "2025-07-04 15:01", "y": 1049307.0}, {"x": "2025-07-07 15:01", "y": 1049737.0}, {"x": "2025-07-08 13:01", "y": 1047069.0}, {"x": "2025-07-25 15:01", "y": 1051296.0}, {"x": "2025-07-30 13:11", "y": 1048622.0}, {"x": "2025-08-01 15:01", "y": 1047048.0}, {"x": "2025-10-09 11:54", "y": 1051454.0}, {"x": "2025-10-09 15:01", "y": 1054710.0}, {"x": "2025-10-14 10:36", "y": 1052021.0}, {"x": "2025-10-28 13:14", "y": 1048629.0}, {"x": "2025-10-30 12:11", "y": 1056533.0}, {"x": "2025-10-30 12:16", "y": 1068437.0}, {"x": "2025-10-31 11:22", "y": 1064643.0}, {"x": "2025-11-10 12:46", "y": 1070047.0}, {"x": "2025-11-10 15:01", "y": 1076651.0}, {"x": "2025-11-17 10:50", "y": 1072961.0}, {"x": "2025-11-21 11:38", "y": 1075468.0}, {"x": "2025-11-21 11:40", "y": 1079275.0}, {"x": "2025-11-22 12:39", "y": 1059489.0}, {"x": "2025-11-26 13:03", "y": 1061895.0}, {"x": "2025-11-26 13:18", "y": 1061801.0}, {"x": "2025-11-27 11:10", "y": 1057611.0}, {"x": "2025-12-02 12:51", "y": 1060915.0}, {"x": "2025-12-02 13:15", "y": 1065919.0}, {"x": "2025-12-18 11:21", "y": 1063229.0}, {"x": "2025-12-19 11:27", "y": 1067133.0}, {"x": "2025-12-19 11:28", "y": 1073037.0}, {"x": "2026-01-16 11:01", "y": 1063931.0}, {"x": "2026-01-21 12:46", "y": 1069229.0}, {"x": "2026-01-21 13:31", "y": 1069127.0}, {"x": "2026-01-22 12:05", "y": 1062219.0}, {"x": "2026-01-23 11:15", "y": 1056711.0}, {"x": "2026-01-26 10:45", "y": 1060007.0}, {"x": "2026-01-26 12:47", "y": 1065003.0}, {"x": "2026-01-28 13:12", "y": 1068897.0}, {"x": "2026-01-28 13:23", "y": 1074791.0}, {"x": "2026-02-03 13:26", "y": 1080687.0}, {"x": "2026-02-03 15:01", "y": 1085733.0}, {"x": "2026-02-05 10:26", "y": 1091029.0}, {"x": "2026-02-05 10:30", "y": 1099025.0}, {"x": "2026-02-24 13:18", "y": 1096305.0}, {"x": "2026-03-16 12:46", "y": 1085091.0}, {"x": "2026-03-17 15:01", "y": 1086075.0}, {"x": "2026-03-23 13:31", "y": 1082965.0}, {"x": "2026-03-25 12:02", "y": 1077251.0}, {"x": "2026-04-09 13:24", "y": 1072731.0}, {"x": "2026-04-13 11:38", "y": 1063909.0}, {"x": "2026-04-17 10:34", "y": 1056280.0}, {"x": "2026-04-17 13:35", "y": 1061966.0}, {"x": "2026-04-17 15:01", "y": 1066352.0}, {"x": "2026-05-08 10:13", "y": 1053804.0}, {"x": "2026-05-08 13:02", "y": 1049756.0}, {"x": "2026-05-14 13:19", "y": 1040110.0}, {"x": "2026-05-22 11:35", "y": 1034162.0}, {"x": "2026-05-27 11:50", "y": 1028302.0}, {"x": "2026-06-18 11:37", "y": 1010036.0}, {"x": "2026-06-23 11:39", "y": 1033100.0}, {"x": "2026-06-23 13:32", "y": 1067765.0}, {"x": "2026-06-24 12:43", "y": 1039599.0}, {"x": "2026-06-25 12:49", "y": 1030433.0}, {"x": "2026-06-29 10:10", "y": 1025772.0}, {"x": "2026-06-30 13:31", "y": 1022706.0}, {"x": "2026-07-01 12:14", "y": 1014337.0}, {"x": "2026-07-02 13:01", "y": 1004971.0}, {"x": "2026-07-06 10:18", "y": 998103.0}, {"x": "2026-07-06 13:30", "y": 984235.0}, {"x": "2026-07-16 12:39", "y": 977571.0}, {"x": "2026-07-17 11:38", "y": 986643.0}, {"x": "2026-07-17 11:43", "y": 1000315.0}, {"x": "2026-07-22 15:01", "y": 1030956.0}, {"x": "2026-07-27 13:11", "y": 1005601.0}, {"x": "2026-07-28 10:19", "y": 1007977.0}, {"x": "2026-07-28 10:20", "y": 1011603.0}, {"x": "2026-07-28 13:07", "y": 987455.0}, {"x": "2026-07-30 12:55", "y": 1007634.0}, {"x": "2026-07-30 12:59", "y": 1037963.0}, {"x": "2026-08-14 11:32", "y": 1040331.0}, {"x": "2026-08-14 11:41", "y": 1043949.0}, {"x": "2026-08-19 13:00", "y": 1037391.0}, {"x": "2026-08-20 12:13", "y": 1027133.0}, {"x": "2026-08-21 10:32", "y": 1037503.0}, {"x": "2026-08-21 11:53", "y": 1037373.0}, {"x": "2026-08-28 15:01", "y": 1029207.0}], "borderColor": "#ec4899", "borderWidth": 2, "fill": false, "tension": 0.1, "pointRadius": 0}, {"label": "\u3010\u65e5\u76e4\u5168\u6642\u6bb5\u958b\u3011\u65e5\u76e4\u958b\u76e4\u81f3\u6536\u76e4", "data": [{"x": "2024-01-02T08:46", "y": 1000000.0}, {"x": "2024-01-12 09:42", "y": 997350.0}, {"x": "2024-01-12 09:54", "y": 994700.0}, {"x": "2024-02-19 10:35", "y": 992046.0}, {"x": "2024-02-20 09:20", "y": 989392.0}, {"x": "2024-02-26 12:46", "y": 986736.0}, {"x": "2024-03-04 15:01", "y": 986178.0}, {"x": "2024-03-07 09:32", "y": 983520.0}, {"x": "2024-03-14 09:14", "y": 980860.0}, {"x": "2024-03-14 10:20", "y": 977500.0}, {"x": "2024-03-18 10:03", "y": 979920.0}, {"x": "2024-03-18 10:09", "y": 979840.0}, {"x": "2024-03-19 11:53", "y": 977180.0}, {"x": "2024-03-20 09:57", "y": 974520.0}, {"x": "2024-03-26 10:12", "y": 976940.0}, {"x": "2024-03-26 10:19", "y": 980610.0}, {"x": "2024-03-27 09:05", "y": 977150.0}, {"x": "2024-03-28 09:24", "y": 974190.0}, {"x": "2024-03-29 09:24", "y": 976610.0}, {"x": "2024-03-29 09:32", "y": 976530.0}, {"x": "2024-04-01 09:37", "y": 973868.0}, {"x": "2024-04-08 09:42", "y": 971106.0}, {"x": "2024-04-10 15:01", "y": 972442.0}, {"x": "2024-04-11 09:24", "y": 974860.0}, {"x": "2024-04-11 09:38", "y": 974778.0}, {"x": "2024-04-15 15:01", "y": 974716.0}, {"x": "2024-04-22 10:48", "y": 982137.0}, {"x": "2024-04-22 15:01", "y": 988007.0}, {"x": "2024-04-25 09:24", "y": 990427.0}, {"x": "2024-04-25 09:27", "y": 994097.0}, {"x": "2024-05-06 15:01", "y": 991635.0}, {"x": "2024-05-07 12:17", "y": 988973.0}, {"x": "2024-05-08 10:46", "y": 991391.0}, {"x": "2024-05-08 10:47", "y": 995059.0}, {"x": "2024-05-10 09:17", "y": 992397.0}, {"x": "2024-05-14 09:06", "y": 989733.0}, {"x": "2024-05-15 15:01", "y": 987269.0}, {"x": "2024-05-17 15:01", "y": 987303.0}, {"x": "2024-05-20 09:01", "y": 984637.0}, {"x": "2024-05-23 09:26", "y": 987053.0}, {"x": "2024-05-23 09:34", "y": 990719.0}, {"x": "2024-05-24 09:09", "y": 993936.0}, {"x": "2024-05-24 09:50", "y": 998803.0}, {"x": "2024-05-28 13:36", "y": 996135.0}, {"x": "2024-05-29 09:02", "y": 993467.0}, {"x": "2024-05-31 10:01", "y": 990801.0}, {"x": "2024-06-05 09:17", "y": 988135.0}, {"x": "2024-06-14 09:54", "y": 990551.0}, {"x": "2024-06-14 10:33", "y": 994217.0}, {"x": "2024-06-19 15:01", "y": 993645.0}, {"x": "2024-06-27 09:25", "y": 996059.0}, {"x": "2024-06-27 09:29", "y": 995973.0}, {"x": "2024-06-27 15:01", "y": 996101.0}, {"x": "2024-06-28 09:45", "y": 993229.0}, {"x": "2024-07-05 09:21", "y": 990355.0}, {"x": "2024-07-05 13:32", "y": 995167.0}, {"x": "2024-07-05 15:01", "y": 998079.0}, {"x": "2024-07-09 09:03", "y": 1000491.0}, {"x": "2024-07-09 09:12", "y": 1004153.0}, {"x": "2024-07-18 09:03", "y": 1001480.0}, {"x": "2024-07-19 09:19", "y": 998808.0}, {"x": "2024-07-19 10:22", "y": 991036.0}, {"x": "2024-07-22 09:03", "y": 988364.0}, {"x": "2024-07-23 09:01", "y": 985694.0}, {"x": "2024-07-30 09:09", "y": 989610.0}, {"x": "2024-07-30 09:12", "y": 989526.0}, {"x": "2024-07-30 09:25", "y": 991942.0}, {"x": "2024-07-30 09:29", "y": 995608.0}, {"x": "2024-07-31 09:12", "y": 990940.0}, {"x": "2024-08-01 13:42", "y": 988270.0}, {"x": "2024-08-06 09:25", "y": 985510.0}, {"x": "2024-08-06 09:33", "y": 976250.0}, {"x": "2024-08-08 09:01", "y": 968487.0}, {"x": "2024-08-09 08:47", "y": 961523.0}, {"x": "2024-08-09 09:34", "y": 963941.0}, {"x": "2024-08-09 09:35", "y": 967609.0}, {"x": "2024-08-15 09:28", "y": 964941.0}, {"x": "2024-08-15 09:31", "y": 962273.0}, {"x": "2024-08-19 09:11", "y": 964689.0}, {"x": "2024-08-19 09:24", "y": 964605.0}, {"x": "2024-08-19 12:05", "y": 960135.0}, {"x": "2024-09-09 12:53", "y": 976553.0}, {"x": "2024-09-09 15:01", "y": 991221.0}, {"x": "2024-09-10 09:50", "y": 998439.0}, {"x": "2024-09-10 12:31", "y": 1009307.0}, {"x": "2024-09-10 15:01", "y": 1016343.0}, {"x": "2024-09-12 09:08", "y": 1013677.0}, {"x": "2024-09-13 09:39", "y": 1008810.0}, {"x": "2024-09-24 13:06", "y": 1012726.0}, {"x": "2024-09-24 13:12", "y": 1018642.0}, {"x": "2024-09-26 09:48", "y": 1021056.0}, {"x": "2024-09-26 09:49", "y": 1024720.0}, {"x": "2024-09-26 15:01", "y": 1021948.0}, {"x": "2024-09-27 10:16", "y": 1018676.0}, {"x": "2024-10-08 09:34", "y": 1016006.0}, {"x": "2024-10-08 15:01", "y": 1015136.0}, {"x": "2024-10-09 08:56", "y": 1017650.0}, {"x": "2024-10-09 09:01", "y": 1021464.0}, {"x": "2024-10-14 11:30", "y": 1024878.0}, {"x": "2024-10-14 11:39", "y": 1030042.0}, {"x": "2024-10-15 09:33", "y": 1026770.0}, {"x": "2024-10-17 10:42", "y": 1031884.0}, {"x": "2024-10-17 11:04", "y": 1031798.0}, {"x": "2024-10-17 13:00", "y": 1034212.0}, {"x": "2024-10-17 13:07", "y": 1037876.0}, {"x": "2024-10-21 09:39", "y": 1035202.0}, {"x": "2024-10-22 08:57", "y": 1032528.0}, {"x": "2024-10-23 11:31", "y": 1035742.0}, {"x": "2024-10-23 13:07", "y": 1035656.0}, {"x": "2024-10-25 11:27", "y": 1032682.0}, {"x": "2024-10-28 09:21", "y": 1030008.0}, {"x": "2024-10-30 09:43", "y": 1025636.0}, {"x": "2024-11-05 09:04", "y": 1022664.0}, {"x": "2024-11-07 09:07", "y": 1019990.0}, {"x": "2024-11-07 15:01", "y": 1019816.0}, {"x": "2024-11-08 09:05", "y": 1016742.0}, {"x": "2024-11-12 08:47", "y": 1014070.0}, {"x": "2024-11-12 09:30", "y": 1011398.0}, {"x": "2024-11-14 09:56", "y": 1014612.0}, {"x": "2024-11-14 10:03", "y": 1019476.0}, {"x": "2024-11-14 15:01", "y": 1028605.0}, {"x": "2024-11-15 13:32", "y": 1025833.0}, {"x": "2024-11-18 10:11", "y": 1023163.0}, {"x": "2024-11-18 13:10", "y": 1017493.0}, {"x": "2024-11-20 13:42", "y": 1014821.0}, {"x": "2024-11-21 09:05", "y": 1011951.0}, {"x": "2024-11-27 09:11", "y": 1014365.0}, {"x": "2024-11-27 09:14", "y": 1014279.0}, {"x": "2024-11-27 09:36", "y": 1010509.0}, {"x": "2024-12-04 09:20", "y": 1007837.0}, {"x": "2024-12-05 15:01", "y": 1010363.0}, {"x": "2024-12-12 11:03", "y": 1006791.0}, {"x": "2024-12-13 09:01", "y": 1004119.0}, {"x": "2024-12-13 10:23", "y": 1006533.0}, {"x": "2024-12-13 10:24", "y": 1010197.0}, {"x": "2024-12-16 09:53", "y": 1012611.0}, {"x": "2024-12-16 09:56", "y": 1016275.0}, {"x": "2024-12-18 09:10", "y": 1018689.0}, {"x": "2024-12-18 09:42", "y": 1018603.0}, {"x": "2024-12-20 11:49", "y": 1023717.0}, {"x": "2024-12-20 13:13", "y": 1023631.0}, {"x": "2024-12-23 13:43", "y": 1026045.0}, {"x": "2024-12-23 13:45", "y": 1029709.0}, {"x": "2024-12-27 10:31", "y": 1022835.0}, {"x": "2024-12-30 13:03", "y": 1025249.0}, {"x": "2024-12-30 13:23", "y": 1028913.0}, {"x": "2024-12-31 15:01", "y": 1027041.0}, {"x": "2025-01-02 09:04", "y": 1022269.0}, {"x": "2025-01-03 12:38", "y": 1018597.0}, {"x": "2025-01-06 15:01", "y": 1021323.0}, {"x": "2025-01-07 09:18", "y": 1016447.0}, {"x": "2025-01-10 12:56", "y": 1013775.0}, {"x": "2025-01-15 09:26", "y": 1011105.0}, {"x": "2025-01-21 08:54", "y": 1005831.0}, {"x": "2025-01-22 08:48", "y": 1003157.0}, {"x": "2025-02-06 09:15", "y": 1000483.0}, {"x": "2025-02-10 10:13", "y": 997810.0}, {"x": "2025-02-13 10:35", "y": 1000224.0}, {"x": "2025-02-13 10:53", "y": 1000138.0}, {"x": "2025-02-26 09:11", "y": 996666.0}, {"x": "2025-02-26 09:16", "y": 999080.0}, {"x": "2025-02-26 09:18", "y": 1002744.0}, {"x": "2025-03-03 15:01", "y": 1002774.0}, {"x": "2025-03-05 15:01", "y": 1004402.0}, {"x": "2025-03-06 09:04", "y": 999730.0}, {"x": "2025-03-07 13:14", "y": 996860.0}, {"x": "2025-03-11 15:01", "y": 1000392.0}, {"x": "2025-03-14 09:03", "y": 997724.0}, {"x": "2025-03-14 09:17", "y": 995056.0}, {"x": "2025-03-17 09:45", "y": 991788.0}, {"x": "2025-03-17 10:14", "y": 989120.0}, {"x": "2025-03-19 10:04", "y": 985852.0}, {"x": "2025-03-20 11:11", "y": 990268.0}, {"x": "2025-03-20 11:17", "y": 996934.0}, {"x": "2025-03-25 09:41", "y": 999350.0}, {"x": "2025-03-25 09:42", "y": 1003016.0}, {"x": "2025-03-25 12:38", "y": 1000347.0}, {"x": "2025-03-26 09:12", "y": 1002763.0}, {"x": "2025-03-26 09:14", "y": 1002679.0}, {"x": "2025-03-26 11:43", "y": 1005095.0}, {"x": "2025-03-26 12:58", "y": 1005011.0}, {"x": "2025-03-27 09:00", "y": 1002343.0}, {"x": "2025-03-27 15:01", "y": 1001575.0}, {"x": "2025-04-01 08:47", "y": 998611.0}, {"x": "2025-04-01 09:44", "y": 995947.0}, {"x": "2025-04-02 09:36", "y": 993281.0}, {"x": "2025-04-02 12:37", "y": 996999.0}, {"x": "2025-04-02 13:19", "y": 996917.0}, {"x": "2025-04-08 09:07", "y": 982363.0}, {"x": "2025-04-11 09:14", "y": 970709.0}, {"x": "2025-04-17 09:51", "y": 968053.0}, {"x": "2025-04-17 12:37", "y": 964695.0}, {"x": "2025-04-22 09:05", "y": 962039.0}, {"x": "2025-04-25 15:01", "y": 969379.0}, {"x": "2025-04-30 09:38", "y": 966719.0}, {"x": "2025-04-30 13:06", "y": 964059.0}, {"x": "2025-05-08 13:32", "y": 961397.0}, {"x": "2025-05-09 10:31", "y": 952935.0}, {"x": "2025-05-12 15:01", "y": 952971.0}, {"x": "2025-05-13 10:17", "y": 946705.0}, {"x": "2025-05-20 15:01", "y": 948539.0}, {"x": "2025-05-22 09:27", "y": 950956.0}, {"x": "2025-05-22 09:48", "y": 950874.0}, {"x": "2025-05-23 09:34", "y": 948208.0}, {"x": "2025-05-27 12:01", "y": 950626.0}, {"x": "2025-05-27 13:30", "y": 950544.0}, {"x": "2025-06-05 10:25", "y": 947878.0}, {"x": "2025-06-06 09:33", "y": 950294.0}, {"x": "2025-06-06 09:42", "y": 953960.0}, {"x": "2025-06-09 15:01", "y": 951994.0}, {"x": "2025-06-19 09:30", "y": 956310.0}, {"x": "2025-06-19 09:45", "y": 962826.0}, {"x": "2025-06-26 09:20", "y": 965242.0}, {"x": "2025-06-26 09:33", "y": 965158.0}, {"x": "2025-06-26 11:11", "y": 961590.0}, {"x": "2025-06-30 09:17", "y": 958922.0}, {"x": "2025-07-04 15:01", "y": 961152.0}, {"x": "2025-07-07 15:01", "y": 962982.0}, {"x": "2025-07-08 09:21", "y": 965398.0}, {"x": "2025-07-08 09:22", "y": 969064.0}, {"x": "2025-07-08 13:01", "y": 966396.0}, {"x": "2025-07-09 09:39", "y": 963726.0}, {"x": "2025-07-15 15:01", "y": 964654.0}, {"x": "2025-07-22 09:16", "y": 961980.0}, {"x": "2025-07-23 15:01", "y": 963308.0}, {"x": "2025-07-24 09:13", "y": 960634.0}, {"x": "2025-07-25 09:05", "y": 957960.0}, {"x": "2025-07-25 15:01", "y": 962187.0}, {"x": "2025-07-29 09:00", "y": 964601.0}, {"x": "2025-07-29 09:03", "y": 964515.0}, {"x": "2025-07-30 13:11", "y": 961841.0}, {"x": "2025-08-01 15:01", "y": 960267.0}, {"x": "2025-08-12 09:53", "y": 963079.0}, {"x": "2025-08-12 10:38", "y": 962991.0}, {"x": "2025-08-19 10:00", "y": 966303.0}, {"x": "2025-08-19 15:01", "y": 969765.0}, {"x": "2025-08-21 15:01", "y": 968589.0}, {"x": "2025-08-22 08:48", "y": 965613.0}, {"x": "2025-09-01 09:34", "y": 971325.0}, {"x": "2025-09-01 10:11", "y": 971237.0}, {"x": "2025-09-03 15:01", "y": 971961.0}, {"x": "2025-09-11 09:14", "y": 974371.0}, {"x": "2025-09-11 09:16", "y": 974281.0}, {"x": "2025-09-11 10:24", "y": 968099.0}, {"x": "2025-09-12 09:21", "y": 970509.0}, {"x": "2025-09-12 09:29", "y": 970419.0}, {"x": "2025-09-12 10:00", "y": 967737.0}, {"x": "2025-09-18 09:39", "y": 965055.0}, {"x": "2025-09-22 09:09", "y": 962373.0}, {"x": "2025-10-02 09:06", "y": 959387.0}, {"x": "2025-10-03 08:56", "y": 962195.0}, {"x": "2025-10-03 09:06", "y": 962103.0}, {"x": "2025-10-09 15:01", "y": 965713.0}, {"x": "2025-10-14 10:36", "y": 963024.0}, {"x": "2025-10-17 09:06", "y": 960334.0}, {"x": "2025-10-23 09:12", "y": 957644.0}, {"x": "2025-10-28 13:14", "y": 954252.0}, {"x": "2025-10-30 09:28", "y": 948658.0}, {"x": "2025-10-30 12:11", "y": 956562.0}, {"x": "2025-10-30 12:16", "y": 968466.0}, {"x": "2025-10-31 11:22", "y": 962472.0}, {"x": "2025-11-04 09:20", "y": 958478.0}, {"x": "2025-11-04 09:50", "y": 950384.0}, {"x": "2025-11-10 12:46", "y": 955788.0}, {"x": "2025-11-10 15:01", "y": 962392.0}, {"x": "2025-11-11 09:47", "y": 959700.0}, {"x": "2025-11-17 10:50", "y": 956010.0}, {"x": "2025-11-21 11:38", "y": 958517.0}, {"x": "2025-11-21 11:40", "y": 962324.0}, {"x": "2025-11-22 12:39", "y": 942538.0}, {"x": "2025-11-26 13:03", "y": 944944.0}, {"x": "2025-11-26 13:18", "y": 944850.0}, {"x": "2025-11-27 11:10", "y": 940660.0}, {"x": "2025-12-02 12:51", "y": 943964.0}, {"x": "2025-12-02 13:15", "y": 948968.0}, {"x": "2025-12-02 15:01", "y": 948878.0}, {"x": "2025-12-17 11:03", "y": 952782.0}, {"x": "2025-12-17 12:26", "y": 952686.0}, {"x": "2025-12-18 11:21", "y": 949996.0}, {"x": "2025-12-19 10:14", "y": 954300.0}, {"x": "2025-12-19 10:36", "y": 954204.0}, {"x": "2025-12-31 09:45", "y": 951508.0}, {"x": "2026-01-07 09:14", "y": 953906.0}, {"x": "2026-01-07 09:18", "y": 953804.0}, {"x": "2026-01-16 11:01", "y": 944698.0}, {"x": "2026-01-21 12:46", "y": 949996.0}, {"x": "2026-01-21 13:31", "y": 949894.0}, {"x": "2026-01-22 12:05", "y": 942986.0}, {"x": "2026-01-23 11:15", "y": 937478.0}, {"x": "2026-01-26 10:45", "y": 940774.0}, {"x": "2026-01-26 12:47", "y": 945770.0}, {"x": "2026-01-26 15:01", "y": 946262.0}, {"x": "2026-01-27 09:01", "y": 948658.0}, {"x": "2026-01-27 09:02", "y": 952304.0}, {"x": "2026-01-28 13:12", "y": 956198.0}, {"x": "2026-01-28 13:23", "y": 962092.0}, {"x": "2026-01-30 09:38", "y": 956382.0}, {"x": "2026-02-03 09:54", "y": 953473.0}, {"x": "2026-02-03 13:26", "y": 959369.0}, {"x": "2026-02-03 15:01", "y": 964415.0}, {"x": "2026-02-05 08:50", "y": 957707.0}, {"x": "2026-02-05 10:26", "y": 963003.0}, {"x": "2026-02-05 10:30", "y": 970999.0}, {"x": "2026-02-11 08:52", "y": 968285.0}, {"x": "2026-02-24 13:18", "y": 965565.0}, {"x": "2026-02-25 08:47", "y": 958244.0}, {"x": "2026-02-26 09:51", "y": 961532.0}, {"x": "2026-02-26 09:54", "y": 966520.0}, {"x": "2026-03-03 09:09", "y": 956100.0}, {"x": "2026-03-04 09:07", "y": 965393.0}, {"x": "2026-03-04 09:15", "y": 979386.0}, {"x": "2026-03-04 15:01", "y": 979174.0}, {"x": "2026-03-05 09:56", "y": 967859.0}, {"x": "2026-03-11 09:12", "y": 960245.0}, {"x": "2026-03-12 09:27", "y": 962637.0}, {"x": "2026-03-12 09:29", "y": 962529.0}, {"x": "2026-03-16 12:46", "y": 951315.0}, {"x": "2026-03-17 15:01", "y": 952299.0}, {"x": "2026-03-20 10:02", "y": 962891.0}, {"x": "2026-03-20 10:45", "y": 962783.0}, {"x": "2026-03-23 09:40", "y": 965177.0}, {"x": "2026-03-23 09:41", "y": 965071.0}, {"x": "2026-03-23 13:31", "y": 961961.0}, {"x": "2026-03-24 08:53", "y": 956247.0}, {"x": "2026-03-25 12:02", "y": 950533.0}, {"x": "2026-04-09 13:24", "y": 946013.0}, {"x": "2026-04-13 09:37", "y": 948401.0}, {"x": "2026-04-13 09:41", "y": 952040.0}, {"x": "2026-04-13 11:38", "y": 943218.0}, {"x": "2026-04-15 13:41", "y": 938490.0}, {"x": "2026-04-16 09:05", "y": 935562.0}, {"x": "2026-04-17 10:34", "y": 927933.0}, {"x": "2026-04-17 13:35", "y": 933619.0}, {"x": "2026-04-17 15:01", "y": 938005.0}, {"x": "2026-04-21 13:41", "y": 940389.0}, {"x": "2026-04-21 15:01", "y": 942473.0}, {"x": "2026-04-29 08:59", "y": 921235.0}, {"x": "2026-05-06 09:50", "y": 917389.0}, {"x": "2026-05-08 10:13", "y": 904841.0}, {"x": "2026-05-08 13:02", "y": 900793.0}, {"x": "2026-05-14 13:19", "y": 891147.0}, {"x": "2026-05-18 09:01", "y": 887905.0}, {"x": "2026-05-19 08:54", "y": 874562.0}, {"x": "2026-05-22 11:35", "y": 868614.0}, {"x": "2026-05-26 09:08", "y": 859258.0}, {"x": "2026-05-27 11:50", "y": 853398.0}, {"x": "2026-06-08 10:08", "y": 892172.0}, {"x": "2026-06-08 15:01", "y": 912446.0}, {"x": "2026-06-11 08:53", "y": 900894.0}, {"x": "2026-06-17 08:47", "y": 893932.0}, {"x": "2026-06-18 11:37", "y": 875666.0}, {"x": "2026-06-23 13:32", "y": 906331.0}, {"x": "2026-06-23 15:01", "y": 939646.0}, {"x": "2026-06-24 12:43", "y": 911480.0}, {"x": "2026-06-25 12:49", "y": 902314.0}, {"x": "2026-06-29 09:01", "y": 894054.0}, {"x": "2026-06-29 10:10", "y": 889393.0}, {"x": "2026-06-30 09:09", "y": 884327.0}, {"x": "2026-06-30 13:31", "y": 881261.0}, {"x": "2026-07-01 09:09", "y": 868891.0}, {"x": "2026-07-01 09:10", "y": 866021.0}, {"x": "2026-07-02 13:01", "y": 856655.0}, {"x": "2026-07-06 10:18", "y": 849787.0}, {"x": "2026-07-06 13:30", "y": 835919.0}, {"x": "2026-07-09 09:04", "y": 819456.0}, {"x": "2026-07-09 09:58", "y": 804993.0}, {"x": "2026-07-16 12:39", "y": 798329.0}, {"x": "2026-07-16 15:01", "y": 791466.0}, {"x": "2026-07-17 11:38", "y": 800538.0}, {"x": "2026-07-17 11:43", "y": 814210.0}, {"x": "2026-07-22 15:01", "y": 844851.0}, {"x": "2026-07-23 09:07", "y": 837691.0}, {"x": "2026-07-27 09:21", "y": 830237.0}, {"x": "2026-07-27 10:30", "y": 806382.0}, {"x": "2026-07-28 10:19", "y": 808758.0}, {"x": "2026-07-28 10:20", "y": 812384.0}, {"x": "2026-07-28 13:07", "y": 788236.0}, {"x": "2026-07-29 09:07", "y": 799812.0}, {"x": "2026-07-29 09:10", "y": 817239.0}, {"x": "2026-07-30 12:55", "y": 837418.0}, {"x": "2026-07-30 12:59", "y": 867747.0}, {"x": "2026-08-04 09:34", "y": 870821.0}, {"x": "2026-08-04 09:35", "y": 870695.0}, {"x": "2026-08-07 09:01", "y": 853637.0}, {"x": "2026-08-11 09:15", "y": 838477.0}, {"x": "2026-08-12 08:58", "y": 841047.0}, {"x": "2026-08-12 08:59", "y": 840917.0}, {"x": "2026-08-13 09:04", "y": 837053.0}, {"x": "2026-08-14 11:32", "y": 839421.0}, {"x": "2026-08-14 11:41", "y": 843039.0}, {"x": "2026-08-18 08:47", "y": 840275.0}, {"x": "2026-08-19 13:00", "y": 833717.0}, {"x": "2026-08-20 09:27", "y": 836087.0}, {"x": "2026-08-20 09:28", "y": 835957.0}, {"x": "2026-08-20 12:13", "y": 825699.0}, {"x": "2026-08-21 09:04", "y": 818439.0}, {"x": "2026-08-21 10:22", "y": 828109.0}, {"x": "2026-08-21 10:52", "y": 842679.0}, {"x": "2026-08-26 10:21", "y": 834217.0}, {"x": "2026-08-28 15:01", "y": 830051.0}, {"x": "2026-09-02 09:00", "y": 822885.0}, {"x": "2026-09-03 09:02", "y": 818119.0}, {"x": "2026-09-07 09:08", "y": 815351.0}, {"x": "2026-09-09 08:50", "y": 812583.0}, {"x": "2026-09-11 09:00", "y": 809819.0}, {"x": "2026-09-15 09:03", "y": 802156.0}], "borderColor": "#8b5cf6", "borderWidth": 2, "fill": false, "tension": 0.1, "pointRadius": 0}];
+        new Chart(ctx, {
+            type: 'line',
+            data: { datasets: chartData },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'category',
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#94a3b8', maxTicksLimit: 12 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: v => 'NT$ ' + v.toLocaleString()
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#f8fafc' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
