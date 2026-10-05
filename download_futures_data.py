@@ -94,12 +94,15 @@ def get_last_ts(table: str, code: str) -> str:
 
 import pandas as pd
 
-def save_to_db(df: pd.DataFrame, table_name: str) -> int:
+def save_to_db(df: pd.DataFrame, table_name: str, upsert: bool = False) -> int:
     """Saves DataFrame to specified SQLite table.
 
     Args:
         df (pd.DataFrame): Data to save, must have code, ts, open, high, low, close, volume.
         table_name (str): Target table name.
+        upsert (bool): If True, overwrite existing rows with the same (code, ts)
+            (used when the Shioaji server is the source of truth for closed bars).
+            Defaults to False (INSERT OR IGNORE) to keep existing sync behavior.
 
     Returns:
         int: Number of rows inserted.
@@ -112,14 +115,29 @@ def save_to_db(df: pd.DataFrame, table_name: str) -> int:
     
     # Prepare rows for executemany
     # dataframe order: code, ts, open, high, low, close, volume
-    rows = list(df[['code', 'ts', 'open', 'high', 'low', 'close', 'volume']].itertuples(index=False, name=None))
+    rows = [
+        (str(code), str(ts), float(o), float(h), float(l), float(c), int(v))
+        for code, ts, o, h, l, c, v in df[['code', 'ts', 'open', 'high', 'low', 'close', 'volume']].itertuples(index=False, name=None)
+    ]
 
-    try:
-        cursor.executemany(f"""
+    if upsert:
+        sql = f"""
+            INSERT INTO {table_name}
+            (code, ts, open, high, low, close, volume)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(code, ts) DO UPDATE SET
+                open=excluded.open, high=excluded.high, low=excluded.low,
+                close=excluded.close, volume=excluded.volume
+        """
+    else:
+        sql = f"""
             INSERT OR IGNORE INTO {table_name} 
             (code, ts, open, high, low, close, volume)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, rows)
+        """
+
+    try:
+        cursor.executemany(sql, rows)
         conn.commit()
         inserted = cursor.rowcount
         # rowcount may be -1 for some drivers, but sqlite executemany returns total if supported
