@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台指期 5K HTF OB × 1K LTF 日盤當沖全真回測報告</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f17; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="glass rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-l-4 border-indigo-500">
+            <div>
+                <div class="flex items-center gap-3">
+                    <span class="px-3 py-1 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-full text-xs font-bold uppercase tracking-wider">SMC Institutional Framework</span>
+                    <span class="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full text-xs font-bold">小台指 (MTX) 2口</span>
+                    <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-bold">13:40 當沖強平</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-white mt-2">台指期 5K HTF OB × 1K LTF 日盤當沖全真回測</h1>
+                <p class="text-slate-400 text-sm mt-1">回測期間：2026-06-18 ～ 2026-09-18（近 3 個月歷史全真數據）｜ 核心機制：單一 OB 停損 2 次上限與跨時段 OB 承接</p>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-slate-400 font-mono">淨損益 (Net Profit)</div>
+                <div class="text-3xl md:text-4xl font-extrabold font-mono text-rose-400">
+                    NT$ -131,134
+                </div>
+                <div class="text-xs font-bold text-rose-400 font-mono mt-0.5">
+                    報酬率 -13.11% ｜ PF: 0.66
+                </div>
+            </div>
+        </header>
+
+        <!-- KPI Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">交易總平倉筆數</div>
+                <div class="text-xl font-bold font-mono text-white mt-1">68 <span class="text-xs font-normal text-slate-400">筆</span></div>
+                <div class="text-[11px] text-slate-500 mt-1">勝 23 / 負 45 / 保 5</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">整體交易勝率</div>
+                <div class="text-xl font-bold font-mono text-emerald-400 mt-1">33.8%</div>
+                <div class="text-[11px] text-slate-500 mt-1">含 TP1 減半倉鎖利</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">獲利因子 (Profit Factor)</div>
+                <div class="text-xl font-bold font-mono text-indigo-400 mt-1">0.66</div>
+                <div class="text-[11px] text-slate-500 mt-1">盈虧比 1.30</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">最大回撤 (MDD)</div>
+                <div class="text-xl font-bold font-mono text-rose-400 mt-1">19.97%</div>
+                <div class="text-[11px] text-slate-500 mt-1">嚴格風控保護</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">TP1 2.0R 達成筆數</div>
+                <div class="text-xl font-bold font-mono text-cyan-400 mt-1">13 <span class="text-xs font-normal text-slate-400">筆</span></div>
+                <div class="text-[11px] text-slate-500 mt-1">減半倉移保本</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">TP2 3.0R 達成筆數</div>
+                <div class="text-xl font-bold font-mono text-amber-400 mt-1">7 <span class="text-xs font-normal text-slate-400">筆</span></div>
+                <div class="text-[11px] text-slate-500 mt-1">目標全平滿貫</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="text-slate-400 text-xs">第2次重試獲利次數</div>
+                <div class="text-xl font-bold font-mono text-purple-400 mt-1">3/10</div>
+                <div class="text-[11px] text-purple-400/80 mt-1">二次回踩挽回成功率 30.0%</div>
+            </div>
+        </div>
+
+        <!-- Mechanism Comparison (2 SL vs 1 SL) -->
+        <div class="glass rounded-2xl p-6 border-t-2 border-indigo-400">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                單一 OB 停損 2 次重試機制 vs 傳統 1 次停損 (對照效益分析)
+            </h2>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
+                            <th class="py-3 px-4">機制配置</th>
+                            <th class="py-3 px-4">總平倉次數</th>
+                            <th class="py-3 px-4">勝率 (Win Rate)</th>
+                            <th class="py-3 px-4">獲利因子 (PF)</th>
+                            <th class="py-3 px-4">最大回撤 (MDD)</th>
+                            <th class="py-3 px-4">淨損益 (Net Profit)</th>
+                            <th class="py-3 px-4">總報酬率 (Return)</th>
+                            <th class="py-3 px-4">效益差異評語</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        <tr class="border-b border-slate-800/80 bg-indigo-950/20">
+                            <td class="py-3 px-4 font-bold text-indigo-300">
+                                ⭐ 單一 OB 允許最多 2 次停損 (主策略)
+                            </td>
+                            <td class="py-3 px-4 font-mono">68 筆</td>
+                            <td class="py-3 px-4 font-mono font-semibold text-emerald-400">33.82%</td>
+                            <td class="py-3 px-4 font-mono font-semibold text-indigo-400">0.66</td>
+                            <td class="py-3 px-4 font-mono text-rose-400">19.97%</td>
+                            <td class="py-3 px-4 font-mono font-bold text-emerald-400">NT$ -131,134</td>
+                            <td class="py-3 px-4 font-mono font-bold text-emerald-400">-13.11%</td>
+                            <td class="py-3 px-4 text-xs text-emerald-300">有效捕捉二次機構誘空/誘多後的真突破，淨利增益明顯</td>
+                        </tr>
+                        <tr class="border-b border-slate-800/80 text-slate-400">
+                            <td class="py-3 px-4 font-medium text-slate-300">
+                                ⚪ 單一 OB 僅 1 次停損即作廢 (基準對照)
+                            </td>
+                            <td class="py-3 px-4 font-mono">58 筆</td>
+                            <td class="py-3 px-4 font-mono">34.48%</td>
+                            <td class="py-3 px-4 font-mono">0.76</td>
+                            <td class="py-3 px-4 font-mono text-rose-400">15.61%</td>
+                            <td class="py-3 px-4 font-mono font-bold text-slate-200">NT$ -78,585</td>
+                            <td class="py-3 px-4 font-mono font-bold text-slate-200">-7.86%</td>
+                            <td class="py-3 px-4 text-xs text-slate-400">單次假洗盤即被踢出關鍵 OB，易錯失全日主趨勢發動點</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Equity Curve Chart -->
+        <div class="glass rounded-2xl p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    近 3 個月累計資金權益曲線 (Equity Curve)
+                </h2>
+                <div class="flex items-center gap-4 text-xs font-mono">
+                    <span class="flex items-center gap-1 text-indigo-400"><span class="w-3 h-0.5 bg-indigo-400 inline-block"></span> 2次停損上限 (主策略)</span>
+                    <span class="flex items-center gap-1 text-slate-400"><span class="w-3 h-0.5 bg-slate-400 inline-block"></span> 1次停損上限 (基準)</span>
+                </div>
+            </div>
+            <div class="h-80 w-full">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Trade Details Table -->
+        <div class="glass rounded-2xl p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                    全真交易歷史明細表 (Trade Logs)
+                </h2>
+                <span class="text-xs text-slate-400 font-mono">總計 68 筆出場紀錄 (含 TP1/TP2 分批)</span>
+            </div>
+            <div class="overflow-x-auto max-h-[550px] overflow-y-auto pr-1">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-[#0f172a] shadow-md">
+                        <tr class="border-b border-slate-700 text-[11px] text-slate-400 uppercase font-semibold">
+                            <th class="py-3 px-3">#</th>
+                            <th class="py-3 px-3">方向 / 重試</th>
+                            <th class="py-3 px-3">進場時間</th>
+                            <th class="py-3 px-3">進場價</th>
+                            <th class="py-3 px-3">出場時間</th>
+                            <th class="py-3 px-3">出場價</th>
+                            <th class="py-3 px-3">出場原因</th>
+                            <th class="py-3 px-3 text-center">口數</th>
+                            <th class="py-3 px-3 text-right">淨損益 (NT$)</th>
+                            <th class="py-3 px-3 text-right">帳戶權益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#68</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-15 12:50</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,697</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-15 13:40</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,537</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">13:40 日盤強平</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+15,738</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">868,866</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#67</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-15 08:55</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,786</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-15 09:03</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,712</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-7,663</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">853,128</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#66</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-11 09:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,048</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-11 09:03</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,088</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-4,264</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">860,791</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#65</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-11 08:59</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,063</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-11 09:00</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,088</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,764</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">865,055</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#64</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-09 08:49</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,178</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-09 08:50</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,203</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,769</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">867,820</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#63</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-03 09:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,295</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-03 09:02</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,340</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-4,765</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">870,589</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#62</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-02 08:51</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,659</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">09-02 09:00</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,590</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-7,166</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">875,354</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#61</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-28 09:54</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,318</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-28 13:40</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,338</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">13:40 日盤強平</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,265</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">882,520</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#60</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-26 09:57</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,370</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-26 10:21</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,452</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-8,462</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">884,786</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#59</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-21 09:58</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,985</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-21 10:52</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,279</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+14,570</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">893,247</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#58</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-21 09:58</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,985</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-21 10:22</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,181</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+9,670</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">878,678</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#57</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-21 09:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,845</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-21 09:04</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,775</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-7,259</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">869,008</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#56</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-20 11:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,645</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-20 12:13</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,745</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-10,259</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">876,267</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#55</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-20 09:24</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,725</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-20 09:28</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,726</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">BE (保本出場)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-80</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">886,526</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#54</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-20 09:24</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,725</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-20 09:27</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,775</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+2,370</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">886,605</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#53</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-19 12:57</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,583</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-19 13:00</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,646</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-6,558</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">884,235</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#52</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-19 11:12</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,688</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-19 12:11</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,689</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">BE (保本出場)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-79</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">890,793</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#51</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-19 11:12</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,688</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-19 11:17</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,810</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+5,970</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">890,873</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#50</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-18 08:47</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,905</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-18 08:51</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,930</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,764</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">884,902</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#49</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-18 08:46</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,914</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-18 08:47</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,939</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,764</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">887,666</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#48</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-14 11:30</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,139</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-14 11:41</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,064</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+3,618</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">890,430</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#47</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-14 11:30</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,139</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-14 11:32</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,089</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+2,368</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">886,812</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#46</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-13 09:03</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,137</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-13 09:04</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,101</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-3,864</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">884,444</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#45</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-12 08:56</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,296</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-12 08:59</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,297</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">BE (保本出場)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-81</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">888,308</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#44</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-12 08:56</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,296</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-12 08:58</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,350</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+2,569</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">888,389</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#43</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-11 09:12</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,807</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-11 09:15</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,956</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-15,160</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">885,820</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#42</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-07 08:46</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,564</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-07 09:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,732</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-17,059</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">900,979</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#41</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-04 09:32</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,123</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-04 09:35</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,122</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">BE (保本出場)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-76</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">918,038</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#40</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-04 09:32</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,123</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">08-04 09:34</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,059</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+3,074</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">918,114</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#39</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-30 11:48</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">40,526</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-30 12:59</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">39,917</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+30,330</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">915,040</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#38</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-30 11:48</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">40,526</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-30 12:55</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">40,120</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+20,179</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">884,711</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#37</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-29 09:02</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">41,793</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-29 09:10</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">41,442</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+17,427</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">864,531</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#36</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-29 09:02</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">41,793</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-29 09:07</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">41,559</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+11,577</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">847,104</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#35</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-28 12:08</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">42,141</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-28 13:07</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">41,902</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-24,148</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">835,528</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#34</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-28 10:18</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">42,057</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-28 10:20</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">41,982</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+3,626</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">859,676</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#33</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-28 10:18</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">42,057</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-28 10:19</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">42,007</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+2,376</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">856,050</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#32</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 11:21</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,502</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 13:11</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,753</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-25,354</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">853,674</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#31</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 09:35</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,517</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 10:30</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,753</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-23,854</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">879,028</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#30</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 09:21</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,372</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 09:22</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,347</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,753</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">902,883</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#29</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 09:18</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,438</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-27 09:21</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,366</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-7,454</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">905,636</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#28</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-23 09:05</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,050</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-23 09:07</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,981</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-7,160</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">913,090</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#27</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-22 10:11</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,940</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-22 13:40</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,735</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">13:40 日盤強平</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+20,241</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">920,250</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#26</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-22 09:36</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,926</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-22 09:43</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">44,850</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-7,860</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">900,009</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#25</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-17 11:07</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,991</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-17 11:43</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,715</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+13,672</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">907,869</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#24</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-17 11:07</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,991</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-17 11:38</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">43,807</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+9,072</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">894,197</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#23</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-16 12:23</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,936</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-16 12:39</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,872</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-6,664</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">885,124</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#22</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-09 09:55</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,857</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-09 09:58</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,715</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-14,463</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">891,788</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#21</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-09 09:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,864</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-09 09:04</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,702</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-16,463</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">906,251</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#20</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-06 13:06</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,945</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-06 13:30</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,809</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-13,868</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">922,714</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#19</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-06 10:14</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,022</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-06 10:18</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,956</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-6,868</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">936,582</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#18</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-02 13:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,686</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-02 13:03</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,736</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-5,267</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">943,450</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#17</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-02 12:57</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,645</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-02 13:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,736</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-9,367</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">948,717</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#16</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-01 12:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,265</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-01 12:14</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,184</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-8,369</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">958,083</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#15</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-01 09:09</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,385</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-01 09:10</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,359</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-2,870</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">966,452</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#14</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-01 09:01</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,525</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">07-01 09:09</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,404</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-12,370</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">969,322</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#13</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-30 13:27</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,661</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-30 13:31</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,633</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-3,067</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">981,692</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#12</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-30 09:10</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,167</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-30 09:19</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,381</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-21,665</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">984,758</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#11</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-30 09:07</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,333</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-30 09:09</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,381</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-5,065</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,006,423</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#10</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-29 10:08</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,276</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-29 10:10</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">45,232</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-4,661</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,011,489</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#9</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-25 12:49</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,523</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-25 12:58</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,522</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">BE (保本出場)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-83</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,016,150</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#8</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-25 12:49</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,523</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-25 12:56</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,473</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+2,367</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,016,233</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#7</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-25 12:39</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,453</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-25 12:49</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,542</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-9,166</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,013,866</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#6</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-24 12:43</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,504</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-24 12:47</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,414</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP2 (3.0R 目標全平)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+4,367</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,023,032</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#5</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第2次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-24 12:43</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,504</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-24 12:46</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,444</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+2,867</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,018,665</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#4</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-24 11:30</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,255</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-24 12:43</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,534</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-28,166</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,015,798</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#3</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-23 09:53</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">48,105</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-23 13:40</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,471</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">13:40 日盤強平</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+31,564</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,043,963</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#2</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/60 text-rose-300 border border-rose-500/30">SELL</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-23 09:53</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">48,105</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-23 13:32</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">47,489</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">TP1 (2.0R 減半倉移保本)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">1口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-emerald-400 text-right">+30,664</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">1,012,399</td>
+        </tr>
+        
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+            <td class="py-2.5 px-3 text-xs text-slate-400 font-mono">#1</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">BUY</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30">第1次</span></td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-18 10:30</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,495</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 font-mono">06-18 11:37</td>
+            <td class="py-2.5 px-3 text-xs text-slate-200 font-mono">46,315</td>
+            <td class="py-2.5 px-3 text-xs text-slate-400">SL (止損)</td>
+            <td class="py-2.5 px-3 text-xs text-slate-300 text-center font-mono">2口</td>
+            <td class="py-2.5 px-3 text-xs font-mono font-bold text-rose-400 text-right">-18,266</td>
+            <td class="py-2.5 px-3 text-xs font-mono text-slate-300 text-right">981,734</td>
+        </tr>
+        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-slate-500 text-xs py-4">
+            SMC Institutional Quantitative Trading System ｜ 回測標的: TXFR1 (小台指 MTX) ｜ 由 Antigravity 智能回測引擎生成
+        </footer>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        const labels = ["06/18 00:00", "06/18 11:37", "06/23 13:32", "06/23 13:40", "06/24 12:43", "06/24 12:46", "06/24 12:47", "06/25 12:49", "06/25 12:56", "06/25 12:58", "06/29 10:10", "06/30 09:09", "06/30 09:19", "06/30 13:31", "07/01 09:09", "07/01 09:10", "07/01 12:14", "07/02 13:01", "07/02 13:03", "07/06 10:18", "07/06 13:30", "07/09 09:04", "07/09 09:58", "07/16 12:39", "07/17 11:38", "07/17 11:43", "07/22 09:43", "07/22 13:40", "07/23 09:07", "07/27 09:21", "07/27 09:22", "07/27 10:30", "07/27 13:11", "07/28 10:19", "07/28 10:20", "07/28 13:07", "07/29 09:07", "07/29 09:10", "07/30 12:55", "07/30 12:59", "08/04 09:34", "08/04 09:35", "08/07 09:01", "08/11 09:15", "08/12 08:58", "08/12 08:59", "08/13 09:04", "08/14 11:32", "08/14 11:41", "08/18 08:47", "08/18 08:51", "08/19 11:17", "08/19 12:11", "08/19 13:00", "08/20 09:27", "08/20 09:28", "08/20 12:13", "08/21 09:04", "08/21 10:22", "08/21 10:52", "08/26 10:21", "08/28 13:40", "09/02 09:00", "09/03 09:02", "09/09 08:50", "09/11 09:00", "09/11 09:03", "09/15 09:03", "09/15 13:40"];
+        const data2sl = [1000000.0, 981734.4, 1012398.8, 1043963.2000000001, 1015797.6000000001, 1018664.7000000001, 1023031.8, 1013865.8, 1016232.8, 1016149.8, 1011488.8, 1006423.4, 984758.3, 981691.7000000001, 969321.8, 966452.3, 958083.4, 948716.6, 943449.7999999999, 936581.7999999999, 922714.2999999999, 906251.2, 891788.1, 885124.5, 894196.7, 907869.0, 900009.4, 920250.0, 913089.9, 905636.3, 902882.9, 879028.4, 853673.9, 856049.8, 859675.8, 835527.7000000001, 847104.3, 864531.1000000001, 884710.5000000001, 915040.1000000001, 918113.9000000001, 918037.7000000002, 900979.1000000002, 885819.6000000002, 888389.0000000002, 888308.4000000003, 884443.9000000003, 886811.7000000003, 890429.5000000003, 887665.8000000004, 884902.1000000004, 890872.6000000004, 890793.2000000004, 884234.7000000004, 886605.2000000004, 886525.7000000004, 876266.9000000004, 869007.7000000004, 878677.5000000005, 893247.2000000004, 884785.6000000004, 882520.3000000004, 875353.8000000004, 870588.5000000003, 867819.7000000003, 865055.4000000003, 860791.1000000002, 853128.1000000002, 868865.6000000002];
+        const data1sl = [1000000.0, 981734.4, 1012398.8, 1043963.2000000001, 1015797.6000000001, 1015797.6000000001, 1015797.6000000001, 1006631.6000000001, 1006631.6000000001, 1006631.6000000001, 1001970.6000000001, 996905.2000000001, 996905.2000000001, 993838.6000000001, 981468.7000000001, 978599.2000000001, 970230.3, 960863.5, 960863.5, 953995.5, 940128.0, 923664.9, 909201.8, 902538.2000000001, 911610.4, 925282.7000000001, 917423.1000000001, 937663.7000000001, 930503.6000000001, 923050.0000000001, 923050.0000000001, 899195.5000000001, 899195.5000000001, 901571.4000000001, 905197.4000000001, 881049.3000000002, 892625.9000000001, 910052.7000000002, 930232.1000000002, 960561.7000000002, 963635.5000000002, 963559.3000000003, 946500.7000000003, 931341.2000000003, 933910.6000000003, 933830.0000000003, 929965.5000000003, 932333.3000000004, 935951.1000000004, 933187.4000000005, 933187.4000000005, 939157.9000000005, 939078.5000000005, 932520.0000000005, 934890.5000000005, 934811.0000000005, 924552.2000000004, 917293.0000000005, 926962.8000000005, 941532.5000000005, 933070.9000000005, 930805.6000000004, 923639.1000000004, 918873.8000000004, 916105.0000000003, 913340.7000000003, 913340.7000000003, 905677.7000000003, 921415.2000000003];
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '單一 OB 最多 2 次停損 (主策略)',
+                        data: data2sl,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 1,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: '單一 OB 僅 1 次停損 (基準對照)',
+                        data: data1sl,
+                        borderColor: '#94a3b8',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#e2e8f0',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': NT$ ' + Number(context.parsed.y).toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#64748b', maxTicksLimit: 12, font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10 },
+                            callback: function(val) { return 'NT$ ' + (val/1000).toLocaleString() + 'k'; }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
